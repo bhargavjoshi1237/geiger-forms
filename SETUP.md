@@ -18,6 +18,7 @@ Everything else is optional; each feature degrades cleanly when its key is missi
 | `RESEND_API_KEY`, `FORMS_EMAIL_FROM` | Confirmation, admin, approval, resume, edit-request, reminder and digest emails |
 | `NEXT_PUBLIC_APP_URL` | Absolute links in emails and webhooks |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Payments via Stripe Checkout (webhook: `/api/stripe/webhook`) |
+| `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_ENV` | One-off payments via PayPal (webhook: `/api/paypal/webhook`; `PAYPAL_ENV=live` takes real money, anything else uses the sandbox) |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Captcha on forms that turn it on |
 | `FORMS_ENCRYPTION_KEY` | AES-256-GCM encryption of fields marked sensitive |
 | `FORMS_LINK_SECRET` | Signed/expiring form links |
