@@ -65,8 +65,8 @@ lib/server/       server-only               service-role client, session auth, s
                                             stripe, webhooks, flow, storage, crypto
 lib/mcp/          MCP server                tool catalog, connection and permission checks, audit log, over lib/server/forms-api
 app/api/          route handlers            public respondent API, workspace actions, cron, REST v1, MCP
-app/form/[slug]   public filler             server-loaded, gated, themed, multi-page / conversational
-app/forms/[slug]  builder
+app/form/[formId] public filler             server-loaded, gated, themed, multi-page / conversational
+app/forms/[formId] builder
 app/print/        printable responses (PDF via the browser)
 components/       builder, filler, field renderers, response panel, workspace screens
 ```
