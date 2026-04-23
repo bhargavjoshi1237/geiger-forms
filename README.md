@@ -84,6 +84,7 @@ and recorded in `forms.geiger_migrations`:
 npm run db:status                     # applied vs pending
 npm run db:new -- <name>              # scaffold a migration
 npm run db:push                       # apply everything pending
+npm run db:rollback                   # undo the most recent push
 npm run db:seed                       # re-runnable data
 ```
 
