@@ -1,66 +1,135 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { BarChart3, ClipboardList, FileQuestion, Inbox, LockKeyhole, Settings2 } from "lucide-react";
+import { PanelLeft, X } from "lucide-react";
+import { Topbar } from "@/components/layout/topbar";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { id: "Forms", Icon: FileQuestion },
-  { id: "Builder", Icon: ClipboardList },
-  { id: "Responses", Icon: Inbox },
-  { id: "Analytics", Icon: BarChart3 },
-  { id: "Access", Icon: LockKeyhole },
-  { id: "Settings", Icon: Settings2 },
-];
+const navItems = [];
 
-export function AppShell({ activeView, onViewChange, children }) {
+function SidebarContent({ activeView, onViewChange, onNavigate, showHeader = false, collapsed = false, onToggle }) {
   return (
-    <div className="flex h-[100dvh] bg-[#161616] text-[#ededed]">
-      <aside className="hidden w-64 shrink-0 border-r border-[#2a2a2a] bg-[#1a1a1a] md:flex md:flex-col">
-        <div className="flex h-14 items-center gap-3 border-b border-[#2a2a2a] px-4">
-          <Image src="/logo1.svg" alt="" width={22} height={22} />
-          <div>
-            <p className="text-sm font-semibold text-white">Geiger Forms</p>
-            <p className="text-[11px] text-[#737373]">Confidential intake</p>
+    <>
+      {showHeader ? (
+        <div className="flex h-14 items-center gap-2 border-b border-[#2a2a2a] bg-[#1a1a1a] px-4">
+          <div className="grid h-8 w-8 place-items-center rounded">
+            <Image src="/logo1.svg" alt="" width={20} height={20} className="h-5 w-5" />
+          </div>
+          <div className="border-l border-[#333333] pl-3">
+            <p className="text-sm font-semibold text-white">Form</p>
           </div>
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-          {navItems.map(({ id, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onViewChange(id)}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                activeView === id ? "bg-[#2a2a2a] text-white" : "text-[#a3a3a3] hover:bg-[#242424] hover:text-white",
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {id}
-            </button>
-          ))}
-        </nav>
-        <div className="border-t border-[#2a2a2a] p-3 text-xs leading-5 text-[#737373]">
-          Built for project members, reviewers, and approved external submitters.
+      ) : null}
+      <nav className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="relative flex w-full min-w-0 flex-col p-2">
+          <ul className="flex w-full min-w-0 flex-col gap-1">
+        {navItems.map(({ id, Icon }) => (
+          <li key={id} className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              onViewChange(id);
+              onNavigate?.();
+            }}
+            className={cn(
+              "flex h-9 w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#474747]",
+              collapsed && "mx-auto h-8 w-8 justify-center p-0",
+              activeView === id
+                ? "bg-[#2a2a2a] font-medium text-white"
+                : "text-[#a3a3a3] hover:bg-[#2a2a2a] hover:text-white",
+            )}
+            title={collapsed ? id : undefined}
+          >
+            <Icon className={cn("h-4 w-4 shrink-0", collapsed && "h-[18px] w-[18px]")} strokeWidth={2} />
+            <span className={cn("truncate", collapsed && "sr-only")}>{id}</span>
+          </button>
+          </li>
+        ))}
+          </ul>
         </div>
-      </aside>
+      </nav>
+      <div className="border-t border-[#2a2a2a] p-2">
+        <button
+          type="button"
+          onClick={onToggle}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg p-2 text-[#a3a3a3] transition-all hover:bg-[#2a2a2a] hover:text-white",
+            collapsed && "mx-auto h-8 w-8 justify-center p-0",
+          )}
+          aria-label="Collapse sidebar"
+          aria-expanded={!collapsed}
+        >
+          <PanelLeft className="h-5 w-5 shrink-0" />
+        </button>
+      </div>
+    </>
+  );
+}
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#2a2a2a] bg-[#161616]/95 px-4 md:px-6">
-          <div className="flex items-center gap-3 md:hidden">
-            <Image src="/logo1.svg" alt="" width={22} height={22} />
-            <span className="text-sm font-semibold">Geiger Forms</span>
-          </div>
-          <div className="hidden md:block">
-            <p className="text-sm font-medium text-[#ededed]">Workspace</p>
-            <p className="text-xs text-[#737373]">Project-bound forms and submissions</p>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-3 py-1.5 text-xs text-teal-200">
-            <LockKeyhole className="h-3.5 w-3.5" />
-            Clause protected
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-subtle">{children}</main>
+export function AppShell({ activeView = "", onViewChange = () => {}, children }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key.toLowerCase() === "b" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setCollapsed((value) => !value);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  return (
+    <div className="flex h-[100dvh] flex-col bg-[#161616] text-white">
+      <Topbar onMenuClick={() => setMobileOpen(true)} />
+
+      {mobileOpen ? (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation"
+          />
+          <aside className="relative flex h-full w-72 max-w-[85vw] flex-col border-r border-[#2a2a2a] bg-[#1a1a1a] shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-md text-[#a3a3a3] transition-colors hover:bg-[#242424] hover:text-white"
+              aria-label="Close navigation"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <SidebarContent
+              activeView={activeView}
+              onViewChange={onViewChange}
+              onNavigate={() => setMobileOpen(false)}
+              showHeader
+              onToggle={() => setMobileOpen(false)}
+            />
+          </aside>
+        </div>
+      ) : null}
+
+      <div className="flex min-h-0 flex-1">
+        <aside
+          className={cn(
+            "hidden shrink-0 border-r border-[#2a2a2a] bg-[#1a1a1a] text-[#a3a3a3] transition-[width] duration-200 ease-linear md:flex md:flex-col",
+            collapsed ? "w-12" : "w-64",
+          )}
+        >
+          <SidebarContent
+            activeView={activeView}
+            onViewChange={onViewChange}
+            collapsed={collapsed}
+            onToggle={() => setCollapsed((value) => !value)}
+          />
+        </aside>
+        <main className="flex-1 overflow-y-auto bg-[#161616] p-4 md:p-8 scrollbar-subtle">{children}</main>
       </div>
     </div>
   );

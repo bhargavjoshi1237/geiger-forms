@@ -12,14 +12,14 @@ function Switch({ checked, onCheckedChange, className, ...props }) {
       onClick={() => onCheckedChange?.(!checked)}
       className={cn(
         "relative h-5 w-9 rounded-full border transition-colors",
-        checked ? "border-teal-500/40 bg-teal-500/40" : "border-[#3a3a3a] bg-[#202020]",
+        checked ? "border-white bg-white" : "border-[#474747] bg-[#202020]",
         className,
       )}
       {...props}
     >
       <span
         className={cn(
-          "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform",
+          "absolute top-0.5 h-4 w-4 rounded-full bg-[#a3a3a3] shadow-sm transition-transform",
           checked ? "translate-x-4" : "translate-x-0.5",
         )}
       />
