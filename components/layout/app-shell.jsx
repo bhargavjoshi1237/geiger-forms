@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { PanelLeft, X } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
+import { formNavItems } from "@/components/internal/sidebar/sidebar_nav";
 import { cn } from "@/lib/utils";
 
-const navItems = [];
 const assetPrefix = process.env.NEXT_PUBLIC_ASSET_PREFIX || "";
 
 function SidebarContent({ activeView, onViewChange, onNavigate, showHeader = false, collapsed = false, onToggle }) {
@@ -22,10 +22,10 @@ function SidebarContent({ activeView, onViewChange, onNavigate, showHeader = fal
           </div>
         </div>
       ) : null}
-      <nav className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="relative flex w-full min-w-0 flex-col p-2">
-          <ul className="flex w-full min-w-0 flex-col gap-1">
-        {navItems.map(({ id, Icon }) => (
+      <nav className={cn("flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", !collapsed && "px-1")}>
+        <div className={cn("relative flex w-full min-w-0 flex-col py-2", !collapsed && "px-2")}>
+          <ul className={cn("flex w-full min-w-0 flex-col gap-1", collapsed && "items-center")}>
+        {formNavItems.map(({ id, title, Icon }) => (
           <li key={id} className="relative">
           <button
             type="button"
@@ -40,10 +40,10 @@ function SidebarContent({ activeView, onViewChange, onNavigate, showHeader = fal
                 ? "bg-[#2a2a2a] font-medium text-white"
                 : "text-[#a3a3a3] hover:bg-[#2a2a2a] hover:text-white",
             )}
-            title={collapsed ? id : undefined}
+            title={collapsed ? title : undefined}
           >
             <Icon className={cn("h-4 w-4 shrink-0", collapsed && "h-[18px] w-[18px]")} strokeWidth={2} />
-            <span className={cn("truncate", collapsed && "sr-only")}>{id}</span>
+            <span className={cn("truncate", collapsed && "sr-only")}>{title}</span>
           </button>
           </li>
         ))}
@@ -68,7 +68,15 @@ function SidebarContent({ activeView, onViewChange, onNavigate, showHeader = fal
   );
 }
 
-export function AppShell({ activeView = "", onViewChange = () => {}, children }) {
+export function AppShell({
+  activeView = "",
+  onViewChange = () => {},
+  children,
+  className,
+  contentClassName,
+  topbarTitle,
+  topbarActionsBeforeSearch,
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -85,8 +93,12 @@ export function AppShell({ activeView = "", onViewChange = () => {}, children })
   }, []);
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-[#161616] text-white">
-      <Topbar onMenuClick={() => setMobileOpen(true)} />
+    <div className={cn("flex flex-col bg-[#161616] text-white", className || "h-[100dvh]")}>
+      <Topbar
+        onMenuClick={() => setMobileOpen(true)}
+        title={topbarTitle}
+        actionsBeforeSearch={topbarActionsBeforeSearch}
+      />
 
       {mobileOpen ? (
         <div className="fixed inset-0 z-40 md:hidden">
@@ -130,7 +142,9 @@ export function AppShell({ activeView = "", onViewChange = () => {}, children })
             onToggle={() => setCollapsed((value) => !value)}
           />
         </aside>
-        <main className="flex-1 overflow-y-auto bg-[#161616] p-4 md:p-8 scrollbar-subtle">{children}</main>
+        <main className={cn("flex-1 overflow-y-auto bg-[#161616] p-4 md:p-8 scrollbar-subtle", contentClassName)}>
+          {children}
+        </main>
       </div>
     </div>
   );

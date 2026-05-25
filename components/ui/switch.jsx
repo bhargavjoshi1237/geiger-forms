@@ -1,29 +1,26 @@
 "use client";
 
 import * as React from "react";
+import { Switch as SwitchPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 
-function Switch({ checked, onCheckedChange, className, ...props }) {
+function Switch({ className, ...props }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onCheckedChange?.(!checked)}
+    <SwitchPrimitive.Root
+      data-slot="switch"
       className={cn(
-        "relative h-5 w-9 rounded-full border transition-colors",
-        checked ? "border-white bg-white" : "border-[#474747] bg-[#202020]",
+        "peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-[#333333] shadow-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#737373] focus-visible:ring-offset-2 focus-visible:ring-offset-[#161616] disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-white data-[state=unchecked]:bg-[#333333]",
         className,
       )}
       {...props}
     >
-      <span
+      <SwitchPrimitive.Thumb
+        data-slot="switch-thumb"
         className={cn(
-          "absolute top-0.5 h-4 w-4 rounded-full bg-[#a3a3a3] shadow-sm transition-transform",
-          checked ? "translate-x-4" : "translate-x-0.5",
+          "pointer-events-none block h-4 w-4 rounded-full bg-[#a3a3a3] shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=checked]:bg-[#161616] data-[state=unchecked]:translate-x-0",
         )}
       />
-    </button>
+    </SwitchPrimitive.Root>
   );
 }
 

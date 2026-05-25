@@ -6,7 +6,7 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
 const assetPrefix = process.env.NEXT_PUBLIC_ASSET_PREFIX || "";
 
-export function Topbar({ onMenuClick }) {
+export function Topbar({ onMenuClick, title = "Form", actionsBeforeSearch }) {
   return (
     <header className="z-20 flex h-14 w-full shrink-0 items-center justify-between border-b border-[#2a2a2a] bg-[#161616] px-4 text-white">
       <div className="flex items-center gap-2">
@@ -22,12 +22,13 @@ export function Topbar({ onMenuClick }) {
           <Image src={`${assetPrefix}/logo1.svg`} alt="" width={20} height={20} className="-mr-0.5 h-5 w-5" />
         </div>
         <div className="hidden cursor-pointer items-center border-l border-[#333333] pl-2 sm:flex">
-          <span className="ml-1 text-sm font-semibold text-white">Form</span>
+          <span className="ml-1 text-sm font-semibold text-white">{title}</span>
         </div>
       </div>
 
       <div className="flex justify-between gap-4 md:gap-8 sm:mr-2">
         <div className="flex items-center gap-2 sm:gap-3">
+          {actionsBeforeSearch ? <div className="hidden items-center gap-1 lg:flex">{actionsBeforeSearch}</div> : null}
           <button
             type="button"
             className="group relative flex h-8 w-8 items-center justify-center rounded-md border border-[#2a2a2a] bg-[#202020] px-2 text-sm text-[#a3a3a3] shadow-sm transition-colors hover:border-[#474747] hover:text-white sm:w-[240px] sm:justify-start sm:px-2.5"

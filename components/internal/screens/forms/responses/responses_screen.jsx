@@ -1,0 +1,229 @@
+"use client";
+
+import { useState } from "react";
+import { CheckCircle2, ChevronDown, Clock, Download, FileJson, FileText, Inbox, Timer, Users, Zap } from "lucide-react";
+import { FormsScreenShell } from "../screen-shell";
+import { ResponseDetailPanel } from "@/components/forms/response-detail-panel";
+
+const responses = [
+  { id: 1, form: "Customer Intake", name: "Maya Patel", email: "maya@example.com", status: "Complete", received: "2 min ago", initials: "MP", score: 92, priority: "High" },
+  { id: 2, form: "Event Registration", name: "Jon Bell", email: "jon@example.com", status: "Complete", received: "18 min ago", initials: "JB", score: 67, priority: "Medium" },
+  { id: 3, form: "Customer Intake", name: "Priya Shah", email: "priya@example.com", status: "Needs review", received: "1 hour ago", initials: "PS", score: 85, priority: "High" },
+  { id: 4, form: "Product Feedback", name: "Sam Chen", email: "sam@example.com", status: "Complete", received: "3 hours ago", initials: "SC", score: 45, priority: "Medium" },
+  { id: 5, form: "Event Registration", name: "Anna Torres", email: "anna@example.com", status: "Pending", received: "Yesterday", initials: "AT", score: 28, priority: "Low" },
+  { id: 6, form: "Customer Intake", name: "Raj Kumar", email: "raj@example.com", status: "Needs review", received: "2 days ago", initials: "RK", score: 78, priority: "Medium" },
+];
+
+const STATUS_STYLE = {
+  Complete: { bg: "bg-[#0d2218]", text: "text-[#4ade80]", border: "border-[#166534]" },
+  "Needs review": { bg: "bg-[#2a1a08]", text: "text-[#fb923c]", border: "border-[#7c2d12]" },
+  Pending: { bg: "bg-[#1c1917]", text: "text-[#78716c]", border: "border-[#44403c]" },
+};
+
+const PRIORITY_STYLE = {
+  High: { bg: "bg-[#2a0808]", text: "text-[#f87171]", border: "border-[#7f1d1d]" },
+  Medium: { bg: "bg-[#2a1a08]", text: "text-[#fb923c]", border: "border-[#7c2d12]" },
+  Low: { bg: "bg-[#1c1917]", text: "text-[#78716c]", border: "border-[#44403c]" },
+};
+
+const AVATAR_COLORS = ["bg-[#0e1e2e]", "bg-[#0d2218]", "bg-[#2a1a08]", "bg-[#1a0d2e]", "bg-[#1a1a1a]", "bg-[#0d1e1a]"];
+const ALL_TABS = ["All", "Complete", "Needs review", "Pending"];
+const PRIORITY_TABS = ["All", "High", "Medium", "Low"];
+
+function ExportMenu({ onExport }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex h-7 items-center gap-1.5 rounded-md border border-[#2a2a2a] bg-[#202020] px-2.5 text-xs text-[#a3a3a3] transition-colors hover:border-[#474747] hover:text-white">
+        <Download className="h-3.5 w-3.5" />
+        Export
+        <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <>
+          <button type="button" className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-label="Close menu" />
+          <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-md border border-[#2a2a2a] bg-[#202020] shadow-xl">
+            <button type="button" onClick={() => { onExport("csv"); setOpen(false); }} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-xs text-[#d4d4d4] transition-colors hover:bg-[#2a2a2a] hover:text-white">
+              <FileText className="h-3.5 w-3.5 text-[#737373]" />Export as CSV
+            </button>
+            <button type="button" onClick={() => { onExport("json"); setOpen(false); }} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-xs text-[#d4d4d4] transition-colors hover:bg-[#2a2a2a] hover:text-white">
+              <FileJson className="h-3.5 w-3.5 text-[#737373]" />Export as JSON
+            </button>
+            <div className="border-t border-[#2a2a2a] px-3 py-2 text-[10px] text-[#525252]">Exports the current filtered view</div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function PriorityDropdown({ value, onChange, counts }) {
+  const [open, setOpen] = useState(false);
+  const PRIORITY_DOT = { All: "bg-[#474747]", High: "bg-[#f87171]", Medium: "bg-[#fb923c]", Low: "bg-[#78716c]" };
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-7 items-center gap-1.5 rounded-md border border-[#2a2a2a] bg-[#202020] px-2.5 text-xs text-[#a3a3a3] transition-colors hover:border-[#474747] hover:text-white"
+      >
+        <Zap className="h-3 w-3 shrink-0" />
+        <span className="text-[#d4d4d4]">{value === "All" ? "Priority" : value}</span>
+        {value !== "All" && (
+          <span className="rounded-full bg-[#2a2a2a] px-1.5 py-px text-[10px] font-medium text-[#a3a3a3]">{counts[value]}</span>
+        )}
+        <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <>
+          <button type="button" className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-label="Close menu" />
+          <div className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-md border border-[#2a2a2a] bg-[#1a1a1a] py-1 shadow-xl">
+            {PRIORITY_TABS.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => { onChange(tab); setOpen(false); }}
+                className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs transition-colors ${value === tab ? "text-white" : "text-[#737373] hover:text-[#d4d4d4]"}`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${PRIORITY_DOT[tab]}`} />
+                {tab === "All" ? "All priorities" : tab}
+                <span className="ml-auto text-[10px] text-[#525252]">{counts[tab]}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function ResponsesScreen() {
+  const [activeTab, setActiveTab] = useState("All");
+  const [priorityTab, setPriorityTab] = useState("All");
+  const [exportNotice, setExportNotice] = useState(null);
+  const [selectedResponse, setSelectedResponse] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const filtered = responses.filter((r) => {
+    if (activeTab !== "All" && r.status !== activeTab) return false;
+    if (priorityTab !== "All" && r.priority !== priorityTab) return false;
+    return true;
+  });
+  const counts = ALL_TABS.reduce((acc, tab) => {
+    acc[tab] = tab === "All" ? responses.length : responses.filter((r) => r.status === tab).length;
+    return acc;
+  }, {});
+  const priorityCounts = PRIORITY_TABS.reduce((acc, tab) => {
+    acc[tab] = tab === "All" ? responses.length : responses.filter((r) => r.priority === tab).length;
+    return acc;
+  }, {});
+
+  const handleExport = (format) => {
+    setExportNotice(`${filtered.length} responses exported as ${format.toUpperCase()}.`);
+    setTimeout(() => setExportNotice(null), 3000);
+  };
+
+  const openResponse = (r, i) => {
+    setSelectedResponse(r);
+    setSelectedIndex(i);
+  };
+
+  return (
+    <FormsScreenShell
+      eyebrow="Submissions"
+      title="Responses"
+      description="Review incoming submissions, handoffs, and response quality across every form."
+      stats={[
+        { label: "New", value: "24", detail: "Awaiting review", Icon: Inbox },
+        { label: "Complete", value: "91%", detail: "Validated responses", Icon: CheckCircle2 },
+        { label: "Avg time", value: "3m", detail: "To complete", Icon: Timer },
+        { label: "Respondents", value: "418", detail: "Unique people", Icon: Users },
+      ]}
+    >
+      {exportNotice && (
+        <div className="flex items-center gap-2 rounded-md border border-[#166534] bg-[#0d2218] px-3 py-2.5 text-xs text-[#4ade80]">
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+          {exportNotice}
+        </div>
+      )}
+
+      <div className="overflow-hidden rounded-md border border-[#2a2a2a] bg-[#1a1a1a]">
+        <div className="flex items-center justify-between gap-3 border-b border-[#2a2a2a] px-4 py-2.5">
+          {/* Status tabs — primary filter */}
+          <div className="flex items-center gap-0.5">
+            {ALL_TABS.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${activeTab === tab ? "bg-[#2a2a2a] text-white" : "text-[#737373] hover:text-[#a3a3a3]"}`}
+              >
+                {tab}
+                <span className={`rounded-full px-1.5 py-px text-[10px] leading-none font-medium ${activeTab === tab ? "bg-[#3a3a3a] text-[#d4d4d4]" : "bg-[#202020] text-[#525252]"}`}>
+                  {counts[tab]}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Right side — priority filter + meta + export */}
+          <div className="flex items-center gap-2">
+            <PriorityDropdown value={priorityTab} onChange={setPriorityTab} counts={priorityCounts} />
+            <div className="h-4 w-px bg-[#2a2a2a]" />
+            <div className="hidden items-center gap-1.5 text-xs text-[#525252] sm:flex">
+              <Clock className="h-3 w-3" />Updated just now
+            </div>
+            <ExportMenu onExport={handleExport} />
+          </div>
+        </div>
+
+        <div className="divide-y divide-[#242424]">
+          {filtered.map((r, i) => {
+            const s = STATUS_STYLE[r.status] ?? STATUS_STYLE.Pending;
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => openResponse(r, i)}
+                className="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors hover:bg-[#202020]"
+              >
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-[#d4d4d4] ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}>
+                  {r.initials}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-medium text-[#e7e7e7]">{r.name}</span>
+                    <span className="hidden text-xs text-[#525252] sm:inline">·</span>
+                    <span className="hidden truncate text-xs text-[#737373] sm:inline">{r.email}</span>
+                  </div>
+                  <span className="text-xs text-[#525252]">{r.form}</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {(() => { const p = PRIORITY_STYLE[r.priority]; return <span className={`hidden rounded-full border px-2 py-0.5 text-[10px] font-medium sm:inline-flex items-center gap-1 ${p.bg} ${p.text} ${p.border}`}><Zap className="h-2.5 w-2.5" />{r.priority}</span>; })()}
+                  <span className="hidden rounded bg-[#202020] px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-[#a3a3a3] sm:block">{r.score}</span>
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${s.bg} ${s.text} ${s.border}`}>{r.status}</span>
+                  <span className="hidden whitespace-nowrap text-xs text-[#525252] sm:block">{r.received}</span>
+                </div>
+              </button>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div className="flex min-h-32 items-center justify-center px-4 py-8 text-center">
+              <p className="text-sm text-[#737373]">No responses with this status.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {selectedResponse && (
+        <ResponseDetailPanel
+          response={selectedResponse}
+          index={selectedIndex}
+          onClose={() => setSelectedResponse(null)}
+          score={selectedResponse.score}
+          priority={selectedResponse.priority}
+        />
+      )}
+    </FormsScreenShell>
+  );
+}
