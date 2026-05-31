@@ -9,32 +9,52 @@ const Table = React.forwardRef(({ className, ...props }, ref) => (
 Table.displayName = "Table";
 
 const TableHeader = React.forwardRef(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b bg-[#202020]", className)} {...props} />
+  <thead ref={ref} className={cn("[&_tr]:border-b bg-[#1a1a1a]", className)} {...props} />
 ));
 TableHeader.displayName = "TableHeader";
 
 const TableBody = React.forwardRef(({ className, ...props }, ref) => (
-  <tbody ref={ref} className={cn("divide-y divide-[#2a2a2a] [&_tr:last-child]:border-0", className)} {...props} />
+  <tbody ref={ref} className={cn("[&_tr:last-child]:border-0 divide-y divide-[#2a2a2a]", className)} {...props} />
 ));
 TableBody.displayName = "TableBody";
 
+const TableFooter = React.forwardRef(({ className, ...props }, ref) => (
+  <tfoot ref={ref} className={cn("border-t bg-muted/50 font-medium [&>tr]:last:border-b-0", className)} {...props} />
+));
+TableFooter.displayName = "TableFooter";
+
 const TableRow = React.forwardRef(({ className, ...props }, ref) => (
-  <tr ref={ref} className={cn("border-b border-[#2a2a2a] transition-colors hover:bg-[#242424]", className)} {...props} />
+  <tr
+    ref={ref}
+    className={cn(
+      "border-b border-[#2a2a2a] transition-colors hover:bg-[#242424] data-[state=selected]:bg-muted",
+      className,
+    )}
+    {...props}
+  />
 ));
 TableRow.displayName = "TableRow";
 
 const TableHead = React.forwardRef(({ className, ...props }, ref) => (
   <th
     ref={ref}
-    className={cn("h-11 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wider text-[#a3a3a3]", className)}
+    className={cn(
+      "h-12 px-6 text-left align-middle text-xs font-semibold uppercase tracking-wider text-[#737373] [&:has([role=checkbox])]:pr-0",
+      className,
+    )}
     {...props}
   />
 ));
 TableHead.displayName = "TableHead";
 
 const TableCell = React.forwardRef(({ className, ...props }, ref) => (
-  <td ref={ref} className={cn("px-4 py-3 align-middle", className)} {...props} />
+  <td ref={ref} className={cn("px-6 py-4 align-middle [&:has([role=checkbox])]:pr-0", className)} {...props} />
 ));
 TableCell.displayName = "TableCell";
 
-export { Table, TableHeader, TableBody, TableHead, TableRow, TableCell };
+const TableCaption = React.forwardRef(({ className, ...props }, ref) => (
+  <caption ref={ref} className={cn("mt-4 text-sm text-muted-foreground", className)} {...props} />
+));
+TableCaption.displayName = "TableCaption";
+
+export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption };

@@ -18,7 +18,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Header } from "@/components/header";
+import { Topbar } from "@/components/internal/topbar/topbar";
 import LandingFormShowcase from "@/components/LandingFormShowcase";
 
 export const metadata = {
@@ -100,9 +100,9 @@ export default function FormsLandingPage() {
     <div className="flex min-h-screen w-full flex-col bg-zinc-950 font-sans text-zinc-100 selection:bg-indigo-500/30">
       <div className="pointer-events-none fixed inset-0 z-0 bg-[linear-gradient(to_right,#80808030_1px,transparent_1px),linear-gradient(to_bottom,#80808030_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
 
-      <Header />
+      <Topbar />
 
-      <main className="relative z-10 flex flex-1 flex-col pt-16 sm:pt-20">
+      <main className="relative z-10 flex flex-1 flex-col">
         <section className="mx-auto mb-10 mt-10 flex w-full max-w-6xl items-start justify-start px-4 sm:mt-16 sm:px-6">
           <div className="max-w-3xl">
             <h1 className="mb-4 text-2xl font-semibold text-white sm:text-3xl">

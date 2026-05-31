@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -18,7 +19,7 @@ export function FormsScreenShell({ eyebrow, title, description, action, actionHr
           {eyebrow ? (
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#737373]">{eyebrow}</p>
           ) : null}
-          <h1 className="text-2xl font-semibold text-[#e7e7e7] md:text-3xl">{title}</h1>
+          <h1 className="text-2xl font-bold text-[#e7e7e7] md:text-3xl">{title}</h1>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[#a3a3a3]">{description}</p>
         </div>
 
@@ -69,10 +70,12 @@ export function MetricCard({ label, value, detail, Icon }) {
 export function DataPanel({ title, description, children, className }) {
   return (
     <section className={cn("rounded-md border border-[#2a2a2a] bg-[#1a1a1a]", className)}>
-      <div className="border-b border-[#2a2a2a] p-4">
-        <h2 className="text-sm font-medium text-white">{title}</h2>
-        {description ? <p className="mt-1 text-xs text-[#737373]">{description}</p> : null}
-      </div>
+      {title || description ? (
+        <div className="border-b border-[#2a2a2a] p-4">
+          {title ? <h2 className="text-sm font-medium text-white">{title}</h2> : null}
+          {description ? <p className="mt-1 text-xs text-[#737373]">{description}</p> : null}
+        </div>
+      ) : null}
       <div className="p-4">{children}</div>
     </section>
   );
@@ -84,6 +87,32 @@ export function EmptyState({ Icon, title, description }) {
       {Icon ? <Icon className="mb-3 h-6 w-6 text-[#525252]" /> : null}
       <p className="text-sm font-medium text-[#e7e7e7]">{title}</p>
       <p className="mt-1 max-w-md text-xs leading-5 text-[#737373]">{description}</p>
+    </div>
+  );
+}
+
+export function LoadingState({ label = "Loading…" }) {
+  return (
+    <div className="flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed border-[#2a2a2a] bg-[#1a1a1a] p-8 text-center">
+      <Loader2 className="mb-3 h-5 w-5 animate-spin text-[#737373]" />
+      <p className="text-xs text-[#737373]">{label}</p>
+    </div>
+  );
+}
+
+export function ErrorState({ title = "Something went wrong", description, onRetry }) {
+  return (
+    <div className="flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed border-[#7c2d12] bg-[#1a1207] p-8 text-center">
+      <AlertTriangle className="mb-3 h-6 w-6 text-[#fb923c]" />
+      <p className="text-sm font-medium text-[#e7e7e7]">{title}</p>
+      {description ? (
+        <p className="mt-1 max-w-md text-xs leading-5 text-[#a3a3a3]">{description}</p>
+      ) : null}
+      {onRetry ? (
+        <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
+          Try again
+        </Button>
+      ) : null}
     </div>
   );
 }

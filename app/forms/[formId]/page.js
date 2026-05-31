@@ -1,8 +1,5 @@
 import { FormBuilderShell } from "@/components/forms/form-builder-shell";
-
-function titleFromSlug(slug) {
-  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-}
+import { titleFromSlug } from "@/lib/forms/schema";
 
 export async function generateMetadata({ params }) {
   const { formId } = await params;

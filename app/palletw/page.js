@@ -31,7 +31,6 @@ export default function LightPallet() {
     <div className="flex flex-col w-full min-h-screen bg-white">
       <div className="min-h-screen bg-white text-[#171717] p-6 sm:p-10 font-sans selection:bg-[#d1d5db]">
         <div className="max-w-6xl mx-auto space-y-16">
-          {/* ── Header ──────────────────────────────────────────────────────── */}
           <div className="space-y-4 border-b border-[#e5e5e5] pb-8 pt-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f3f4f6] border border-[#e5e5e5] mb-4">
                <div className="w-2 h-2 rounded-full bg-[#171717]"></div>
@@ -43,7 +42,6 @@ export default function LightPallet() {
             </p>
           </div>
 
-          {/* ── Surfaces & Borders ──────────────────────────────────────────── */}
           <section className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-xl font-medium text-[#171717] flex items-center gap-2">
@@ -72,7 +70,6 @@ export default function LightPallet() {
             </div>
           </section>
 
-          {/* ── Typography ─────────────────────────────────────────────────── */}
           <section className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-xl font-medium text-[#171717] flex items-center gap-2">
@@ -102,7 +99,6 @@ export default function LightPallet() {
             </div>
           </section>
 
-          {/* ── Accent Colors ──────────────────────────────────────────────── */}
           <section className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-xl font-medium text-[#171717] flex items-center gap-2">
@@ -128,7 +124,6 @@ export default function LightPallet() {
             </div>
           </section>
 
-          {/* ── UI Example ─────────────────────────────────────────────────── */}
           <section className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-xl font-medium text-[#171717] flex items-center gap-2">
@@ -143,7 +138,6 @@ export default function LightPallet() {
               
               <div className="p-8 sm:p-16 flex items-center justify-center relative z-10 w-full">
                 <div className="w-full max-w-lg bg-white border border-[#e5e5e5] rounded-xl overflow-hidden shadow-lg flex flex-col">
-                  {/* Modal header */}
                   <div className="px-5 py-4 border-b border-[#e5e5e5] bg-white flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-md bg-[#f3f4f6] border border-[#e5e5e5] flex items-center justify-center text-[#525252]">
@@ -156,7 +150,6 @@ export default function LightPallet() {
                     </div>
                   </div>
 
-                  {/* Modal body */}
                   <div className="p-5 space-y-5 bg-[#f9fafb] grow">
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-[#171717]">Framework Name</label>
@@ -187,7 +180,6 @@ export default function LightPallet() {
                     </div>
                   </div>
 
-                  {/* Modal footer */}
                   <div className="px-5 py-4 border-t border-[#e5e5e5] bg-white flex items-center justify-between mt-auto">
                     <button className="text-sm font-medium text-[#525252] hover:text-[#171717] transition-colors duration-200 px-3 py-2">
                       Cancel

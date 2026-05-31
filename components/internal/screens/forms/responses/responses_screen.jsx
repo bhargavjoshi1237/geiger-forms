@@ -2,17 +2,12 @@
 
 import { useState } from "react";
 import { CheckCircle2, ChevronDown, Clock, Download, FileJson, FileText, Inbox, Timer, Users, Zap } from "lucide-react";
-import { FormsScreenShell } from "../screen-shell";
+import { FormsScreenShell, LoadingState, ErrorState } from "../screen-shell";
+import { SegmentedTabs } from "@/components/internal/shared/segmented_tabs";
 import { ResponseDetailPanel } from "@/components/forms/response-detail-panel";
-
-const responses = [
-  { id: 1, form: "Customer Intake", name: "Maya Patel", email: "maya@example.com", status: "Complete", received: "2 min ago", initials: "MP", score: 92, priority: "High" },
-  { id: 2, form: "Event Registration", name: "Jon Bell", email: "jon@example.com", status: "Complete", received: "18 min ago", initials: "JB", score: 67, priority: "Medium" },
-  { id: 3, form: "Customer Intake", name: "Priya Shah", email: "priya@example.com", status: "Needs review", received: "1 hour ago", initials: "PS", score: 85, priority: "High" },
-  { id: 4, form: "Product Feedback", name: "Sam Chen", email: "sam@example.com", status: "Complete", received: "3 hours ago", initials: "SC", score: 45, priority: "Medium" },
-  { id: 5, form: "Event Registration", name: "Anna Torres", email: "anna@example.com", status: "Pending", received: "Yesterday", initials: "AT", score: 28, priority: "Low" },
-  { id: 6, form: "Customer Intake", name: "Raj Kumar", email: "raj@example.com", status: "Needs review", received: "2 days ago", initials: "RK", score: 78, priority: "Medium" },
-];
+import { useResponses } from "@/lib/hooks/use-responses";
+import { summarizeResponses } from "@/lib/supabase/responses";
+import { downloadResponses } from "@/lib/forms/export";
 
 const STATUS_STYLE = {
   Complete: { bg: "bg-[#0d2218]", text: "text-[#4ade80]", border: "border-[#166534]" },
@@ -98,11 +93,14 @@ function PriorityDropdown({ value, onChange, counts }) {
 }
 
 export function ResponsesScreen() {
+  const { responses, loading, error, refresh } = useResponses();
   const [activeTab, setActiveTab] = useState("All");
   const [priorityTab, setPriorityTab] = useState("All");
   const [exportNotice, setExportNotice] = useState(null);
   const [selectedResponse, setSelectedResponse] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const summary = summarizeResponses(responses);
 
   const filtered = responses.filter((r) => {
     if (activeTab !== "All" && r.status !== activeTab) return false;
@@ -119,6 +117,7 @@ export function ResponsesScreen() {
   }, {});
 
   const handleExport = (format) => {
+    downloadResponses(filtered, format, "responses");
     setExportNotice(`${filtered.length} responses exported as ${format.toUpperCase()}.`);
     setTimeout(() => setExportNotice(null), 3000);
   };
@@ -134,10 +133,10 @@ export function ResponsesScreen() {
       title="Responses"
       description="Review incoming submissions, handoffs, and response quality across every form."
       stats={[
-        { label: "New", value: "24", detail: "Awaiting review", Icon: Inbox },
-        { label: "Complete", value: "91%", detail: "Validated responses", Icon: CheckCircle2 },
-        { label: "Avg time", value: "3m", detail: "To complete", Icon: Timer },
-        { label: "Respondents", value: "418", detail: "Unique people", Icon: Users },
+        { label: "Total", value: String(summary.total), detail: "All submissions", Icon: Inbox },
+        { label: "Complete", value: `${summary.completePct}%`, detail: "Validated responses", Icon: CheckCircle2 },
+        { label: "Needs review", value: String(summary.byStatus["Needs review"]), detail: "Awaiting review", Icon: Timer },
+        { label: "Respondents", value: String(summary.respondents), detail: "Unique people", Icon: Users },
       ]}
     >
       {exportNotice && (
@@ -147,26 +146,19 @@ export function ResponsesScreen() {
         </div>
       )}
 
+      {loading ? (
+        <LoadingState label="Loading responses…" />
+      ) : error ? (
+        <ErrorState title="Couldn't load responses" onRetry={refresh} />
+      ) : (
       <div className="overflow-hidden rounded-md border border-[#2a2a2a] bg-[#1a1a1a]">
         <div className="flex items-center justify-between gap-3 border-b border-[#2a2a2a] px-4 py-2.5">
-          {/* Status tabs — primary filter */}
-          <div className="flex items-center gap-0.5">
-            {ALL_TABS.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${activeTab === tab ? "bg-[#2a2a2a] text-white" : "text-[#737373] hover:text-[#a3a3a3]"}`}
-              >
-                {tab}
-                <span className={`rounded-full px-1.5 py-px text-[10px] leading-none font-medium ${activeTab === tab ? "bg-[#3a3a3a] text-[#d4d4d4]" : "bg-[#202020] text-[#525252]"}`}>
-                  {counts[tab]}
-                </span>
-              </button>
-            ))}
-          </div>
+          <SegmentedTabs
+            tabs={ALL_TABS.map((tab) => ({ label: tab, value: tab, count: counts[tab] }))}
+            value={activeTab}
+            onChange={setActiveTab}
+          />
 
-          {/* Right side — priority filter + meta + export */}
           <div className="flex items-center gap-2">
             <PriorityDropdown value={priorityTab} onChange={setPriorityTab} counts={priorityCounts} />
             <div className="h-4 w-px bg-[#2a2a2a]" />
@@ -199,7 +191,7 @@ export function ResponsesScreen() {
                   <span className="text-xs text-[#525252]">{r.form}</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {(() => { const p = PRIORITY_STYLE[r.priority]; return <span className={`hidden rounded-full border px-2 py-0.5 text-[10px] font-medium sm:inline-flex items-center gap-1 ${p.bg} ${p.text} ${p.border}`}><Zap className="h-2.5 w-2.5" />{r.priority}</span>; })()}
+                  {(() => { const p = PRIORITY_STYLE[r.priority] ?? PRIORITY_STYLE.Low; return <span className={`hidden rounded-full border px-2 py-0.5 text-[10px] font-medium sm:inline-flex items-center gap-1 ${p.bg} ${p.text} ${p.border}`}><Zap className="h-2.5 w-2.5" />{r.priority}</span>; })()}
                   <span className="hidden rounded bg-[#202020] px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-[#a3a3a3] sm:block">{r.score}</span>
                   <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${s.bg} ${s.text} ${s.border}`}>{r.status}</span>
                   <span className="hidden whitespace-nowrap text-xs text-[#525252] sm:block">{r.received}</span>
@@ -214,6 +206,7 @@ export function ResponsesScreen() {
           )}
         </div>
       </div>
+      )}
 
       {selectedResponse && (
         <ResponseDetailPanel

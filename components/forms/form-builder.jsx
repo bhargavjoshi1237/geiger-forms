@@ -3,9 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlignLeft,
-  AtSign,
-  BookTemplate,
-  BriefcaseBusiness,
   Calendar,
   ChevronDown,
   CircleHelp,
@@ -22,16 +19,11 @@ import {
   History,
   Target,
   Link2,
-  Lock,
   Mail,
-  Paperclip,
-  Phone,
   Plus,
   RotateCcw,
-  Send,
   Settings2,
   Share2,
-  ShieldCheck,
   Undo2,
   Redo2,
   Copy,
@@ -40,8 +32,6 @@ import {
   SlidersHorizontal,
   SplitSquareVertical,
   Star,
-  Tag,
-  Users,
   Wand2,
   X,
 } from "lucide-react";
@@ -77,42 +67,41 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { hydrateFields, serializeBuilderDoc } from "@/lib/forms/builder";
+import { FIELD_TYPE_LIST, getFieldIcon } from "@/lib/forms/field-types";
+import { blankFormDoc, titleFromSlug } from "@/lib/forms/schema";
+import { getFormBySlug, saveFormBySlug, setFormStatus } from "@/lib/supabase/forms";
+import { useVersions } from "@/lib/hooks/use-versions";
+import { PublishDialog } from "@/components/forms/publish-dialog";
 
-const defaultFields = [
-  { id: "position", title: "Position", Icon: BriefcaseBusiness, included: true, type: "select", firstLabel: "Field label", firstValue: "Select Position", secondLabel: "Placeholder", secondValue: "Select default value...", select: true, info: false, required: true, conditions: [] },
-  { id: "name", title: "Name", Icon: AlignLeft, included: true, type: "text", firstLabel: "Field label", firstValue: "What is Your Name", secondLabel: "Placeholder", secondValue: "Enter default value...", info: false, required: false, conditions: [] },
-  { id: "email", title: "Email", Icon: AtSign, included: true, type: "text", firstLabel: "Field label", firstValue: "Enter Your Email", secondLabel: "Placeholder", secondValue: "Enter default value...", info: false, required: false, conditions: [] },
-  { id: "cv", title: "CV", Icon: FileText, included: true, type: "file", firstLabel: "Field label", firstValue: "Upload CV", secondLabel: "Hint", secondValue: "PDF or DOCX, max 10MB", info: false, required: false, conditions: [] },
-  { id: "files", title: "Files", Icon: Paperclip, included: true, type: "file", firstLabel: "Field label", firstValue: "Attach Files", secondLabel: "Hint", secondValue: "Any format, max 25MB", info: false, required: false, conditions: [] },
-  { id: "score", title: "Application Score", Icon: FunctionSquare, included: true, type: "calculated", formula: "{Position} × 1.2 + {Experience}", info: false, required: false, conditions: [] },
-  { id: "assignees", title: "Assignees", Icon: Users, included: false, type: "text", firstLabel: "Field label", firstValue: "Assignees", secondLabel: "Placeholder", secondValue: "Select default assignee...", info: false, required: false, conditions: [] },
-  { id: "state", title: "State", Icon: Link2, included: false, type: "text", firstLabel: "Field label", firstValue: "State", secondLabel: "Placeholder", secondValue: "Select default state...", info: false, required: false, conditions: [] },
-  { id: "phone", title: "Phone", Icon: Phone, included: false, type: "text", firstLabel: "Field label", firstValue: "Phone Number", secondLabel: "Placeholder", secondValue: "Enter default phone...", info: false, required: false, conditions: [] },
-];
+const SAVE_DEBOUNCE_MS = 1000;
 
-const MOCK_VERSIONS = [
-  { id: "v3", label: "v3.0", date: "Today at 14:32", author: "Jack", changes: "Added 'Application Score' calculated field; updated required state on Email", current: true },
-  { id: "v2", label: "v2.1", date: "May 21 at 09:15", author: "Jack", changes: "Removed Interviews field; reordered CV before Files; added prefill", current: false },
-  { id: "v1", label: "v1.0", date: "May 18 at 11:44", author: "Jack", changes: "Initial publish — 5 fields, no cover image", current: false },
-];
-
-const OPERATORS = ["equals", "contains", "does not equal", "is empty"];
-const PROJECTS = ["Customer Operations", "Marketing", "HR & Onboarding", "Engineering", "Events"];
-const EDIT_WINDOWS = [
-  { value: "disabled", label: "Disabled" },
-  { value: "24h", label: "24 hours" },
-  { value: "48h", label: "48 hours" },
-  { value: "7d", label: "7 days" },
-];
-
-const TEMPLATE_CATEGORIES = ["Sales", "Product", "Operations", "HR", "Events", "Support", "Other"];
+const OPERATORS = ["Equals", "Contains", "Does Not Equal", "Is Empty"];
 
 export function FormBuilderTopbarActions({ formId = "" }) {
   const [favourite, setFavourite] = useState(false);
   const [copied, setCopied] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
-  const [publishCopied, setPublishCopied] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getFormBySlug(formId)
+      .then((form) => active && form && setIsPublished(form.status === "Published"))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [formId]);
+
+  const applyStatus = async (status) => {
+    let form = await getFormBySlug(formId);
+    if (!form) {
+      form = await saveFormBySlug(formId, { title: titleFromSlug(formId) });
+    }
+    await setFormStatus(form.id, status);
+    setIsPublished(status === "Published");
+  };
 
   const copyLink = () => {
     const url = `${typeof window !== "undefined" ? window.location.origin : ""}/form/${formId}`;
@@ -129,65 +118,33 @@ export function FormBuilderTopbarActions({ formId = "" }) {
       <Button type="button" variant="ghost" size="icon" onClick={copyLink} aria-label={copied ? "Copied!" : "Copy link"} className={copied ? "text-[#4ade80]" : undefined}>
         {copied ? <CheckIcon className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
       </Button>
-      <Button type="button" variant="ghost" size="icon" aria-label="Preview"><Eye className="h-4 w-4" /></Button>
+      <Button type="button" variant="ghost" size="icon" aria-label="Preview" onClick={() => { if (typeof window !== "undefined") window.open(`/form/${formId}`, "_blank", "noopener"); }}><Eye className="h-4 w-4" /></Button>
       <Button
         type="button"
         size="sm"
         onClick={() => setPublishOpen(true)}
-        className={cn("gap-1.5 h-8", isPublished ? "bg-[#166534] hover:bg-[#15803d] text-[#4ade80]" : "")}
+        className={cn("gap-1.5 h-8", isPublished ? "border border-[#166534] bg-[#0d2218] text-[#4ade80] hover:bg-[#0f2a1d]" : "")}
       >
-        <Globe className="h-3.5 w-3.5" />
-        {isPublished ? "Published" : "Publish"}
+        {isPublished ? (
+ <span className="relative flex h-2.5 w-2.5 shrink-0">
+                {isPublished && (
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#4ade80] opacity-75" />
+                )}
+                <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${isPublished ? "bg-[#4ade80]" : "bg-[#525252]"}`} />
+              </span>
+        ) : (
+          <Globe className="h-3.5 w-3.5" />
+        )}
+        {isPublished ? "Live" : "Publish"}
       </Button>
 
-      <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
-        <DialogContent className="max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle>{isPublished ? "Form is live" : "Publish form"}</DialogTitle>
-            <DialogDescription>
-              {isPublished ? "Your form is accepting responses. Share the link below." : "Publishing makes this form publicly accessible. You can unpublish at any time."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 rounded-md border border-[#2a2a2a] bg-[#161616] px-3 py-2">
-              <Globe className="h-3.5 w-3.5 shrink-0 text-[#525252]" />
-              <span className="min-w-0 flex-1 truncate text-xs text-[#d4d4d4]">{typeof window !== "undefined" ? window.location.origin : ""}/form/{formId}</span>
-              <button type="button" onClick={() => {
-                const url = `${typeof window !== "undefined" ? window.location.origin : ""}/form/${formId}`;
-                navigator.clipboard.writeText(url).catch(() => {});
-                setPublishCopied(true);
-                setTimeout(() => setPublishCopied(false), 2000);
-              }} className="shrink-0 text-xs text-[#737373] hover:text-white transition-colors">
-                {publishCopied ? "Copied!" : "Copy"}
-              </button>
-            </div>
-
-            {isPublished && (
-              <div className="flex items-center gap-2 rounded-md border border-[#166534] bg-[#0d2218] px-3 py-2 text-xs text-[#4ade80]">
-                <div className="h-1.5 w-1.5 rounded-full bg-[#4ade80]" />
-                Accepting responses · Published just now
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            {isPublished ? (
-              <>
-                <Button variant="outline" onClick={() => { setIsPublished(false); setPublishOpen(false); }}>Unpublish</Button>
-                <Button onClick={() => setPublishOpen(false)}>Done</Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={() => setPublishOpen(false)}>Cancel</Button>
-                <Button onClick={() => setIsPublished(true)} className="bg-[#166534] hover:bg-[#15803d] text-[#4ade80]">
-                  <Globe className="h-3.5 w-3.5" />Publish now
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PublishDialog
+        open={publishOpen}
+        onOpenChange={setPublishOpen}
+        slug={formId}
+        status={isPublished ? "Published" : "Draft"}
+        onChange={applyStatus}
+      />
     </>
   );
 }
@@ -221,44 +178,109 @@ function StepDivider({ step, onTitleChange, onRemove }) {
 
 function ConditionsPanel({ conditions, allFields, onAdd, onUpdate, onRemove }) {
   return (
-    <div className="mt-4 rounded-md border border-[#2a2a2a] bg-[#161616] p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-xs font-medium text-[#a3a3a3]">
-          <GitBranch className="h-3.5 w-3.5" />Show this field only when
+    <div className="rounded-lg border border-[#2a2a2a] bg-[#161616] p-3.5">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-sm font-medium text-[#d4d4d4]">
+          <GitBranch className="h-4 w-4 text-[#737373]" />
+          Show This Field Only When
         </span>
-        <button type="button" onClick={onAdd} className="flex items-center gap-1 text-[10px] text-[#737373] transition-colors hover:text-white">
-          <Plus className="h-3 w-3" />Add
-        </button>
+        <Button type="button" variant="outline" size="sm" onClick={onAdd} className="h-8 gap-1.5">
+          <Plus className="h-3.5 w-3.5" />
+          Add Condition
+        </Button>
       </div>
+
       {conditions.length === 0 ? (
-        <p className="text-[10px] text-[#525252]">No conditions — field is always visible.</p>
+        <div className="rounded-md border border-dashed border-[#2a2a2a] bg-[#1a1a1a] px-3 py-4 text-center">
+          <p className="text-xs text-[#737373]">No conditions yet — this field is always visible.</p>
+        </div>
       ) : (
-        <div className="space-y-2">
-          {conditions.map((cond, i) => (
-            <div key={cond.id} className="flex items-center gap-1.5">
-              <span className="w-5 shrink-0 text-center text-[10px] font-medium text-[#525252]">{i === 0 ? "IF" : "OR"}</span>
-              <Select value={cond.fieldId} onValueChange={(value) => onUpdate(cond.id, { fieldId: value })}>
-                <SelectTrigger className="h-6 flex-1 bg-[#202020] px-1.5 text-[10px]">
-                  <SelectValue placeholder="Pick field..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {allFields.map((f) => <SelectItem key={f.id} value={f.id}>{f.title}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={cond.operator} onValueChange={(value) => onUpdate(cond.id, { operator: value })}>
-                <SelectTrigger className="h-6 w-24 bg-[#202020] px-1.5 text-[10px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {OPERATORS.map((op) => <SelectItem key={op} value={op}>{op}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Input value={cond.value} onChange={(e) => onUpdate(cond.id, { value: e.target.value })} placeholder="value..." className="h-6 w-20 bg-[#202020] px-1.5 text-[10px] text-[#d4d4d4]" />
-              <button type="button" onClick={() => onRemove(cond.id)} className="text-[#525252] transition-colors hover:text-[#ef4444]"><X className="h-3.5 w-3.5" /></button>
-            </div>
-          ))}
+        <div className="space-y-2.5">
+          {conditions.map((cond, i) => {
+            const needsValue = cond.operator !== "Is Empty";
+            return (
+              <div key={cond.id} className="rounded-md border border-[#2a2a2a] bg-[#1a1a1a] p-3">
+                <div className="flex gap-2">
+                  <Badge className="mt-1.5 h-6 w-9 shrink-0 justify-center rounded-md px-0 text-[10px] font-semibold tracking-wide text-[#a3a3a3]">
+                    {i === 0 ? "IF" : "OR"}
+                  </Badge>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Select value={cond.fieldId} onValueChange={(value) => onUpdate(cond.id, { fieldId: value })}>
+                        <SelectTrigger className="h-9 flex-1 text-sm">
+                          <SelectValue placeholder="Select a field…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allFields.map((f) => <SelectItem key={f.id} value={f.id}>{f.title}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onRemove(cond.id)}
+                        aria-label="Remove condition"
+                        className="h-9 w-9 shrink-0 text-[#737373] hover:bg-[#2a0808] hover:text-[#f87171]"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className={cn("grid gap-2", needsValue && "sm:grid-cols-2")}>
+                      <Select value={cond.operator} onValueChange={(value) => onUpdate(cond.id, { operator: value })}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {OPERATORS.map((op) => <SelectItem key={op} value={op}>{op}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {needsValue && (
+                        <Input
+                          value={cond.value}
+                          onChange={(e) => onUpdate(cond.id, { value: e.target.value })}
+                          placeholder="Enter a value…"
+                          className="h-9 text-sm text-[#d4d4d4]"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
+    </div>
+  );
+}
+
+function OptionsEditor({ options, onChange }) {
+  const update = (i, value) => onChange(options.map((o, idx) => (idx === i ? value : o)));
+  const remove = (i) => onChange(options.filter((_, idx) => idx !== i));
+  const add = () => onChange([...options, `Option ${options.length + 1}`]);
+
+  return (
+    <div className="mt-3">
+      <span className="text-xs font-medium text-[#e7e7e7]">Choices</span>
+      <div className="mt-2 space-y-1.5">
+        {options.map((opt, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <Input
+              value={opt}
+              onChange={(e) => update(i, e.target.value)}
+              className="h-8 flex-1 bg-[#161616] text-sm"
+              placeholder={`Option ${i + 1}`}
+            />
+            <button type="button" onClick={() => remove(i)} className="text-[#525252] transition-colors hover:text-[#ef4444]">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+        {options.length === 0 && <p className="text-[10px] text-[#525252]">No choices yet — add at least one.</p>}
+      </div>
+      <button type="button" onClick={add} className="mt-2 flex items-center gap-1 text-[10px] text-[#737373] transition-colors hover:text-white">
+        <Plus className="h-3 w-3" />Add Choice
+      </button>
     </div>
   );
 }
@@ -281,7 +303,6 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
       onDragEnd={onDragEnd}
       className={cn("group relative transition-all duration-150", dragging && "opacity-30 scale-[0.99]")}
     >
-      {/* Drag handle — sits in the pl-8 gutter, outside the card */}
       <button
         type="button"
         aria-label="Drag field"
@@ -290,33 +311,34 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
         <GripVertical className="h-4 w-4" />
       </button>
 
-      {/* Card with right-click context menu */}
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <Card className="w-full p-4">
             <Accordion type="single" collapsible defaultValue="details">
               <AccordionItem value="details" className="border-0">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Input value={field.title} onChange={(e) => onChange({ title: e.target.value })} aria-label={`${field.title} field name`} className="h-8 max-w-40 border-transparent bg-transparent px-0 text-sm font-medium text-white" />
-                    {isCalculated && <span className="rounded-full border border-[#1e3a5f] bg-[#0e1e2e] px-1.5 py-0 text-[10px] font-medium text-[#60a5fa]">Calc</span>}
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <Input value={field.title} onChange={(e) => onChange({ title: e.target.value })} aria-label={`${field.title} field name`} className="h-9 min-w-0 flex-1 border-transparent bg-transparent px-0 text-base font-semibold text-white" />
+                    {isCalculated && (
+                      <Badge className="shrink-0 border-[#1e3a5f] bg-[#0e1e2e] px-2 py-0.5 text-[11px] font-medium text-[#60a5fa]">Calc</Badge>
+                    )}
                     {hasConditions && (
-                      <span className="flex items-center gap-1 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-1.5 py-0 text-[10px] text-[#737373]">
-                        <GitBranch className="h-2.5 w-2.5" />{field.conditions.length}
-                      </span>
+                      <Badge className="text-[11px] text-[#737373]">
+                        <GitBranch className="h-3 w-3" />{field.conditions.length}
+                      </Badge>
                     )}
                     {field.required && (
-                      <span className="inline-flex items-center rounded-full border border-[#474747] bg-[#242424] px-1.5 py-px text-[10px] leading-none text-[#a3a3a3]">Required</span>
+                      <Badge className="shrink-0 border-[#474747] bg-[#242424] px-2 py-0.5 text-[11px] text-[#a3a3a3]">Required</Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-1">
                     <AccordionTrigger
                       aria-label={`${field.title} details`}
-                      className="h-7 w-7 flex-none items-center justify-center rounded-md p-0 py-0 text-[#737373] hover:bg-[#242424] hover:text-white hover:no-underline data-[state=open]:bg-[#242424] data-[state=open]:text-white [&>svg.accordion-chevron]:hidden"
+                      className="h-8 w-8 flex-none items-center justify-center rounded-md p-0 py-0 text-[#737373] hover:bg-[#242424] hover:text-white hover:no-underline data-[state=open]:bg-[#242424] data-[state=open]:text-white [&>svg.accordion-chevron]:hidden"
                     >
-                      <Settings2 className="h-4 w-4" /><span className="sr-only">Toggle details</span>
+                      <ChevronDown className="h-4 w-4" /><span className="sr-only">Toggle details</span>
                     </AccordionTrigger>
-                    <Button type="button" variant="ghost" size="icon" aria-label="Remove field" className="h-7 w-7 text-[#737373] hover:text-white" onClick={onRemove}>
+                    <Button type="button" variant="ghost" size="icon" aria-label="Remove field" className="h-8 w-8 text-[#737373] hover:text-white" onClick={onRemove}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
@@ -342,41 +364,58 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
                   ) : (
                     <>
                       <label className="block">
-                        <span className="text-xs font-medium text-[#e7e7e7]">{field.firstLabel}</span>
+                        <span className="text-xs font-medium text-[#e7e7e7]">Field type</span>
+                        <Select
+                          value={field.type}
+                          onValueChange={(type) =>
+                            onChange({ type, select: type === "select", Icon: getFieldIcon(type) })
+                          }
+                        >
+                          <SelectTrigger className="mt-2 h-9 bg-[#161616] text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FIELD_TYPE_LIST.filter((t) => t.type !== "calculated").map((t) => (
+                              <SelectItem key={t.type} value={t.type}>{t.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </label>
+                      <label className="mt-3 block">
+                        <span className="text-xs font-medium text-[#e7e7e7]">Question label</span>
                         <Input value={field.firstValue} onChange={(e) => onChange({ firstValue: e.target.value })} className={cn("mt-2 h-9 bg-[#161616] text-sm", field.required && "border-[#737373] shadow-[0_0_0_1px_rgba(255,255,255,0.18)]")} />
                       </label>
                       <label className="mt-3 block">
-                        <span className="text-xs font-medium text-[#e7e7e7]">{field.secondLabel}</span>
-                        <div className="relative mt-2">
-                          <Input value={field.secondValue} onChange={(e) => onChange({ secondValue: e.target.value })} className="h-9 bg-[#161616] pr-8 text-sm text-[#a3a3a3]" />
-                          {field.select && <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />}
-                        </div>
+                        <span className="text-xs font-medium text-[#e7e7e7]">{field.type === "file" ? "Hint" : "Placeholder"}</span>
+                        <Input value={field.secondValue} onChange={(e) => onChange({ secondValue: e.target.value })} className="mt-2 h-9 bg-[#161616] text-sm text-[#a3a3a3]" />
                       </label>
-                      <p className="mt-2 text-xs text-[#737373]">Default values will be preselected in the form</p>
+                      {field.type === "select" && (
+                        <OptionsEditor
+                          options={field.options || []}
+                          onChange={(options) => onChange({ options })}
+                        />
+                      )}
                     </>
+                  )}
+
+                  {showConditions && (
+                    <div className="mt-4 border-t border-[#2a2a2a] pt-4">
+                      <ConditionsPanel
+                        conditions={field.conditions}
+                        allFields={allFields.filter((f) => f.id !== field.id)}
+                        onAdd={addCondition}
+                        onUpdate={updateCondition}
+                        onRemove={removeCondition}
+                      />
+                    </div>
                   )}
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-
-            {/* Conditions panel — shown only when toggled from context menu */}
-            {showConditions && (
-              <div className="mt-3 border-t border-[#2a2a2a] pt-3">
-                <ConditionsPanel
-                  conditions={field.conditions}
-                  allFields={allFields.filter((f) => f.id !== field.id)}
-                  onAdd={addCondition}
-                  onUpdate={updateCondition}
-                  onRemove={removeCondition}
-                />
-              </div>
-            )}
           </Card>
         </ContextMenuTrigger>
 
         <ContextMenuContent className="w-52 bg-[#202020] border-[#333333] shadow-xl">
-          <ContextMenuLabel className="truncate max-w-[200px]">{field.title}</ContextMenuLabel>
-          <ContextMenuSeparator className="bg-[#333333]" />
           {!isCalculated && (
             <>
               <ContextMenuCheckboxItem checked={field.info} onCheckedChange={(info) => onChange({ info })}>
@@ -477,11 +516,8 @@ function RightSidebar({
   openDate, closeDate, onOpenDateChange, onCloseDateChange,
   steps, onAddStep, onUpdateStep, onRemoveStep,
   responseLimit, onResponseLimitChange,
-  confirmEmail, onConfirmEmailChange, confirmSubject, onConfirmSubjectChange, confirmBody, onConfirmBodyChange,
   thankYouType, thankYouText, thankYouUrl, onThankYouTypeChange, onThankYouTextChange, onThankYouUrlChange,
-  prefillEnabled, onPrefillChange, editWindow, onEditWindowChange,
-  accessRestricted, onAccessRestrictedChange, orgDomain, onOrgDomainChange, projectRestricted, onProjectRestrictedChange, selectedProject, onSelectedProjectChange,
-  versions, onOpenSaveDialog, onOpenSaveTemplateDialog,
+  versions, versionsLoading, onRestoreVersion, onOpenSaveDialog,
   scoringEnabled, onScoringEnabledChange, highThreshold, onHighThresholdChange, mediumThreshold, onMediumThresholdChange,
   branchingEnabled, onBranchingEnabledChange, branches, onAddBranch, onUpdateBranch, onRemoveBranch,
 }) {
@@ -495,7 +531,6 @@ function RightSidebar({
       <div className="scrollbar-subtle flex-1 overflow-y-auto px-4 py-4">
         <Accordion type="multiple" defaultValue={["fields", "form-style", "submission"]}>
 
-          {/* Fields */}
           <AccordionItem value="fields" className="border-[#2a2a2a]">
             <AccordionTrigger className="py-2 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />Fields</span>
@@ -520,7 +555,6 @@ function RightSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          {/* Steps */}
           <AccordionItem value="steps" className="border-[#2a2a2a]">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2">
@@ -540,7 +574,6 @@ function RightSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          {/* Branching Paths */}
           <AccordionItem value="branches" className="border-[#2a2a2a]">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2">
@@ -606,7 +639,6 @@ function RightSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          {/* Form Style */}
           <AccordionItem value="form-style" className="border-[#2a2a2a]">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2"><Wand2 className="h-4 w-4" />Form Style</span>
@@ -623,61 +655,6 @@ function RightSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          {/* Access / Clause */}
-          <AccordionItem value="access" className="border-[#2a2a2a]">
-            <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
-              <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4" />Access
-                {accessRestricted && <span className="ml-1 h-1.5 w-1.5 rounded-full bg-[#4ade80]" />}
-              </span>
-            </AccordionTrigger>
-            <AccordionContent className="pb-5 space-y-0">
-              <SidebarRow label="Restrict access" hint="Respondents must meet access requirements to open this form.">
-                <TinySwitch checked={accessRestricted} onCheckedChange={onAccessRestrictedChange} label="Restrict access" />
-              </SidebarRow>
-
-              {accessRestricted && (
-                <div className="mt-2 space-y-4">
-                  <div className="flex items-start gap-2 rounded-md border border-[#2a2a2a] bg-[#161616] px-3 py-2.5 text-xs text-[#737373]">
-                    <Lock className="mt-px h-3.5 w-3.5 shrink-0 text-[#525252]" />
-                    Respondents must sign in with a Geiger account before accessing the form.
-                  </div>
-
-                  <div>
-                    <p className="mb-1.5 text-xs font-medium text-[#a3a3a3]">Organisation email domain</p>
-                    <div className="relative">
-                      <Tag className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#525252]" />
-                      <Input
-                        value={orgDomain}
-                        onChange={(e) => onOrgDomainChange(e.target.value)}
-                        placeholder="@company.com"
-                        className="h-8 pl-8 pr-3 text-xs text-[#d4d4d4]"
-                      />
-                    </div>
-                    <p className="mt-1 text-[10px] text-[#525252]">Leave blank to allow any authenticated user.</p>
-                  </div>
-
-                  <div className="border-t border-[#242424] pt-3">
-                    <SidebarRow label="Project members only" hint="Restrict to members of a specific Flow project.">
-                      <TinySwitch checked={projectRestricted} onCheckedChange={onProjectRestrictedChange} label="Project members only" />
-                    </SidebarRow>
-                    {projectRestricted && (
-                      <Select value={selectedProject} onValueChange={onSelectedProjectChange}>
-                        <SelectTrigger className="mt-2 h-8 text-xs">
-                          <SelectValue placeholder="Select project..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PROJECTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                </div>
-              )}
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Schedule */}
           <AccordionItem value="schedule" className="border-[#2a2a2a]">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2">
@@ -704,7 +681,6 @@ function RightSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          {/* Submission */}
           <AccordionItem value="submission" className="border-[#2a2a2a]">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2"><FolderOpen className="h-4 w-4" />Submission</span>
@@ -716,9 +692,6 @@ function RightSidebar({
               <SidebarRow label='"Submit Another" button'>
                 <TinySwitch checked={submitAnother} onCheckedChange={onSubmitAnotherChange} label="Submit another" />
               </SidebarRow>
-              <SidebarRow label="Smart prefill" hint="Pre-fill fields for returning respondents using their last submission.">
-                <TinySwitch checked={prefillEnabled} onCheckedChange={onPrefillChange} label="Smart prefill" />
-              </SidebarRow>
 
               <div className="border-t border-[#242424] pt-3 mt-1">
                 <label className="mb-1.5 block text-xs font-medium text-[#a3a3a3]"><Hash className="mr-1 inline h-3 w-3" />Response limit</label>
@@ -726,32 +699,6 @@ function RightSidebar({
                   <Input type="number" min="1" value={responseLimit} onChange={(e) => onResponseLimitChange(e.target.value)} placeholder="No limit" className="h-8 flex-1 px-2.5 text-xs text-[#d4d4d4]" />
                   {responseLimit && <button type="button" onClick={() => onResponseLimitChange("")} className="text-[#525252] hover:text-[#a3a3a3]"><X className="h-3.5 w-3.5" /></button>}
                 </div>
-              </div>
-
-              <div className="border-t border-[#242424] pt-3 mt-3">
-                <label className="mb-1.5 block text-xs font-medium text-[#a3a3a3]">Respondent edit window</label>
-                <Select value={editWindow} onValueChange={onEditWindowChange}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EDIT_WINDOWS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {editWindow !== "disabled" && <p className="mt-1 text-[10px] text-[#525252]">Respondents can edit their submission for {editWindow} after submitting.</p>}
-              </div>
-
-              <div className="border-t border-[#242424] pt-3 mt-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="flex items-center gap-1.5 text-xs font-medium text-[#a3a3a3]"><Send className="h-3.5 w-3.5" />Confirmation email</span>
-                  <TinySwitch checked={confirmEmail} onCheckedChange={onConfirmEmailChange} label="Confirmation email" />
-                </div>
-                {confirmEmail && (
-                  <div className="space-y-2">
-                    <Input value={confirmSubject} onChange={(e) => onConfirmSubjectChange(e.target.value)} placeholder="Subject..." className="h-8 px-2.5 text-xs text-[#d4d4d4]" />
-                    <Textarea value={confirmBody} onChange={(e) => onConfirmBodyChange(e.target.value)} rows={3} placeholder="Email body..." className="min-h-20 resize-none px-2.5 py-2 text-xs text-[#d4d4d4]" />
-                  </div>
-                )}
               </div>
 
               <div className="border-t border-[#242424] pt-3 mt-3">
@@ -777,7 +724,6 @@ function RightSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          {/* Auto-Triage Scoring */}
           <AccordionItem value="scoring" className="border-[#2a2a2a]">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2"><Target className="h-4 w-4" />Auto-triage</span>
@@ -833,23 +779,26 @@ function RightSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          {/* Revision History */}
           <AccordionItem value="history" className="border-[#2a2a2a]">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2"><History className="h-4 w-4" />History</span>
             </AccordionTrigger>
             <AccordionContent className="pb-5">
               <div className="space-y-2">
+                {versionsLoading && <p className="text-[10px] text-[#525252]">Loading versions…</p>}
+                {!versionsLoading && versions.length === 0 && (
+                  <p className="text-[10px] leading-4 text-[#525252]">No saved versions yet. Save one to snapshot this form.</p>
+                )}
                 {versions.map((v) => (
                   <div key={v.id} className={cn("rounded-md border p-3", v.current ? "border-[#474747] bg-[#202020]" : "border-[#2a2a2a] bg-[#161616]")}>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-white">{v.label}</span>
                       {v.current && <span className="rounded-full bg-[#2a2a2a] px-1.5 py-0 text-[10px] text-[#737373]">Current</span>}
                     </div>
-                    <p className="mt-0.5 text-[10px] text-[#525252]">{v.date} · {v.author}</p>
-                    <p className="mt-1.5 text-[10px] leading-4 text-[#737373]">{v.changes}</p>
+                    <p className="mt-0.5 text-[10px] text-[#525252]">{v.when} · {v.author}</p>
+                    <p className="mt-1.5 text-[10px] leading-4 text-[#737373]">{v.notes}</p>
                     {!v.current && (
-                      <button type="button" className="mt-2 flex items-center gap-1 text-[10px] text-[#525252] transition-colors hover:text-white">
+                      <button type="button" onClick={() => onRestoreVersion(v)} className="mt-2 flex items-center gap-1 text-[10px] text-[#525252] transition-colors hover:text-white">
                         <RotateCcw className="h-3 w-3" />Restore this version
                       </button>
                     )}
@@ -859,9 +808,6 @@ function RightSidebar({
               <div className="mt-3 flex flex-col gap-2">
                 <Button type="button" variant="outline" className="w-full text-xs" onClick={onOpenSaveDialog}>
                   <History className="h-3.5 w-3.5" />Save current version
-                </Button>
-                <Button type="button" variant="outline" className="w-full text-xs" onClick={onOpenSaveTemplateDialog}>
-                  <BookTemplate className="h-3.5 w-3.5" />Save as template
                 </Button>
               </div>
             </AccordionContent>
@@ -873,11 +819,14 @@ function RightSidebar({
   );
 }
 
-export function FormBuilder() {
-  const [title, setTitle] = useState("Job Application");
-  const [description, setDescription] = useState("Share this form and include it into your website to streamline hiring. When a candidate fills this form, they will be added into the Candidates pipeline automatically.");
-  const [fields, setFieldsRaw] = useState(defaultFields);
-  const fieldsRef = useRef(defaultFields);
+function FormBuilderEditor({ slug, initialDoc }) {
+  const settings0 = initialDoc.settings;
+  const initialFields = useMemo(() => hydrateFields(initialDoc.fieldDefs), [initialDoc]);
+
+  const [title, setTitle] = useState(initialDoc.title);
+  const [description, setDescription] = useState(initialDoc.description || "");
+  const [fields, setFieldsRaw] = useState(initialFields);
+  const fieldsRef = useRef(initialFields);
   const [past, setPast] = useState([]);
   const [future, setFuture] = useState([]);
 
@@ -912,48 +861,30 @@ export function FormBuilder() {
   const canUndo = past.length > 0;
   const canRedo = future.length > 0;
 
-  const [coverStyle, setCoverStyle] = useState("cover");
-  const [showIcon, setShowIcon] = useState(false);
-  const [branding, setBranding] = useState(true);
-  const [submitAnother, setSubmitAnother] = useState(false);
+  const [coverStyle, setCoverStyle] = useState(settings0.coverStyle);
+  const [showIcon, setShowIcon] = useState(settings0.showIcon);
+  const [branding, setBranding] = useState(settings0.branding);
+  const [submitAnother, setSubmitAnother] = useState(settings0.submitAnother);
   const [canvasWidth, setCanvasWidth] = useState(760);
 
-  const [steps, setSteps] = useState([]);
-  const [openDate, setOpenDate] = useState("");
-  const [closeDate, setCloseDate] = useState("");
-  const [responseLimit, setResponseLimit] = useState("");
-  const [confirmEmail, setConfirmEmail] = useState(false);
-  const [confirmSubject, setConfirmSubject] = useState("Thank you for your submission");
-  const [confirmBody, setConfirmBody] = useState("We've received your response and will be in touch shortly.");
-  const [thankYouType, setThankYouType] = useState("message");
-  const [thankYouText, setThankYouText] = useState("Thanks for submitting. We'll review and follow up soon.");
-  const [thankYouUrl, setThankYouUrl] = useState("");
-  const [prefillEnabled, setPrefillEnabled] = useState(false);
-  const [editWindow, setEditWindow] = useState("disabled");
+  const [steps, setSteps] = useState(settings0.steps || []);
+  const [openDate, setOpenDate] = useState(settings0.openDate);
+  const [closeDate, setCloseDate] = useState(settings0.closeDate);
+  const [responseLimit, setResponseLimit] = useState(settings0.responseLimit);
+  const [thankYouType, setThankYouType] = useState(settings0.thankYouType);
+  const [thankYouText, setThankYouText] = useState(settings0.thankYouText);
+  const [thankYouUrl, setThankYouUrl] = useState(settings0.thankYouUrl);
 
-  const [accessRestricted, setAccessRestricted] = useState(false);
-  const [orgDomain, setOrgDomain] = useState("");
-  const [projectRestricted, setProjectRestricted] = useState(false);
-  const [selectedProject, setSelectedProject] = useState("");
-
-  const [versions, setVersions] = useState(MOCK_VERSIONS);
+  const { versions, loading: versionsLoading, save: saveVersionRow } = useVersions(initialDoc.id);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveNotes, setSaveNotes] = useState("");
 
-  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
-  const [templateName, setTemplateName] = useState("");
-  const [templateDesc, setTemplateDesc] = useState("");
-  const [templateCategory, setTemplateCategory] = useState(TEMPLATE_CATEGORIES[0]);
+  const [scoringEnabled, setScoringEnabled] = useState(settings0.scoringEnabled);
+  const [highThreshold, setHighThreshold] = useState(settings0.highThreshold);
+  const [mediumThreshold, setMediumThreshold] = useState(settings0.mediumThreshold);
 
-  const [scoringEnabled, setScoringEnabled] = useState(false);
-  const [highThreshold, setHighThreshold] = useState(80);
-  const [mediumThreshold, setMediumThreshold] = useState(40);
-
-  const [branchingEnabled, setBranchingEnabled] = useState(false);
-  const [branches, setBranches] = useState([
-    { id: "br1", name: "Fast path", condition: "Priority equals Urgent", outcome: "Escalated" },
-    { id: "br2", name: "Standard path", condition: "Priority equals Standard", outcome: "Standard intake" },
-  ]);
+  const [branchingEnabled, setBranchingEnabled] = useState(Boolean(settings0.branchingEnabled));
+  const [branches, setBranches] = useState(Array.isArray(settings0.branches) ? settings0.branches : []);
 
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
@@ -1017,12 +948,16 @@ export function FormBuilder() {
   const updateStep = (id, title) => setSteps((cur) => cur.map((s) => (s.id === id ? { ...s, title } : s)));
   const removeStep = (id) => setSteps((cur) => cur.filter((s) => s.id !== id));
 
-  const saveVersion = (notes) => {
-    const now = new Date();
-    const newV = { id: `v${versions.length + 1}`, label: `v${versions.length + 1}.0`, date: `Today at ${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`, author: "Jack", changes: notes.trim() || "Manual version save", current: true };
-    setVersions((cur) => [newV, ...cur.map((v) => ({ ...v, current: false }))]);
+  const saveVersion = async (notes) => {
+    const doc = JSON.parse(docSignature);
+    await saveVersionRow({ notes: notes.trim() || "Manual version save", schema: doc.schema, settings: doc.settings });
     setSaveNotes("");
     setSaveDialogOpen(false);
+  };
+
+  const restoreVersion = async (v) => {
+    await saveFormBySlug(slug, { schema: v.schema, settings: v.settings });
+    if (typeof window !== "undefined") window.location.reload();
   };
 
   const startResize = (e) => {
@@ -1037,38 +972,76 @@ export function FormBuilder() {
 
   const stepsPerField = steps.length > 0 ? Math.ceil(includedFields.length / (steps.length + 1)) : null;
 
+  const settingsBag = {
+    coverStyle, showIcon, branding, submitAnother, steps, openDate, closeDate, responseLimit,
+    thankYouType, thankYouText, thankYouUrl,
+    scoringEnabled, highThreshold, mediumThreshold,
+    branchingEnabled, branches,
+  };
+  const docSignature = JSON.stringify(serializeBuilderDoc({ title, description, fields, settings: settingsBag }));
+  const [saveState, setSaveState] = useState("saved");
+  const firstSaveRef = useRef(true);
+
+  useEffect(() => {
+    if (firstSaveRef.current) {
+      firstSaveRef.current = false;
+      return;
+    }
+    setSaveState("saving");
+    const timer = setTimeout(() => {
+      saveFormBySlug(slug, JSON.parse(docSignature))
+        .then(() => setSaveState("saved"))
+        .catch(() => setSaveState("error"));
+    }, SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [docSignature, slug]);
+
   return (
     <div className="flex h-full min-h-[calc(100dvh-3.5rem)] flex-col overflow-hidden bg-[#121212] text-white">
       <div className="flex min-h-0 flex-1">
         <main className="scrollbar-subtle min-w-0 flex-1 overflow-y-auto bg-[#121212]">
-          <div className="flex items-center gap-1 border-b border-[#2a2a2a] px-3 py-1.5">
-            <button type="button" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="flex h-7 w-7 items-center justify-center rounded-md text-[#737373] transition-colors hover:bg-[#242424] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
-              <Undo2 className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-1.5 border-b border-[#2a2a2a] px-4 py-2.5">
+            <button type="button" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="flex h-8 w-8 items-center justify-center rounded-md text-[#737373] transition-colors hover:bg-[#242424] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
+              <Undo2 className="h-4 w-4" />
             </button>
-            <button type="button" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="flex h-7 w-7 items-center justify-center rounded-md text-[#737373] transition-colors hover:bg-[#242424] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
-              <Redo2 className="h-3.5 w-3.5" />
+            <button type="button" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="flex h-8 w-8 items-center justify-center rounded-md text-[#737373] transition-colors hover:bg-[#242424] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
+              <Redo2 className="h-4 w-4" />
             </button>
-            <div className="ml-auto text-[10px] text-[#525252]">{canvasWidth}px wide</div>
+            <div className="ml-auto flex items-center gap-3 text-xs">
+              <span className={cn(
+                "flex items-center gap-1.5",
+                saveState === "error" ? "text-[#f87171]" : "text-[#a3a3a3]",
+              )}>
+                {saveState === "saving" ? (
+                  <RotateCcw className="h-3.5 w-3.5 animate-spin text-[#737373]" />
+                ) : saveState === "error" ? (
+                  <X className="h-3.5 w-3.5" />
+                ) : (
+                  <CheckIcon className="h-3.5 w-3.5 text-[#737373]" />
+                )}
+                <p className="text-neutral-400 font-sans antialiased">
+                {saveState === "saving" ? "Saving…" : saveState === "error" ? "Save failed" : "Saved"}</p>
+              </span>
+            </div>
           </div>
           <section className="relative min-h-full">
-            {coverStyle === "cover" ? (
+            {coverStyle === "cover" && (
               <div className="relative h-[164px] border-b border-[#2a2a2a] bg-[linear-gradient(106deg,#17353a_0%,#3e3a24_48%,#5a2d29_100%)]">
                 <Button type="button" variant="outline" size="sm" className="absolute right-4 top-3 bg-[#1a1a1a]">Change Cover</Button>
               </div>
-            ) : <div className="h-16 border-b border-[#2a2a2a]" />}
+            )}
 
-            <div className={cn("mx-auto w-full px-0 pb-8", coverStyle === "cover" ? "-mt-[66px]" : "mt-4")} style={{ maxWidth: `${canvasWidth}px` }}>
+            <div className={cn("mx-auto w-full px-0 pb-8", coverStyle === "cover" ? "-mt-[66px]" : "mt-6")} style={{ maxWidth: `${canvasWidth}px` }}>
               <div className="relative">
                 <FormIntroCard title={title} description={description} onTitleChange={setTitle} onDescriptionChange={setDescription} />
                 <ResizeHandle label="Resize form width" onMouseDown={startResize} />
               </div>
 
-              <div className="mt-5 space-y-4 pl-8">
+              <div className="mt-5 space-y-4">
                 {includedFields.map((field, idx) => {
                   const showIndicator = dragId && dragId !== field.id && dragOverId === field.id;
                   return (
                     <div key={field.id} className="relative">
-                      {/* Insertion line — appears above the drop target */}
                       {showIndicator && (
                         <div className="pointer-events-none absolute -top-2.5 inset-x-0 z-30 flex items-center gap-0">
                           <div className="h-2 w-2 rounded-full bg-[#4a9eff]" />
@@ -1101,7 +1074,6 @@ export function FormBuilder() {
                     </div>
                   );
                 })}
-                {/* End drop zone — catches drags below the last item */}
                 {dragId && (
                   <div
                     className="relative h-8"
@@ -1134,18 +1106,9 @@ export function FormBuilder() {
           openDate={openDate} closeDate={closeDate} onOpenDateChange={setOpenDate} onCloseDateChange={setCloseDate}
           steps={steps} onAddStep={addStep} onUpdateStep={updateStep} onRemoveStep={removeStep}
           responseLimit={responseLimit} onResponseLimitChange={setResponseLimit}
-          confirmEmail={confirmEmail} onConfirmEmailChange={setConfirmEmail}
-          confirmSubject={confirmSubject} onConfirmSubjectChange={setConfirmSubject}
-          confirmBody={confirmBody} onConfirmBodyChange={setConfirmBody}
           thankYouType={thankYouType} thankYouText={thankYouText} thankYouUrl={thankYouUrl}
           onThankYouTypeChange={setThankYouType} onThankYouTextChange={setThankYouText} onThankYouUrlChange={setThankYouUrl}
-          prefillEnabled={prefillEnabled} onPrefillChange={setPrefillEnabled}
-          editWindow={editWindow} onEditWindowChange={setEditWindow}
-          accessRestricted={accessRestricted} onAccessRestrictedChange={setAccessRestricted}
-          orgDomain={orgDomain} onOrgDomainChange={setOrgDomain}
-          projectRestricted={projectRestricted} onProjectRestrictedChange={setProjectRestricted}
-          selectedProject={selectedProject} onSelectedProjectChange={setSelectedProject}
-          versions={versions} onOpenSaveDialog={() => setSaveDialogOpen(true)} onOpenSaveTemplateDialog={() => { setTemplateName(title); setSaveTemplateOpen(true); }}
+          versions={versions} versionsLoading={versionsLoading} onRestoreVersion={restoreVersion} onOpenSaveDialog={() => setSaveDialogOpen(true)}
           scoringEnabled={scoringEnabled} onScoringEnabledChange={setScoringEnabled}
           highThreshold={highThreshold} onHighThresholdChange={setHighThreshold}
           mediumThreshold={mediumThreshold} onMediumThresholdChange={setMediumThreshold}
@@ -1178,60 +1141,47 @@ export function FormBuilder() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen}>
-        <DialogContent className="max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle>Save as template</DialogTitle>
-            <DialogDescription>Save this form as a reusable template. It will appear in the Templates library.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-[#a3a3a3]">Template name</label>
-              <Input
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="e.g. Job Application"
-                className="text-[#d4d4d4]"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-[#a3a3a3]">Description <span className="text-[#525252]">(optional)</span></label>
-              <Textarea
-                value={templateDesc}
-                onChange={(e) => setTemplateDesc(e.target.value)}
-                rows={3}
-                placeholder="Describe what this template is used for..."
-                className="resize-none text-[#d4d4d4]"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-[#a3a3a3]">Category</label>
-              <Select value={templateCategory} onValueChange={setTemplateCategory}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TEMPLATE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setSaveTemplateOpen(false)}>Cancel</Button>
-            <Button
-              type="button"
-              disabled={!templateName.trim()}
-              onClick={() => {
-                setSaveTemplateOpen(false);
-                setTemplateDesc("");
-              }}
-            >
-              <BookTemplate className="h-3.5 w-3.5" />Save template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
+}
+
+export function FormBuilder({ formId }) {
+  const [doc, setDoc] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDoc(null);
+    setError(false);
+    getFormBySlug(formId)
+      .then((form) => {
+        if (active) setDoc(form || blankFormDoc(formId));
+      })
+      .catch(() => active && setError(true));
+    return () => {
+      active = false;
+    };
+  }, [formId]);
+
+  if (error) {
+    return (
+      <div className="flex h-full min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-2 bg-[#121212] text-center text-sm text-[#a3a3a3]">
+        <p className="font-medium text-[#e7e7e7]">Couldn&apos;t load this form</p>
+        <p className="max-w-sm text-xs text-[#737373]">
+          This form couldn&apos;t be loaded right now. Refresh the page or try again shortly.
+        </p>
+      </div>
+    );
+  }
+
+  if (!doc) {
+    return (
+      <div className="flex h-full min-h-[calc(100dvh-3.5rem)] items-center justify-center bg-[#121212]">
+        <RotateCcw className="h-5 w-5 animate-spin text-[#737373]" />
+      </div>
+    );
+  }
+
+  return <FormBuilderEditor key={formId} slug={formId} initialDoc={doc} />;
 }

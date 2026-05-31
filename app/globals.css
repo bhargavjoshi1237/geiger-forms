@@ -131,3 +131,40 @@
     animation: accordion-up 0.2s ease-out;
   }
 }
+
+.supabase-activity-line {
+  position: absolute;
+  inset-block: 0;
+  left: -114%;
+  width: 114%;
+  animation: supabase-activity-line 3s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(115 115 115 / 0.08) 22%,
+    rgb(163 163 163 / 0.5) 50%,
+    rgb(115 115 115 / 0.08) 78%,
+    transparent 100%
+  );
+  filter: drop-shadow(0 0 3px rgb(163 163 163 / 0.14));
+}
+
+.supabase-activity-line.is-saving {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(71 71 71 / 0.07) 22%,
+    rgb(128 148 138 / 0.48) 50%,
+    rgb(71 71 71 / 0.07) 78%,
+    transparent 100%
+  );
+}
+
+@keyframes supabase-activity-line {
+  0% {
+    left: -114%;
+  }
+  100% {
+    left: 100%;
+  }
+}

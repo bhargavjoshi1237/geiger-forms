@@ -94,17 +94,20 @@ function ContextMenuCheckboxItem({ className, children, checked, ...props }) {
     <ContextMenuPrimitive.CheckboxItem
       data-slot="context-menu-checkbox-item"
       className={cn(
-        "relative flex cursor-default select-none items-center gap-2 rounded-sm py-1.5 pl-8 pr-2 text-sm text-[#d4d4d4] outline-none transition-colors focus:bg-[#242424] focus:text-white data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex cursor-default select-none items-center gap-2 rounded-sm py-1.5 pr-2 text-sm text-[#d4d4d4] outline-none transition-colors focus:bg-[#242424] focus:text-white data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        checked ? "pl-8" : "pl-2",
         className,
       )}
       checked={checked}
       {...props}
     >
-      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
-        <ContextMenuPrimitive.ItemIndicator>
-          <CheckIcon className="size-4 text-white" />
-        </ContextMenuPrimitive.ItemIndicator>
-      </span>
+      {checked ? (
+        <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+          <ContextMenuPrimitive.ItemIndicator>
+            <CheckIcon className="size-4 text-white" />
+          </ContextMenuPrimitive.ItemIndicator>
+        </span>
+      ) : null}
       {children}
     </ContextMenuPrimitive.CheckboxItem>
   );

@@ -2,17 +2,11 @@
 
 import { useState } from "react";
 import {
-  CheckCircle2,
   Edit3,
   Send,
   X,
   Zap,
-  Globe,
-  Monitor,
-  MapPin,
-  Smartphone,
   FileSpreadsheet,
-  BarChart2,
   Link2 as LinkIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,63 +19,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useComments } from "@/lib/hooks/use-comments";
 
 const PRIORITY_STYLE = {
   High: { bg: "bg-[#2a0808]", text: "text-[#f87171]", border: "border-[#7f1d1d]" },
   Medium: { bg: "bg-[#2a1a08]", text: "text-[#fb923c]", border: "border-[#7c2d12]" },
   Low: { bg: "bg-[#1c1917]", text: "text-[#78716c]", border: "border-[#44403c]" },
-};
-
-const MOCK_FIELDS = {
-  1: [
-    { label: "Name", value: "Maya Patel" },
-    { label: "Email", value: "maya@example.com" },
-    { label: "Position", value: "Senior Engineer" },
-    { label: "Priority", value: "Standard" },
-    { label: "Cover letter", value: "Looking forward to the opportunity. Attached CV covers my last 5 years of work in distributed systems." },
-    { label: "CV", value: "maya-patel-cv.pdf" },
-  ],
-  2: [
-    { label: "Name", value: "Jon Bell" },
-    { label: "Email", value: "jon@example.com" },
-    { label: "Event", value: "Product Summit 2026" },
-    { label: "Seats", value: "2" },
-    { label: "Dietary requirement", value: "Vegetarian" },
-  ],
-  3: [
-    { label: "Name", value: "Priya Shah" },
-    { label: "Email", value: "priya@example.com" },
-    { label: "Position", value: "Design Lead" },
-    { label: "Priority", value: "Urgent" },
-    { label: "Message", value: "Available to start immediately. Portfolio linked in CV." },
-  ],
-  4: [
-    { label: "Name", value: "Sam Chen" },
-    { label: "Email", value: "sam@example.com" },
-    { label: "NPS score", value: "9 / 10" },
-    { label: "Feedback", value: "The product has improved significantly since last quarter. Onboarding could still be clearer." },
-  ],
-  5: [
-    { label: "Name", value: "Anna Torres" },
-    { label: "Email", value: "anna@example.com" },
-    { label: "Event", value: "Product Summit 2026" },
-    { label: "Seats", value: "1" },
-  ],
-  6: [
-    { label: "Name", value: "Raj Kumar" },
-    { label: "Email", value: "raj@example.com" },
-    { label: "Position", value: "Staff Engineer" },
-    { label: "Priority", value: "Soon" },
-    { label: "Message", value: "Open to remote or hybrid. Happy to discuss details." },
-  ],
-};
-
-const INITIAL_COMMENTS = {
-  1: [{ id: 1, author: "Jack", initials: "JA", text: "Strong candidate — forwarding to hiring team.", time: "45 min ago", color: "bg-[#0e1e2e]" }],
-  3: [
-    { id: 1, author: "Jack", initials: "JA", text: "Flagged for manual review — priority mismatch with current openings.", time: "2 hours ago", color: "bg-[#0e1e2e]" },
-    { id: 2, author: "Mei", initials: "ME", text: "Agreed. Assigning to Sarah for follow-up.", time: "1 hour ago", color: "bg-[#1a3c2e]" },
-  ],
 };
 
 const STATUS_STYLE = {
@@ -92,16 +35,66 @@ const STATUS_STYLE = {
 
 const AVATAR_COLORS = ["bg-[#0e1e2e]", "bg-[#0d2218]", "bg-[#2a1a08]", "bg-[#1a0d2e]", "bg-[#1a1a1a]", "bg-[#0d1e1a]"];
 
-const MOCK_ANALYTICS = {
-  1: { ip: "103.21.xx.xx", location: "Mumbai, India", device: "Desktop", browser: "Chrome 124", os: "macOS 14.4", completionTime: "4m 12s", submittedAt: "May 24, 2026 at 14:32", formVersion: "v3.0", fieldsAnswered: 6, fieldsTotal: 6, scoreBreakdown: [{ field: "Position", points: 40 }, { field: "Experience", points: 52 }] },
-  2: { ip: "89.46.xx.xx", location: "London, UK", device: "Mobile", browser: "Safari 17", os: "iOS 17.4", completionTime: "2m 48s", submittedAt: "May 24, 2026 at 14:16", formVersion: "v3.0", fieldsAnswered: 5, fieldsTotal: 5, scoreBreakdown: [] },
-  3: { ip: "49.36.xx.xx", location: "Bangalore, India", device: "Desktop", browser: "Firefox 125", os: "Windows 11", completionTime: "6m 33s", submittedAt: "May 24, 2026 at 13:15", formVersion: "v3.0", fieldsAnswered: 5, fieldsTotal: 5, scoreBreakdown: [{ field: "Position", points: 35 }, { field: "Experience", points: 50 }] },
-  4: { ip: "72.14.xx.xx", location: "San Francisco, US", device: "Desktop", browser: "Chrome 124", os: "macOS 14.2", completionTime: "3m 05s", submittedAt: "May 24, 2026 at 11:10", formVersion: "v2.1", fieldsAnswered: 4, fieldsTotal: 4, scoreBreakdown: [] },
-  5: { ip: "185.12.xx.xx", location: "Madrid, Spain", device: "Mobile", browser: "Chrome 122", os: "Android 14", completionTime: "1m 52s", submittedAt: "May 23, 2026 at 17:44", formVersion: "v3.0", fieldsAnswered: 4, fieldsTotal: 4, scoreBreakdown: [] },
-  6: { ip: "103.55.xx.xx", location: "Delhi, India", device: "Desktop", browser: "Edge 124", os: "Windows 10", completionTime: "5m 40s", submittedAt: "May 22, 2026 at 10:05", formVersion: "v2.1", fieldsAnswered: 5, fieldsTotal: 5, scoreBreakdown: [{ field: "Position", points: 28 }, { field: "Experience", points: 50 }] },
-};
+function parseUserAgent(ua) {
+  if (!ua) return { device: "Unknown", browser: "Unknown", os: "Unknown" };
 
-// ─── Analytics tab ────────────────────────────────────────────────────────────
+  const device = /Mobi|Android|iPhone/.test(ua) ? "Mobile" : "Desktop";
+
+  let browser = "Unknown";
+  if (/Edg/.test(ua)) browser = "Edge";
+  else if (/OPR|Opera/.test(ua)) browser = "Opera";
+  else if (/Chrome/.test(ua)) browser = "Chrome";
+  else if (/Firefox/.test(ua)) browser = "Firefox";
+  else if (/Safari/.test(ua)) browser = "Safari";
+
+  let os = "Unknown";
+  if (/Windows/.test(ua)) os = "Windows";
+  else if (/Mac OS|Macintosh/.test(ua)) os = "macOS";
+  else if (/Android/.test(ua)) os = "Android";
+  else if (/iPhone|iPad|iOS/.test(ua)) os = "iOS";
+  else if (/Linux/.test(ua)) os = "Linux";
+
+  return { device, browser, os };
+}
+
+function formatCompletion(ms) {
+  if (ms == null) return "—";
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
+function formatSubmittedAt(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function isNonEmpty(value) {
+  if (value == null) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return String(value) !== "";
+}
+
+function deriveFields(response) {
+  if (response.fields) {
+    return Object.entries(response.fields).map(([label, value]) => ({ label, value }));
+  }
+  if (response.answers) {
+    const derived = Object.entries(response.answers)
+      .filter(([, value]) => isNonEmpty(value))
+      .map(([key, value]) => ({ label: key, value: String(value) }));
+    if (derived.length > 0) return derived;
+  }
+  return [
+    { label: "Name", value: response.name },
+    { label: "Email", value: response.email },
+    { label: "Form", value: response.form },
+  ];
+}
 
 function AnalyticsRow({ label, value }) {
   return (
@@ -121,23 +114,17 @@ function AnalyticsSection({ title, children }) {
   );
 }
 
-function AnalyticsTab({ responseId }) {
+function AnalyticsTab({ response }) {
   const [sheetUrl, setSheetUrl] = useState("");
   const [showSheetInput, setShowSheetInput] = useState(false);
   const [pendingUrl, setPendingUrl] = useState("");
 
-  const data = MOCK_ANALYTICS[responseId];
+  const { device, browser, os } = parseUserAgent(response.userAgent);
 
-  if (!data) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6">
-        <p className="text-xs text-[#525252]">No analytics available for this response.</p>
-      </div>
-    );
-  }
-
-  const totalScore = data.scoreBreakdown.reduce((sum, s) => sum + s.points, 0);
-  const maxPoints = data.scoreBreakdown.length > 0 ? Math.max(...data.scoreBreakdown.map((s) => s.points)) : 1;
+  const answeredCount = response.answers
+    ? Object.values(response.answers).filter(isNonEmpty).length
+    : 0;
+  const totalFields = response.fields ? Object.keys(response.fields).length : answeredCount;
 
   const confirmSheet = () => {
     const trimmed = pendingUrl.trim();
@@ -151,54 +138,25 @@ function AnalyticsTab({ responseId }) {
     <div className="scrollbar-subtle flex-1 overflow-y-auto p-4">
       <div className="space-y-3">
 
-        {/* Submitter profile */}
         <AnalyticsSection title="Submitter">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-            <AnalyticsRow label="Device" value={data.device} />
-            <AnalyticsRow label="Browser" value={data.browser} />
-            <AnalyticsRow label="OS" value={data.os} />
-            <AnalyticsRow label="Location" value={data.location} />
-            <AnalyticsRow label="IP address" value={data.ip} />
+            <AnalyticsRow label="Device" value={device} />
+            <AnalyticsRow label="Browser" value={browser} />
+            <AnalyticsRow label="OS" value={os} />
           </dl>
         </AnalyticsSection>
 
-        {/* Submission metadata */}
         <AnalyticsSection title="Submission">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-            <AnalyticsRow label="Submitted at" value={data.submittedAt} />
-            <AnalyticsRow label="Completion time" value={data.completionTime} />
-            <AnalyticsRow label="Form version" value={data.formVersion} />
-            <AnalyticsRow label="Fields answered" value={`${data.fieldsAnswered} / ${data.fieldsTotal}`} />
+            <AnalyticsRow label="Submitted at" value={formatSubmittedAt(response.submittedAt)} />
+            <AnalyticsRow label="Completion time" value={formatCompletion(response.completionMs)} />
+            <AnalyticsRow label="Fields answered" value={`${answeredCount} / ${totalFields}`} />
+            {response.score != null && (
+              <AnalyticsRow label="Score" value={response.score} />
+            )}
           </dl>
         </AnalyticsSection>
 
-        {/* Score breakdown — only when present */}
-        {data.scoreBreakdown.length > 0 && (
-          <AnalyticsSection title="Score breakdown">
-            <div className="space-y-2.5">
-              {data.scoreBreakdown.map(({ field, points }) => (
-                <div key={field}>
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="text-[11px] text-[#a3a3a3]">{field}</span>
-                    <span className="text-[11px] tabular-nums text-[#d4d4d4]">{points} pts</span>
-                  </div>
-                  <div className="h-1 w-full overflow-hidden rounded-full bg-[#2a2a2a]">
-                    <div
-                      className="h-full rounded-full bg-[#3b82f6] transition-all"
-                      style={{ width: `${Math.round((points / maxPoints) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-              <div className="mt-2 flex items-center justify-between border-t border-[#2a2a2a] pt-2">
-                <span className="text-[11px] font-medium text-[#737373]">Total</span>
-                <span className="text-[11px] font-semibold tabular-nums text-white">{totalScore} pts</span>
-              </div>
-            </div>
-          </AnalyticsSection>
-        )}
-
-        {/* Connected sheet */}
         <AnalyticsSection title="Connected sheet">
           {sheetUrl ? (
             <div className="flex items-center gap-2 rounded-md border border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2">
@@ -270,32 +228,21 @@ function AnalyticsTab({ responseId }) {
   );
 }
 
-// ─── Main panel ───────────────────────────────────────────────────────────────
-
 export function ResponseDetailPanel({ response, index, onClose, score, priority }) {
   const [status, setStatus] = useState(response.status);
-  const [comments, setComments] = useState(INITIAL_COMMENTS[response.id] ?? []);
+  const { comments, loading: commentsLoading, add } = useComments(response.id);
   const [input, setInput] = useState("");
   const [activeTab, setActiveTab] = useState("response");
 
-  const fields = response.fields
-    ? Object.entries(response.fields).map(([label, value]) => ({ label, value }))
-    : (MOCK_FIELDS[response.id] ?? [
-        { label: "Name", value: response.name },
-        { label: "Email", value: response.email },
-        { label: "Form", value: response.form },
-      ]);
+  const fields = deriveFields(response);
 
   const currentStyle = STATUS_STYLE[status] ?? STATUS_STYLE.Pending;
   const priorityStyle = priority ? PRIORITY_STYLE[priority] : null;
 
-  const addComment = () => {
+  const addComment = async () => {
     const text = input.trim();
     if (!text) return;
-    setComments((prev) => [
-      ...prev,
-      { id: Date.now(), author: "You", initials: "YO", text, time: "Just now", color: "bg-[#1a3c2e]" },
-    ]);
+    await add(text);
     setInput("");
   };
 
@@ -307,7 +254,6 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      {/* Backdrop */}
       <button
         type="button"
         className="flex-1 bg-black/50"
@@ -317,9 +263,7 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
 
       <aside className="flex h-full w-full max-w-[460px] flex-col border-l border-[#2a2a2a] bg-[#1a1a1a] shadow-2xl">
 
-        {/* ── Header ── */}
         <div className="flex items-center gap-3 border-b border-[#2a2a2a] px-4 py-3">
-          {/* Avatar */}
           <div
             className={cn(
               "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-[#d4d4d4]",
@@ -329,7 +273,6 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
             {response.initials}
           </div>
 
-          {/* Identity stack */}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold leading-tight text-white">{response.name}</p>
             <p className="text-xs text-[#525252]">{response.email}</p>
@@ -338,7 +281,6 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
             </p>
           </div>
 
-          {/* Right controls */}
           <div className="flex shrink-0 items-center gap-1.5">
             {priorityStyle && (
               <span
@@ -363,7 +305,6 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
               </span>
             )}
 
-            {/* Status select — styled as colored pill */}
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger
                 className={cn(
@@ -395,7 +336,6 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
           </div>
         </div>
 
-        {/* ── Tabs ── */}
         <div className="flex border-b border-[#2a2a2a]">
           {TABS.map(({ id, label }) => (
             <button
@@ -419,7 +359,6 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
           ))}
         </div>
 
-        {/* ── Response tab ── */}
         {activeTab === "response" && (
           <div className="scrollbar-subtle flex-1 overflow-y-auto p-4">
             <div className="space-y-0.5">
@@ -437,7 +376,7 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
             </div>
             <div className="mt-4 border-t border-[#242424] pt-4">
               <p className="text-[10px] text-[#525252]">
-                Submitted {response.received}&nbsp;·&nbsp;Internal ID #{String(response.id).padStart(4, "0")}
+                Submitted {response.received}&nbsp;·&nbsp;Internal ID #{String(response.id).slice(0, 8)}
               </p>
               <button
                 type="button"
@@ -450,27 +389,29 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
           </div>
         )}
 
-        {/* ── Analytics tab ── */}
         {activeTab === "analytics" && (
-          <AnalyticsTab responseId={response.id} />
+          <AnalyticsTab response={response} />
         )}
 
-        {/* ── Thread tab ── */}
         {activeTab === "thread" && (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="scrollbar-subtle flex-1 overflow-y-auto p-4">
-              {comments.length === 0 ? (
+              {commentsLoading ? (
+                <div className="flex min-h-24 items-center justify-center text-center">
+                  <p className="text-xs text-[#525252]">Loading comments…</p>
+                </div>
+              ) : comments.length === 0 ? (
                 <div className="flex min-h-24 items-center justify-center text-center">
                   <p className="text-xs text-[#525252]">No comments yet. Start the review thread below.</p>
                 </div>
               ) : (
                 <div className="space-y-5">
-                  {comments.map((c) => (
+                  {comments.map((c, i) => (
                     <div key={c.id} className="flex gap-3">
                       <div
                         className={cn(
                           "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-[#d4d4d4]",
-                          c.color,
+                          AVATAR_COLORS[i % AVATAR_COLORS.length],
                         )}
                       >
                         {c.initials}
@@ -478,9 +419,9 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium text-[#e7e7e7]">{c.author}</span>
-                          <span className="text-[10px] text-[#525252]">{c.time}</span>
+                          <span className="text-[10px] text-[#525252]">{c.when}</span>
                         </div>
-                        <p className="mt-1 text-sm leading-relaxed text-[#a3a3a3]">{c.text}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-[#a3a3a3]">{c.body}</p>
                       </div>
                     </div>
                   ))}
