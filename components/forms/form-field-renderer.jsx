@@ -32,14 +32,14 @@ export function FormFieldRenderer({ field, value, onChange, error, allFields, an
   }
 
   const labelEl = (
-    <span className="flex items-center gap-1.5 text-sm font-medium text-[#d4d4d4]">
+    <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
       {label}
       {field.required && <span className="text-[#ef4444]">*</span>}
     </span>
   );
 
   const describe = field.hint ? (
-    <p className="mt-1 text-xs text-[#525252]">{field.hint}</p>
+    <p className="mt-1 text-xs text-text-tertiary">{field.hint}</p>
   ) : null;
 
   const errorEl = error ? <p className="mt-1 text-xs text-[#f87171]">{error}</p> : null;
@@ -50,7 +50,7 @@ export function FormFieldRenderer({ field, value, onChange, error, allFields, an
       <fieldset className="block">
         <legend>{labelEl}</legend>
         {options.length === 0 ? (
-          <p className="mt-2 text-xs text-[#525252]">No options configured.</p>
+          <p className="mt-2 text-xs text-text-tertiary">No options configured.</p>
         ) : (
           <RadioGroup
             className="mt-2 grid gap-2 sm:grid-cols-2"
@@ -66,8 +66,8 @@ export function FormFieldRenderer({ field, value, onChange, error, allFields, an
                   className={cn(
                     "flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
                     value === opt
-                      ? "border-[#474747] bg-[#202020] text-white"
-                      : "border-[#2a2a2a] bg-[#161616] text-[#d4d4d4] hover:border-[#474747]",
+                      ? "border-border-strong bg-surface-card text-white"
+                      : "border-border bg-background text-muted-foreground hover:border-border-strong",
                   )}
                 >
                   <RadioGroupItem id={optId} value={opt} />
@@ -87,7 +87,7 @@ export function FormFieldRenderer({ field, value, onChange, error, allFields, an
     return (
       <label
         htmlFor={field.id}
-        className="flex cursor-pointer items-start gap-3 rounded-md border border-[#2a2a2a] bg-[#161616] p-3 text-sm text-[#a3a3a3] transition-colors hover:border-[#474747]"
+        className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-background p-3 text-sm text-muted-foreground transition-colors hover:border-border-strong"
       >
         <Checkbox
           id={field.id}
@@ -98,7 +98,7 @@ export function FormFieldRenderer({ field, value, onChange, error, allFields, an
         <span>
           {label}
           {field.required && <span className="ml-1 text-[#ef4444]">*</span>}
-          {field.hint && <span className="mt-0.5 block text-xs text-[#525252]">{field.hint}</span>}
+          {field.hint && <span className="mt-0.5 block text-xs text-text-tertiary">{field.hint}</span>}
           {error && <span className="mt-1 block text-xs text-[#f87171]">{error}</span>}
         </span>
       </label>

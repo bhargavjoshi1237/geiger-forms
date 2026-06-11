@@ -21,7 +21,7 @@ export function Header() {
   ];
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 border-b border-zinc-800 bg-zinc-950 md:border-zinc-800/50 md:bg-zinc-950/85 md:backdrop-blur-md">
+    <header className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background md:border-border/50 md:bg-background/85 md:backdrop-blur-md">
       <div className="relative mx-auto flex h-12 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center">
@@ -32,17 +32,17 @@ export function Header() {
           </span>
         </Link>
 
-        <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-8 text-sm font-medium text-zinc-400 md:flex">
+        <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
           <div className="group">
-            <button className="flex items-center gap-1 py-6 transition-colors hover:text-zinc-100">
+            <button className="flex items-center gap-1 py-6 transition-colors hover:text-foreground">
               Features
             </button>
 
             <div className="invisible absolute left-1/2 top-full w-[640px] -translate-x-1/2 translate-y-2 opacity-0 transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
-              <div className="rounded-xl border border-zinc-800 bg-[#1a1a1a] p-4 shadow-xl">
+              <div className="rounded-xl border border-border bg-surface-subtle p-4 shadow-xl">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Products</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground0">Products</p>
                     <div className="space-y-1">
                       {products.map((item) => {
                         const Icon = item.icon;
@@ -50,12 +50,12 @@ export function Header() {
                           <Link
                             href={item.href}
                             key={item.label}
-                            className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-zinc-800"
+                            className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-surface-hover"
                           >
-                            <Icon className="h-4 w-4 text-zinc-400" />
+                            <Icon className="h-4 w-4 text-muted-foreground" />
                             <div>
-                              <p className="text-sm text-zinc-100">{item.label}</p>
-                              <p className="text-xs text-zinc-500">{item.description}</p>
+                              <p className="text-sm text-foreground">{item.label}</p>
+                              <p className="text-xs text-foreground0">{item.description}</p>
                             </div>
                           </Link>
                         );
@@ -64,16 +64,16 @@ export function Header() {
                   </div>
 
                   <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Resources</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground0">Resources</p>
                     <div className="space-y-1">
                       {resources.map((item) => (
                         <Link
                           href={item.href}
                           key={item.label}
-                          className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+                          className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
                         >
                           {item.label}
-                          <ArrowRight className="h-3.5 w-3.5 text-zinc-500" />
+                          <ArrowRight className="h-3.5 w-3.5 text-foreground0" />
                         </Link>
                       ))}
                     </div>
@@ -83,7 +83,7 @@ export function Header() {
             </div>
           </div>
 
-          <Link href="/pricing" className="py-6 transition-colors hover:text-zinc-100">
+          <Link href="/pricing" className="py-6 transition-colors hover:text-foreground">
             Pricing
           </Link>
         </nav>
@@ -91,7 +91,7 @@ export function Header() {
         <div className="hidden items-center gap-4 md:flex">
           <Link
             href="/forms"
-            className="text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-100"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Open Forms
           </Link>

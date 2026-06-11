@@ -56,10 +56,10 @@ export function FoldersScreen() {
       {loading ? (
         <LoadingState label="Loading folders…" />
       ) : folders.length === 0 ? (
-        <div className="flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed border-[#333333] bg-[#1a1a1a] p-8 text-center">
-          <FolderOpen className="mb-3 h-6 w-6 text-[#525252]" />
-          <p className="text-sm font-medium text-[#e7e7e7]">No folders yet</p>
-          <p className="mt-1 max-w-md text-xs leading-5 text-[#737373]">
+        <div className="flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface-subtle p-8 text-center">
+          <FolderOpen className="mb-3 h-6 w-6 text-text-tertiary" />
+          <p className="text-sm font-medium text-foreground">No folders yet</p>
+          <p className="mt-1 max-w-md text-xs leading-5 text-text-secondary">
             Assign categories to your forms and they will be grouped into folders here.
           </p>
         </div>
@@ -70,17 +70,17 @@ export function FoldersScreen() {
               <ContextMenuTrigger asChild>
                 <a
                   href={`/forms?view=Forms&category=${folder.slug}`}
-                  className="flex flex-col gap-3 rounded-md border border-[#2a2a2a] bg-[#1a1a1a] p-4 transition-colors hover:border-[#3a3a3a]"
+                  className="flex flex-col gap-3 rounded-md border border-border bg-surface-subtle p-4 transition-colors hover:border-border-strong"
                 >
                   <div className="flex items-start justify-between">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-md border border-[#2a2a2a] bg-[#202020]">
-                      <FolderOpen className="h-4 w-4 text-[#a3a3a3]" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface-card">
+                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
 
                   <div className="flex-1">
                     <h3 className="text-sm font-medium text-white">{folder.name}</h3>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#737373]">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
                       <span>
                         {folder.forms} {folder.forms === 1 ? "form" : "forms"}
                       </span>
@@ -89,22 +89,22 @@ export function FoldersScreen() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 border-t border-[#242424] pt-2.5 text-[10px] text-[#525252]">
+                  <div className="flex items-center gap-1 border-t border-surface-active pt-2.5 text-[10px] text-text-tertiary">
                     <Clock3 className="h-3 w-3" />
                     Updated {relativeTime(folder.updatedAt)}
                   </div>
                 </a>
               </ContextMenuTrigger>
 
-              <ContextMenuContent className="w-52 bg-[#202020] border-[#333333] shadow-xl">
-                <ContextMenuItem asChild className="text-[#a3a3a3] focus:bg-[#2a2a2a] focus:text-white cursor-pointer gap-2">
+              <ContextMenuContent className="w-52 bg-surface-card border-border shadow-xl">
+                <ContextMenuItem asChild className="text-muted-foreground focus:bg-surface-hover focus:text-foreground cursor-pointer gap-2">
                   <a href={`/forms?view=Forms&category=${folder.slug}`}>
                     <FolderOpen className="w-3.5 h-3.5" />
                     Open
                   </a>
                 </ContextMenuItem>
                 <ContextMenuItem
-                  className="text-[#737373] focus:bg-[#2a2a2a] focus:text-white cursor-pointer gap-2"
+                  className="text-text-secondary focus:bg-surface-hover focus:text-foreground cursor-pointer gap-2"
                   onSelect={() => copyFolderLink(folder.slug)}
                 >
                   <Link2 className="w-3.5 h-3.5" />

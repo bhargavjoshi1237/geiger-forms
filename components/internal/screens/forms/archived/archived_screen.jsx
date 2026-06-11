@@ -38,7 +38,7 @@ export function ArchivedScreen() {
           description="Forms you archive from the builder or workspace will appear here."
         />
       ) : (
-        <section className="overflow-hidden rounded-md border border-[#2a2a2a] bg-[#1a1a1a]">
+        <section className="overflow-hidden rounded-md border border-border bg-surface-subtle">
           <Table className="min-w-[680px]">
             <TableHeader>
               <TableRow>
@@ -51,7 +51,7 @@ export function ArchivedScreen() {
             </TableHeader>
             <TableBody>
               {archived.map((item) => (
-                <TableRow key={item.id} className="bg-[#1a1a1a] text-[#d4d4d4]">
+                <TableRow key={item.id} className="bg-surface-subtle text-muted-foreground">
                   <TableCell className="font-medium text-[#f5f5f5]">{item.name}</TableCell>
                   <TableCell>{item.category || "—"}</TableCell>
                   <TableCell className="text-right tabular-nums">{item.responses}</TableCell>
@@ -61,7 +61,7 @@ export function ArchivedScreen() {
                       <button
                         type="button"
                         onClick={() => changeStatus(item.id, "Draft")}
-                        className="flex h-7 items-center gap-1.5 rounded-md border border-[#2a2a2a] bg-[#202020] px-2.5 text-xs text-[#a3a3a3] transition-colors hover:border-[#474747] hover:text-white"
+                        className="flex h-7 items-center gap-1.5 rounded-md border border-border bg-surface-card px-2.5 text-xs text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
                         title="Restore to draft"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
@@ -70,7 +70,7 @@ export function ArchivedScreen() {
                       <button
                         type="button"
                         onClick={() => handleDelete(item)}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-[#737373] transition-colors hover:bg-[#242424] hover:text-[#ef4444]"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-active hover:text-[#ef4444]"
                         title="Delete permanently"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

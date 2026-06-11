@@ -1,18 +1,12 @@
 -- ===========================================================================
 -- Geiger Forms — standalone schema
 -- ===========================================================================
--- Run this against the shared Geiger Supabase project (the same one geiger-flow
--- uses). It is self-contained: it does NOT depend on flow_projects, so the
--- Forms app can be used on its own.
+-- Run against the shared Geiger Supabase project (the same one geiger-flow
+-- uses). Forms can be standalone (project_id IS NULL) or scoped to a Flow
+-- project (project_id references flow_projects).
 --
 --   psql "$DATABASE_URL" -f supabase/sqls/forms.sql
 --   -- or paste into the Supabase SQL editor.
---
--- RLS NOTE: geiger-forms does not yet wire Geiger auth, so the admin workspace
--- talks to Supabase as the anon role. The policies below are therefore
--- permissive for anon (dev phase). Once auth lands, swap the "_anon_manage"
--- policies for owner/project-scoped ones — the public read/insert policies can
--- stay as-is.
 -- ===========================================================================
 
 create extension if not exists "pgcrypto";
@@ -22,20 +16,22 @@ create extension if not exists "pgcrypto";
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.geiger_forms (
-  id           uuid primary key default gen_random_uuid(),
-  slug         text not null unique,
-  title        text not null,
-  description  text not null default '',
-  status       text not null default 'Draft'
-                 check (status in ('Draft', 'Published', 'Archived')),
-  category     text,
-  tags         text[] not null default '{}',
-  schema       jsonb  not null default '{"fields": []}'::jsonb,  -- field definitions
-  settings     jsonb  not null default '{}'::jsonb,              -- builder settings
-  response_count integer not null default 0,
-  created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now(),
-  published_at timestamptz
+  id              uuid primary key default gen_random_uuid(),
+  project_id      uuid references public.flow_projects(id) on delete set null,
+  created_by      uuid references auth.users(id) on delete set null,
+  slug            text not null unique,
+  title           text not null,
+  description     text not null default '',
+  status          text not null default 'Draft'
+                    check (status in ('Draft', 'Published', 'Archived')),
+  category        text,
+  tags            text[] not null default '{}',
+  schema          jsonb not null default '{"fields": []}'::jsonb,
+  settings        jsonb not null default '{}'::jsonb,
+  response_count  integer not null default 0,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now(),
+  published_at    timestamptz
 );
 
 create table if not exists public.geiger_form_responses (
@@ -57,8 +53,12 @@ create table if not exists public.geiger_form_responses (
 -- Indexes
 -- ---------------------------------------------------------------------------
 
+create index if not exists geiger_forms_project_idx
+  on public.geiger_forms (project_id, updated_at desc);
 create index if not exists geiger_forms_status_idx
   on public.geiger_forms (status, updated_at desc);
+create index if not exists geiger_forms_created_by_idx
+  on public.geiger_forms (created_by) where created_by is not null;
 create index if not exists geiger_form_responses_form_idx
   on public.geiger_form_responses (form_id, submitted_at desc);
 create index if not exists geiger_form_responses_answers_idx
@@ -128,12 +128,54 @@ create policy geiger_form_responses_public_insert on public.geiger_form_response
     )
   );
 
--- Dev phase: admin workspace runs as anon. Grant it full management access.
--- Replace these two policies with owner/project-scoped rules once auth is wired.
-drop policy if exists geiger_forms_anon_manage on public.geiger_forms;
-create policy geiger_forms_anon_manage on public.geiger_forms
-  for all to anon, authenticated using (true) with check (true);
+-- Authenticated: project members manage project-scoped forms.
+drop policy if exists geiger_forms_project_manage on public.geiger_forms;
+create policy geiger_forms_project_manage on public.geiger_forms
+  for all to authenticated
+  using (project_id is not null and public.flow_is_project_member(project_id))
+  with check (project_id is not null and public.flow_is_project_member(project_id));
 
-drop policy if exists geiger_form_responses_anon_manage on public.geiger_form_responses;
-create policy geiger_form_responses_anon_manage on public.geiger_form_responses
-  for all to anon, authenticated using (true) with check (true);
+-- Authenticated: owners manage standalone forms (no project).
+drop policy if exists geiger_forms_owner_manage on public.geiger_forms;
+create policy geiger_forms_owner_manage on public.geiger_forms
+  for all to authenticated
+  using (project_id is null and created_by = auth.uid())
+  with check (project_id is null and created_by = auth.uid());
+
+-- Authenticated: project members manage responses to project-scoped forms.
+drop policy if exists geiger_form_responses_project_manage on public.geiger_form_responses;
+create policy geiger_form_responses_project_manage on public.geiger_form_responses
+  for all to authenticated
+  using (
+    exists (
+      select 1 from public.geiger_forms f
+      where f.id = form_id and f.project_id is not null
+        and public.flow_is_project_member(f.project_id)
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.geiger_forms f
+      where f.id = form_id and f.project_id is not null
+        and public.flow_is_project_member(f.project_id)
+    )
+  );
+
+-- Authenticated: owners manage responses to standalone forms.
+drop policy if exists geiger_form_responses_owner_manage on public.geiger_form_responses;
+create policy geiger_form_responses_owner_manage on public.geiger_form_responses
+  for all to authenticated
+  using (
+    exists (
+      select 1 from public.geiger_forms f
+      where f.id = form_id and f.project_id is null
+        and f.created_by = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.geiger_forms f
+      where f.id = form_id and f.project_id is null
+        and f.created_by = auth.uid()
+    )
+  );

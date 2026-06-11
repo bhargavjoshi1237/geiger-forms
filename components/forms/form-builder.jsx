@@ -157,7 +157,7 @@ function FormIntroCard({ title, description, onTitleChange, onDescriptionChange 
   return (
     <Card className="relative p-6">
       <Input value={title} onChange={(e) => onTitleChange(e.target.value)} aria-label="Form title" className="h-10 border-transparent bg-transparent px-0 text-[26px] font-semibold leading-tight text-white" />
-      <Textarea value={description} onChange={(e) => onDescriptionChange(e.target.value)} aria-label="Form description" className="mt-4 min-h-24 resize-none border-[#2a2a2a] bg-[#202020] pr-3 text-[13px] leading-5 text-[#d4d4d4]" />
+      <Textarea value={description} onChange={(e) => onDescriptionChange(e.target.value)} aria-label="Form description" className="mt-4 min-h-24 resize-none border-border bg-surface-card pr-3 text-[13px] leading-5 text-muted-foreground" />
     </Card>
   );
 }
@@ -165,23 +165,23 @@ function FormIntroCard({ title, description, onTitleChange, onDescriptionChange 
 function StepDivider({ step, onTitleChange, onRemove }) {
   return (
     <div className="relative flex items-center gap-3">
-      <div className="h-px flex-1 bg-[#2a2a2a]" />
-      <div className="flex items-center gap-2 rounded-md border border-[#2a2a2a] bg-[#1a1a1a] px-2 py-1">
-        <SplitSquareVertical className="h-3.5 w-3.5 shrink-0 text-[#525252]" />
-        <Input value={step.title} onChange={(e) => onTitleChange(e.target.value)} className="h-auto w-32 border-transparent bg-transparent px-0 py-0 text-xs font-medium text-[#a3a3a3] focus:border-transparent focus:text-white" placeholder="Step name..." />
-        <button type="button" onClick={onRemove} className="text-[#525252] transition-colors hover:text-[#a3a3a3]"><X className="h-3 w-3" /></button>
+      <div className="h-px flex-1 bg-surface-hover" />
+      <div className="flex items-center gap-2 rounded-md border border-border bg-surface-subtle px-2 py-1">
+        <SplitSquareVertical className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+        <Input value={step.title} onChange={(e) => onTitleChange(e.target.value)} className="h-auto w-32 border-transparent bg-transparent px-0 py-0 text-xs font-medium text-muted-foreground focus:border-transparent focus:text-foreground" placeholder="Step name..." />
+        <button type="button" onClick={onRemove} className="text-text-tertiary transition-colors hover:text-muted-foreground"><X className="h-3 w-3" /></button>
       </div>
-      <div className="h-px flex-1 bg-[#2a2a2a]" />
+      <div className="h-px flex-1 bg-surface-hover" />
     </div>
   );
 }
 
 function ConditionsPanel({ conditions, allFields, onAdd, onUpdate, onRemove }) {
   return (
-    <div className="rounded-lg border border-[#2a2a2a] bg-[#161616] p-3.5">
+    <div className="rounded-lg border border-border bg-background p-3.5">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-sm font-medium text-[#d4d4d4]">
-          <GitBranch className="h-4 w-4 text-[#737373]" />
+        <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <GitBranch className="h-4 w-4 text-text-secondary" />
           Show This Field Only When
         </span>
         <Button type="button" variant="outline" size="sm" onClick={onAdd} className="h-8 gap-1.5">
@@ -191,17 +191,17 @@ function ConditionsPanel({ conditions, allFields, onAdd, onUpdate, onRemove }) {
       </div>
 
       {conditions.length === 0 ? (
-        <div className="rounded-md border border-dashed border-[#2a2a2a] bg-[#1a1a1a] px-3 py-4 text-center">
-          <p className="text-xs text-[#737373]">No conditions yet — this field is always visible.</p>
+        <div className="rounded-md border border-dashed border-border bg-surface-subtle px-3 py-4 text-center">
+          <p className="text-xs text-text-secondary">No conditions yet — this field is always visible.</p>
         </div>
       ) : (
         <div className="space-y-2.5">
           {conditions.map((cond, i) => {
             const needsValue = cond.operator !== "Is Empty";
             return (
-              <div key={cond.id} className="rounded-md border border-[#2a2a2a] bg-[#1a1a1a] p-3">
+              <div key={cond.id} className="rounded-md border border-border bg-surface-subtle p-3">
                 <div className="flex gap-2">
-                  <Badge className="mt-1.5 h-6 w-9 shrink-0 justify-center rounded-md px-0 text-[10px] font-semibold tracking-wide text-[#a3a3a3]">
+                  <Badge className="mt-1.5 h-6 w-9 shrink-0 justify-center rounded-md px-0 text-[10px] font-semibold tracking-wide text-muted-foreground">
                     {i === 0 ? "IF" : "OR"}
                   </Badge>
                   <div className="min-w-0 flex-1 space-y-2">
@@ -220,7 +220,7 @@ function ConditionsPanel({ conditions, allFields, onAdd, onUpdate, onRemove }) {
                         size="icon"
                         onClick={() => onRemove(cond.id)}
                         aria-label="Remove condition"
-                        className="h-9 w-9 shrink-0 text-[#737373] hover:bg-[#2a0808] hover:text-[#f87171]"
+                        className="h-9 w-9 shrink-0 text-text-secondary hover:bg-[#2a0808] hover:text-[#f87171]"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -239,7 +239,7 @@ function ConditionsPanel({ conditions, allFields, onAdd, onUpdate, onRemove }) {
                           value={cond.value}
                           onChange={(e) => onUpdate(cond.id, { value: e.target.value })}
                           placeholder="Enter a value…"
-                          className="h-9 text-sm text-[#d4d4d4]"
+                          className="h-9 text-sm text-muted-foreground"
                         />
                       )}
                     </div>
@@ -261,24 +261,24 @@ function OptionsEditor({ options, onChange }) {
 
   return (
     <div className="mt-3">
-      <span className="text-xs font-medium text-[#e7e7e7]">Choices</span>
+      <span className="text-xs font-medium text-foreground">Choices</span>
       <div className="mt-2 space-y-1.5">
         {options.map((opt, i) => (
           <div key={i} className="flex items-center gap-1.5">
             <Input
               value={opt}
               onChange={(e) => update(i, e.target.value)}
-              className="h-8 flex-1 bg-[#161616] text-sm"
+              className="h-8 flex-1 bg-background text-sm"
               placeholder={`Option ${i + 1}`}
             />
-            <button type="button" onClick={() => remove(i)} className="text-[#525252] transition-colors hover:text-[#ef4444]">
+            <button type="button" onClick={() => remove(i)} className="text-text-tertiary transition-colors hover:text-[#ef4444]">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
         ))}
-        {options.length === 0 && <p className="text-[10px] text-[#525252]">No choices yet — add at least one.</p>}
+        {options.length === 0 && <p className="text-[10px] text-text-tertiary">No choices yet — add at least one.</p>}
       </div>
-      <button type="button" onClick={add} className="mt-2 flex items-center gap-1 text-[10px] text-[#737373] transition-colors hover:text-white">
+      <button type="button" onClick={add} className="mt-2 flex items-center gap-1 text-[10px] text-text-secondary transition-colors hover:text-foreground">
         <Plus className="h-3 w-3" />Add Choice
       </button>
     </div>
@@ -306,7 +306,7 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
       <button
         type="button"
         aria-label="Drag field"
-        className="absolute -left-8 top-3 z-10 cursor-grab rounded p-1 text-[#525252] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[#a3a3a3] active:cursor-grabbing"
+        className="absolute -left-8 top-3 z-10 cursor-grab rounded p-1 text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100 hover:text-muted-foreground active:cursor-grabbing"
       >
         <GripVertical className="h-4 w-4" />
       </button>
@@ -323,22 +323,22 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
                       <Badge className="shrink-0 border-[#1e3a5f] bg-[#0e1e2e] px-2 py-0.5 text-[11px] font-medium text-[#60a5fa]">Calc</Badge>
                     )}
                     {hasConditions && (
-                      <Badge className="text-[11px] text-[#737373]">
+                      <Badge className="text-[11px] text-text-secondary">
                         <GitBranch className="h-3 w-3" />{field.conditions.length}
                       </Badge>
                     )}
                     {field.required && (
-                      <Badge className="shrink-0 border-[#474747] bg-[#242424] px-2 py-0.5 text-[11px] text-[#a3a3a3]">Required</Badge>
+                      <Badge className="shrink-0 border-border-strong bg-surface-active px-2 py-0.5 text-[11px] text-muted-foreground">Required</Badge>
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <AccordionTrigger
                       aria-label={`${field.title} details`}
-                      className="h-8 w-8 flex-none items-center justify-center rounded-md p-0 py-0 text-[#737373] hover:bg-[#242424] hover:text-white hover:no-underline data-[state=open]:bg-[#242424] data-[state=open]:text-white [&>svg.accordion-chevron]:hidden"
+                      className="h-8 w-8 flex-none items-center justify-center rounded-md p-0 py-0 text-text-secondary hover:bg-surface-active hover:text-foreground hover:no-underline data-[state=open]:bg-surface-active data-[state=open]:text-foreground [&>svg.accordion-chevron]:hidden"
                     >
                       <ChevronDown className="h-4 w-4" /><span className="sr-only">Toggle details</span>
                     </AccordionTrigger>
-                    <Button type="button" variant="ghost" size="icon" aria-label="Remove field" className="h-8 w-8 text-[#737373] hover:text-white" onClick={onRemove}>
+                    <Button type="button" variant="ghost" size="icon" aria-label="Remove field" className="h-8 w-8 text-text-secondary hover:text-foreground" onClick={onRemove}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
@@ -348,30 +348,30 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
                   {isCalculated ? (
                     <div className="space-y-3">
                       <div>
-                        <label className="mb-1.5 block text-xs font-medium text-[#e7e7e7]">Formula</label>
+                        <label className="mb-1.5 block text-xs font-medium text-foreground">Formula</label>
                         <div className="relative">
-                          <Equal className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#525252]" />
+                          <Equal className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
                           <Input value={field.formula ?? ""} onChange={(e) => onChange({ formula: e.target.value })} placeholder="{Field A} + {Field B} x 1.5" className="h-9 pl-8 pr-3 font-mono text-sm text-[#60a5fa]" />
                         </div>
-                        <p className="mt-1.5 text-[10px] text-[#525252]">Reference other fields using curly braces: {"{Field Name}"}. Supports +, −, ×, ÷, and IF statements.</p>
+                        <p className="mt-1.5 text-[10px] text-text-tertiary">Reference other fields using curly braces: {"{Field Name}"}. Supports +, −, ×, ÷, and IF statements.</p>
                       </div>
                       <div className="rounded-md border border-[#1e3a5f] bg-[#0a1929] px-3 py-2.5">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-[#525252]">Live preview</p>
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">Live preview</p>
                         <p className="mt-1 font-mono text-sm text-[#93c5fd]">= 84.0 pts</p>
-                        <p className="mt-0.5 text-[10px] text-[#525252]">Calculated from current field values</p>
+                        <p className="mt-0.5 text-[10px] text-text-tertiary">Calculated from current field values</p>
                       </div>
                     </div>
                   ) : (
                     <>
                       <label className="block">
-                        <span className="text-xs font-medium text-[#e7e7e7]">Field type</span>
+                        <span className="text-xs font-medium text-foreground">Field type</span>
                         <Select
                           value={field.type}
                           onValueChange={(type) =>
                             onChange({ type, select: type === "select", Icon: getFieldIcon(type) })
                           }
                         >
-                          <SelectTrigger className="mt-2 h-9 bg-[#161616] text-sm">
+                          <SelectTrigger className="mt-2 h-9 bg-background text-sm">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -382,12 +382,12 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
                         </Select>
                       </label>
                       <label className="mt-3 block">
-                        <span className="text-xs font-medium text-[#e7e7e7]">Question label</span>
-                        <Input value={field.firstValue} onChange={(e) => onChange({ firstValue: e.target.value })} className={cn("mt-2 h-9 bg-[#161616] text-sm", field.required && "border-[#737373] shadow-[0_0_0_1px_rgba(255,255,255,0.18)]")} />
+                        <span className="text-xs font-medium text-foreground">Question label</span>
+                        <Input value={field.firstValue} onChange={(e) => onChange({ firstValue: e.target.value })} className={cn("mt-2 h-9 bg-background text-sm", field.required && "border-[#737373] shadow-[0_0_0_1px_rgba(255,255,255,0.18)]")} />
                       </label>
                       <label className="mt-3 block">
-                        <span className="text-xs font-medium text-[#e7e7e7]">{field.type === "file" ? "Hint" : "Placeholder"}</span>
-                        <Input value={field.secondValue} onChange={(e) => onChange({ secondValue: e.target.value })} className="mt-2 h-9 bg-[#161616] text-sm text-[#a3a3a3]" />
+                        <span className="text-xs font-medium text-foreground">{field.type === "file" ? "Hint" : "Placeholder"}</span>
+                        <Input value={field.secondValue} onChange={(e) => onChange({ secondValue: e.target.value })} className="mt-2 h-9 bg-background text-sm text-muted-foreground" />
                       </label>
                       {field.type === "select" && (
                         <OptionsEditor
@@ -399,7 +399,7 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
                   )}
 
                   {showConditions && (
-                    <div className="mt-4 border-t border-[#2a2a2a] pt-4">
+                    <div className="mt-4 border-t border-border pt-4">
                       <ConditionsPanel
                         conditions={field.conditions}
                         allFields={allFields.filter((f) => f.id !== field.id)}
@@ -415,7 +415,7 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
           </Card>
         </ContextMenuTrigger>
 
-        <ContextMenuContent className="w-52 bg-[#202020] border-[#333333] shadow-xl">
+        <ContextMenuContent className="w-52 bg-surface-card border-border shadow-xl">
           {!isCalculated && (
             <>
               <ContextMenuCheckboxItem checked={field.info} onCheckedChange={(info) => onChange({ info })}>
@@ -424,7 +424,7 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
               <ContextMenuCheckboxItem checked={field.required} onCheckedChange={(required) => onChange({ required })}>
                 Required field
               </ContextMenuCheckboxItem>
-              <ContextMenuSeparator className="bg-[#333333]" />
+              <ContextMenuSeparator className="bg-surface-strong" />
             </>
           )}
           <ContextMenuCheckboxItem
@@ -433,10 +433,10 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
           >
             <GitBranch className="h-3.5 w-3.5" />Conditional visibility
             {hasConditions && (
-              <span className="ml-auto rounded-full border border-[#2a2a2a] px-1.5 py-0 text-[10px] text-[#525252]">{field.conditions.length}</span>
+              <span className="ml-auto rounded-full border border-border px-1.5 py-0 text-[10px] text-text-tertiary">{field.conditions.length}</span>
             )}
           </ContextMenuCheckboxItem>
-          <ContextMenuSeparator className="bg-[#333333]" />
+          <ContextMenuSeparator className="bg-surface-strong" />
           <ContextMenuItem variant="destructive" onSelect={onRemove}>
             <X className="h-3.5 w-3.5" />Remove field
           </ContextMenuItem>
@@ -449,9 +449,9 @@ function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart
 function SidebarField({ field, onToggle }) {
   const Icon = field.Icon || Mail;
   return (
-    <div className="flex h-8 items-center gap-2 text-sm text-[#d4d4d4]">
-      <GripVertical className="h-3.5 w-3.5 shrink-0 text-[#737373]" />
-      <Icon className="h-4 w-4 shrink-0 text-[#a3a3a3]" />
+    <div className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
+      <GripVertical className="h-3.5 w-3.5 shrink-0 text-text-secondary" />
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       <span className="min-w-0 flex-1 truncate">{field.title}</span>
       {field.type === "calculated" && <span className="mr-1 rounded-full border border-[#1e3a5f] bg-[#0e1e2e] px-1 text-[9px] text-[#60a5fa]">Calc</span>}
       <TinySwitch checked={field.included} onCheckedChange={onToggle} label={`${field.title} included`} />
@@ -464,12 +464,12 @@ function FieldGroup({ title, icon: Icon, count, children, defaultOpen = true }) 
   return (
     <div>
       <div className="flex h-8 items-center gap-2">
-        <button type="button" onClick={() => setOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-2 text-left text-xs font-medium text-[#a3a3a3] transition-colors hover:text-white" aria-expanded={open}>
+        <button type="button" onClick={() => setOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground" aria-expanded={open}>
           <Icon className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{title}</span>
           <Badge className="ml-1 rounded-full px-1.5 py-0 text-[10px]">{count}</Badge>
         </button>
-        <button type="button" onClick={() => setOpen((v) => !v)} className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[#a3a3a3] transition-colors hover:bg-[#242424] hover:text-white">
+        <button type="button" onClick={() => setOpen((v) => !v)} className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-active hover:text-foreground">
           <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
         </button>
       </div>
@@ -480,7 +480,7 @@ function FieldGroup({ title, icon: Icon, count, children, defaultOpen = true }) 
 
 function CoverChoice({ label, active, onClick }) {
   return (
-    <Button type="button" variant="outline" onClick={onClick} className={cn("h-[64px] flex-1 flex-col gap-1 bg-[#161616] text-xs", active && "border-[#737373] bg-[#202020] text-white")}>
+    <Button type="button" variant="outline" onClick={onClick} className={cn("h-[64px] flex-1 flex-col gap-1 bg-background text-xs", active && "border-[#737373] bg-surface-card text-white")}>
       <FileText className="h-5 w-5" />{label}
     </Button>
   );
@@ -488,7 +488,7 @@ function CoverChoice({ label, active, onClick }) {
 
 function ResizeHandle({ label, onMouseDown }) {
   return (
-    <button type="button" aria-label={label} title={label} onMouseDown={onMouseDown} className="absolute bottom-1 right-1 grid h-7 w-7 cursor-nwse-resize place-items-center rounded-md p-1 text-zinc-400 opacity-50 transition-opacity hover:bg-[#242424] hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#474747]">
+    <button type="button" aria-label={label} title={label} onMouseDown={onMouseDown} className="absolute bottom-1 right-1 grid h-7 w-7 cursor-nwse-resize place-items-center rounded-md p-1 text-muted-foreground opacity-50 transition-opacity hover:bg-surface-active hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-strong">
       <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
         <path d="M 6 10 L 10 6 L 10 10 Z" fill="currentColor" />
         <path d="M 2 10 L 10 2 L 10 4 L 4 10 Z" fill="currentColor" />
@@ -501,8 +501,8 @@ function SidebarRow({ label, hint, children }) {
   return (
     <div className="flex items-start justify-between gap-3 py-2.5">
       <div className="min-w-0">
-        <p className="text-sm text-[#d4d4d4] leading-snug">{label}</p>
-        {hint && <p className="mt-0.5 text-[10px] text-[#525252]">{hint}</p>}
+        <p className="text-sm text-muted-foreground leading-snug">{label}</p>
+        {hint && <p className="mt-0.5 text-[10px] text-text-tertiary">{hint}</p>}
       </div>
       <div className="shrink-0 pt-0.5">{children}</div>
     </div>
@@ -527,11 +527,11 @@ function RightSidebar({
   const scheduleActive = openDate || closeDate;
 
   return (
-    <aside className="hidden w-[286px] shrink-0 flex-col border-l border-[#2a2a2a] bg-[#1a1a1a] lg:flex">
+    <aside className="hidden w-[286px] shrink-0 flex-col border-l border-border bg-surface-subtle lg:flex">
       <div className="scrollbar-subtle flex-1 overflow-y-auto px-4 py-4">
         <Accordion type="multiple" defaultValue={["fields", "form-style", "submission"]}>
 
-          <AccordionItem value="fields" className="border-[#2a2a2a]">
+          <AccordionItem value="fields" className="border-border">
             <AccordionTrigger className="py-2 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />Fields</span>
             </AccordionTrigger>
@@ -555,7 +555,7 @@ function RightSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="steps" className="border-[#2a2a2a]">
+          <AccordionItem value="steps" className="border-border">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2">
                 <SplitSquareVertical className="h-4 w-4" />Steps
@@ -564,17 +564,17 @@ function RightSidebar({
             </AccordionTrigger>
             <AccordionContent className="pb-5 space-y-2">
               {steps.map((s, i) => (
-                <div key={s.id} className="flex items-center gap-2 rounded-md border border-[#2a2a2a] bg-[#161616] px-2.5 py-1.5">
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#2a2a2a] text-[10px] font-semibold text-[#737373]">{i + 1}</span>
-                  <Input value={s.title} onChange={(e) => onUpdateStep(s.id, e.target.value)} className="h-auto min-w-0 flex-1 border-transparent bg-transparent px-0 py-0 text-xs text-[#d4d4d4] focus:border-transparent" placeholder="Step name..." />
-                  <button type="button" onClick={() => onRemoveStep(s.id)} className="text-[#525252] hover:text-[#a3a3a3]"><X className="h-3.5 w-3.5" /></button>
+                <div key={s.id} className="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[10px] font-semibold text-text-secondary">{i + 1}</span>
+                  <Input value={s.title} onChange={(e) => onUpdateStep(s.id, e.target.value)} className="h-auto min-w-0 flex-1 border-transparent bg-transparent px-0 py-0 text-xs text-muted-foreground focus:border-transparent" placeholder="Step name..." />
+                  <button type="button" onClick={() => onRemoveStep(s.id)} className="text-text-tertiary hover:text-muted-foreground"><X className="h-3.5 w-3.5" /></button>
                 </div>
               ))}
               <Button type="button" variant="outline" className="w-full h-8 text-xs" onClick={onAddStep}><Plus className="h-3.5 w-3.5" />Add step</Button>
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="branches" className="border-[#2a2a2a]">
+          <AccordionItem value="branches" className="border-border">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2">
                 <GitBranch className="h-4 w-4" />Branches
@@ -587,41 +587,41 @@ function RightSidebar({
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-medium text-[#d4d4d4]">Enable branching paths</p>
-                    <p className="text-[10px] text-[#525252]">Route respondents through different section sequences</p>
+                    <p className="text-xs font-medium text-muted-foreground">Enable branching paths</p>
+                    <p className="text-[10px] text-text-tertiary">Route respondents through different section sequences</p>
                   </div>
                   <Switch checked={branchingEnabled} onCheckedChange={onBranchingEnabledChange} />
                 </div>
                 {branchingEnabled && (
                   <div className="space-y-2">
                     {branches.map((b) => (
-                      <div key={b.id} className="space-y-2 rounded-md border border-[#2a2a2a] bg-[#161616] p-3">
+                      <div key={b.id} className="space-y-2 rounded-md border border-border bg-background p-3">
                         <div className="flex items-center justify-between gap-2">
                           <Input
                             value={b.name}
                             onChange={(e) => onUpdateBranch(b.id, { name: e.target.value })}
-                            className="h-auto flex-1 border-transparent bg-transparent px-0 py-0 text-xs font-medium text-[#d4d4d4] focus:border-transparent"
+                            className="h-auto flex-1 border-transparent bg-transparent px-0 py-0 text-xs font-medium text-muted-foreground focus:border-transparent"
                             placeholder="Branch name..."
                           />
-                          <button type="button" onClick={() => onRemoveBranch(b.id)} className="shrink-0 text-[#525252] hover:text-[#a3a3a3]">
+                          <button type="button" onClick={() => onRemoveBranch(b.id)} className="shrink-0 text-text-tertiary hover:text-muted-foreground">
                             <X className="h-3.5 w-3.5" />
                           </button>
                         </div>
                         <div className="space-y-1.5">
-                          <p className="text-[10px] uppercase tracking-wide text-[#525252]">Condition</p>
+                          <p className="text-[10px] uppercase tracking-wide text-text-tertiary">Condition</p>
                           <Input
                             value={b.condition}
                             onChange={(e) => onUpdateBranch(b.id, { condition: e.target.value })}
-                            className="h-6 bg-[#1a1a1a] px-2 text-xs text-[#d4d4d4]"
+                            className="h-6 bg-surface-subtle px-2 text-xs text-muted-foreground"
                             placeholder="e.g. Priority equals Urgent"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <p className="text-[10px] uppercase tracking-wide text-[#525252]">Named outcome</p>
+                          <p className="text-[10px] uppercase tracking-wide text-text-tertiary">Named outcome</p>
                           <Input
                             value={b.outcome}
                             onChange={(e) => onUpdateBranch(b.id, { outcome: e.target.value })}
-                            className="h-6 bg-[#1a1a1a] px-2 text-xs text-[#d4d4d4]"
+                            className="h-6 bg-surface-subtle px-2 text-xs text-muted-foreground"
                             placeholder="e.g. Escalated"
                           />
                         </div>
@@ -630,7 +630,7 @@ function RightSidebar({
                     <Button type="button" variant="outline" className="w-full h-8 text-xs" onClick={onAddBranch}>
                       <Plus className="h-3.5 w-3.5" />Add branch
                     </Button>
-                    <p className="text-[10px] leading-4 text-[#525252]">
+                    <p className="text-[10px] leading-4 text-text-tertiary">
                       Each named outcome is tracked separately in analytics with its own completion rate and drop-off data.
                     </p>
                   </div>
@@ -639,23 +639,23 @@ function RightSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="form-style" className="border-[#2a2a2a]">
+          <AccordionItem value="form-style" className="border-border">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2"><Wand2 className="h-4 w-4" />Form Style</span>
             </AccordionTrigger>
             <AccordionContent className="pb-5">
-              <p className="mb-3 inline-flex items-center gap-2 text-xs text-[#a3a3a3]"><FileText className="h-3.5 w-3.5" />Cover Image</p>
+              <p className="mb-3 inline-flex items-center gap-2 text-xs text-muted-foreground"><FileText className="h-3.5 w-3.5" />Cover Image</p>
               <div className="flex gap-3">
                 <CoverChoice label="No Cover" active={coverStyle === "none"} onClick={() => onCoverStyleChange("none")} />
                 <CoverChoice label="Cover Image" active={coverStyle === "cover"} onClick={() => onCoverStyleChange("cover")} />
               </div>
-              <label className="mt-4 flex h-8 items-center justify-between text-sm font-medium text-[#d4d4d4]">
+              <label className="mt-4 flex h-8 items-center justify-between text-sm font-medium text-muted-foreground">
                 Show Icon<TinySwitch checked={showIcon} onCheckedChange={onShowIconChange} label="Show icon" />
               </label>
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="schedule" className="border-[#2a2a2a]">
+          <AccordionItem value="schedule" className="border-border">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2">
                 <Clock className="h-4 w-4" />Schedule
@@ -664,24 +664,24 @@ function RightSidebar({
             </AccordionTrigger>
             <AccordionContent className="pb-5 space-y-3">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#a3a3a3]">Open date</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Open date</label>
                 <div className="relative">
-                  <Calendar className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#525252]" />
-                  <Input type="date" value={openDate} onChange={(e) => onOpenDateChange(e.target.value)} className="h-8 pl-8 pr-2 text-xs text-[#d4d4d4] [color-scheme:dark]" />
+                  <Calendar className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
+                  <Input type="date" value={openDate} onChange={(e) => onOpenDateChange(e.target.value)} className="h-8 pl-8 pr-2 text-xs text-muted-foreground [color-scheme:dark]" />
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#a3a3a3]">Close date</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Close date</label>
                 <div className="relative">
-                  <Calendar className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#525252]" />
-                  <Input type="date" value={closeDate} onChange={(e) => onCloseDateChange(e.target.value)} className="h-8 pl-8 pr-2 text-xs text-[#d4d4d4] [color-scheme:dark]" />
+                  <Calendar className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
+                  <Input type="date" value={closeDate} onChange={(e) => onCloseDateChange(e.target.value)} className="h-8 pl-8 pr-2 text-xs text-muted-foreground [color-scheme:dark]" />
                 </div>
               </div>
-              {scheduleActive && <button type="button" onClick={() => { onOpenDateChange(""); onCloseDateChange(""); }} className="text-[10px] text-[#525252] transition-colors hover:text-[#a3a3a3]">Clear schedule</button>}
+              {scheduleActive && <button type="button" onClick={() => { onOpenDateChange(""); onCloseDateChange(""); }} className="text-[10px] text-text-tertiary transition-colors hover:text-muted-foreground">Clear schedule</button>}
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="submission" className="border-[#2a2a2a]">
+          <AccordionItem value="submission" className="border-border">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2"><FolderOpen className="h-4 w-4" />Submission</span>
             </AccordionTrigger>
@@ -693,30 +693,30 @@ function RightSidebar({
                 <TinySwitch checked={submitAnother} onCheckedChange={onSubmitAnotherChange} label="Submit another" />
               </SidebarRow>
 
-              <div className="border-t border-[#242424] pt-3 mt-1">
-                <label className="mb-1.5 block text-xs font-medium text-[#a3a3a3]"><Hash className="mr-1 inline h-3 w-3" />Response limit</label>
+              <div className="border-t border-surface-active pt-3 mt-1">
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground"><Hash className="mr-1 inline h-3 w-3" />Response limit</label>
                 <div className="flex gap-2">
-                  <Input type="number" min="1" value={responseLimit} onChange={(e) => onResponseLimitChange(e.target.value)} placeholder="No limit" className="h-8 flex-1 px-2.5 text-xs text-[#d4d4d4]" />
-                  {responseLimit && <button type="button" onClick={() => onResponseLimitChange("")} className="text-[#525252] hover:text-[#a3a3a3]"><X className="h-3.5 w-3.5" /></button>}
+                  <Input type="number" min="1" value={responseLimit} onChange={(e) => onResponseLimitChange(e.target.value)} placeholder="No limit" className="h-8 flex-1 px-2.5 text-xs text-muted-foreground" />
+                  {responseLimit && <button type="button" onClick={() => onResponseLimitChange("")} className="text-text-tertiary hover:text-muted-foreground"><X className="h-3.5 w-3.5" /></button>}
                 </div>
               </div>
 
-              <div className="border-t border-[#242424] pt-3 mt-3">
-                <p className="mb-2 text-xs font-medium text-[#a3a3a3]">Post-submission screen</p>
-                <div className="flex gap-1 rounded-md border border-[#2a2a2a] bg-[#161616] p-1">
+              <div className="border-t border-surface-active pt-3 mt-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Post-submission screen</p>
+                <div className="flex gap-1 rounded-md border border-border bg-background p-1">
                   {["message", "redirect"].map((type) => (
-                    <button key={type} type="button" onClick={() => onThankYouTypeChange(type)} className={cn("flex-1 rounded py-1 text-xs font-medium capitalize transition-colors", thankYouType === type ? "bg-[#2a2a2a] text-white" : "text-[#737373] hover:text-[#a3a3a3]")}>
+                    <button key={type} type="button" onClick={() => onThankYouTypeChange(type)} className={cn("flex-1 rounded py-1 text-xs font-medium capitalize transition-colors", thankYouType === type ? "bg-surface-hover text-white" : "text-text-secondary hover:text-muted-foreground")}>
                       {type === "message" ? "Message" : "Redirect"}
                     </button>
                   ))}
                 </div>
                 <div className="mt-2">
                   {thankYouType === "message" ? (
-                    <Textarea value={thankYouText} onChange={(e) => onThankYouTextChange(e.target.value)} rows={3} placeholder="Thank you message..." className="min-h-20 resize-none px-2.5 py-2 text-xs text-[#d4d4d4]" />
+                    <Textarea value={thankYouText} onChange={(e) => onThankYouTextChange(e.target.value)} rows={3} placeholder="Thank you message..." className="min-h-20 resize-none px-2.5 py-2 text-xs text-muted-foreground" />
                   ) : (
                     <div className="relative">
-                      <Link2 className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#525252]" />
-                      <Input type="url" value={thankYouUrl} onChange={(e) => onThankYouUrlChange(e.target.value)} placeholder="https://..." className="h-8 pl-8 pr-2.5 text-xs text-[#d4d4d4]" />
+                      <Link2 className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
+                      <Input type="url" value={thankYouUrl} onChange={(e) => onThankYouUrlChange(e.target.value)} placeholder="https://..." className="h-8 pl-8 pr-2.5 text-xs text-muted-foreground" />
                     </div>
                   )}
                 </div>
@@ -724,7 +724,7 @@ function RightSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="scoring" className="border-[#2a2a2a]">
+          <AccordionItem value="scoring" className="border-border">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2"><Target className="h-4 w-4" />Auto-triage</span>
             </AccordionTrigger>
@@ -732,45 +732,45 @@ function RightSidebar({
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-medium text-[#d4d4d4]">Enable response scoring</p>
-                    <p className="text-[10px] text-[#525252]">Score each submission; auto-assign priority</p>
+                    <p className="text-xs font-medium text-muted-foreground">Enable response scoring</p>
+                    <p className="text-[10px] text-text-tertiary">Score each submission; auto-assign priority</p>
                   </div>
                   <Switch checked={scoringEnabled} onCheckedChange={onScoringEnabledChange} />
                 </div>
                 {scoringEnabled && (
-                  <div className="space-y-3 rounded-md border border-[#2a2a2a] bg-[#161616] p-3">
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-[#525252]">Priority thresholds</p>
+                  <div className="space-y-3 rounded-md border border-border bg-background p-3">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">Priority thresholds</p>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="w-16 shrink-0 rounded-full border border-[#7f1d1d] bg-[#2a0808] px-2 py-0.5 text-center text-[10px] font-medium text-[#f87171]">High</span>
-                        <span className="text-xs text-[#525252]">≥</span>
+                        <span className="text-xs text-text-tertiary">≥</span>
                         <Input
                           type="number"
                           value={highThreshold}
                           onChange={(e) => onHighThresholdChange(e.target.value)}
-                          className="h-6 w-16 bg-[#1a1a1a] px-2 text-xs"
+                          className="h-6 w-16 bg-surface-subtle px-2 text-xs"
                           min="0"
                         />
-                        <span className="text-xs text-[#525252]">points</span>
+                        <span className="text-xs text-text-tertiary">points</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-16 shrink-0 rounded-full border border-[#7c2d12] bg-[#2a1a08] px-2 py-0.5 text-center text-[10px] font-medium text-[#fb923c]">Medium</span>
-                        <span className="text-xs text-[#525252]">≥</span>
+                        <span className="text-xs text-text-tertiary">≥</span>
                         <Input
                           type="number"
                           value={mediumThreshold}
                           onChange={(e) => onMediumThresholdChange(e.target.value)}
-                          className="h-6 w-16 bg-[#1a1a1a] px-2 text-xs"
+                          className="h-6 w-16 bg-surface-subtle px-2 text-xs"
                           min="0"
                         />
-                        <span className="text-xs text-[#525252]">points</span>
+                        <span className="text-xs text-text-tertiary">points</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-16 shrink-0 rounded-full border border-[#44403c] bg-[#1c1917] px-2 py-0.5 text-center text-[10px] font-medium text-[#78716c]">Low</span>
-                        <span className="text-xs text-[#525252]">{"< "}{mediumThreshold || "—"} points</span>
+                        <span className="text-xs text-text-tertiary">{"< "}{mediumThreshold || "—"} points</span>
                       </div>
                     </div>
-                    <p className="text-[10px] leading-4 text-[#525252]">
+                    <p className="text-[10px] leading-4 text-text-tertiary">
                       Assign point values to individual answer options in the field editor. The total determines priority on submission.
                     </p>
                   </div>
@@ -779,26 +779,26 @@ function RightSidebar({
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="history" className="border-[#2a2a2a]">
+          <AccordionItem value="history" className="border-border">
             <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
               <span className="inline-flex items-center gap-2"><History className="h-4 w-4" />History</span>
             </AccordionTrigger>
             <AccordionContent className="pb-5">
               <div className="space-y-2">
-                {versionsLoading && <p className="text-[10px] text-[#525252]">Loading versions…</p>}
+                {versionsLoading && <p className="text-[10px] text-text-tertiary">Loading versions…</p>}
                 {!versionsLoading && versions.length === 0 && (
-                  <p className="text-[10px] leading-4 text-[#525252]">No saved versions yet. Save one to snapshot this form.</p>
+                  <p className="text-[10px] leading-4 text-text-tertiary">No saved versions yet. Save one to snapshot this form.</p>
                 )}
                 {versions.map((v) => (
-                  <div key={v.id} className={cn("rounded-md border p-3", v.current ? "border-[#474747] bg-[#202020]" : "border-[#2a2a2a] bg-[#161616]")}>
+                  <div key={v.id} className={cn("rounded-md border p-3", v.current ? "border-border-strong bg-surface-card" : "border-border bg-background")}>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-white">{v.label}</span>
-                      {v.current && <span className="rounded-full bg-[#2a2a2a] px-1.5 py-0 text-[10px] text-[#737373]">Current</span>}
+                      {v.current && <span className="rounded-full bg-surface-hover px-1.5 py-0 text-[10px] text-text-secondary">Current</span>}
                     </div>
-                    <p className="mt-0.5 text-[10px] text-[#525252]">{v.when} · {v.author}</p>
-                    <p className="mt-1.5 text-[10px] leading-4 text-[#737373]">{v.notes}</p>
+                    <p className="mt-0.5 text-[10px] text-text-tertiary">{v.when} · {v.author}</p>
+                    <p className="mt-1.5 text-[10px] leading-4 text-text-secondary">{v.notes}</p>
                     {!v.current && (
-                      <button type="button" onClick={() => onRestoreVersion(v)} className="mt-2 flex items-center gap-1 text-[10px] text-[#525252] transition-colors hover:text-white">
+                      <button type="button" onClick={() => onRestoreVersion(v)} className="mt-2 flex items-center gap-1 text-[10px] text-text-tertiary transition-colors hover:text-foreground">
                         <RotateCcw className="h-3 w-3" />Restore this version
                       </button>
                     )}
@@ -1000,34 +1000,34 @@ function FormBuilderEditor({ slug, initialDoc }) {
     <div className="flex h-full min-h-[calc(100dvh-3.5rem)] flex-col overflow-hidden bg-[#121212] text-white">
       <div className="flex min-h-0 flex-1">
         <main className="scrollbar-subtle min-w-0 flex-1 overflow-y-auto bg-[#121212]">
-          <div className="flex items-center gap-1.5 border-b border-[#2a2a2a] px-4 py-2.5">
-            <button type="button" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="flex h-8 w-8 items-center justify-center rounded-md text-[#737373] transition-colors hover:bg-[#242424] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
+          <div className="flex items-center gap-1.5 border-b border-border px-4 py-2.5">
+            <button type="button" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-active hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">
               <Undo2 className="h-4 w-4" />
             </button>
-            <button type="button" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="flex h-8 w-8 items-center justify-center rounded-md text-[#737373] transition-colors hover:bg-[#242424] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
+            <button type="button" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-active hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">
               <Redo2 className="h-4 w-4" />
             </button>
             <div className="ml-auto flex items-center gap-3 text-xs">
               <span className={cn(
                 "flex items-center gap-1.5",
-                saveState === "error" ? "text-[#f87171]" : "text-[#a3a3a3]",
+                saveState === "error" ? "text-[#f87171]" : "text-muted-foreground",
               )}>
                 {saveState === "saving" ? (
-                  <RotateCcw className="h-3.5 w-3.5 animate-spin text-[#737373]" />
+                  <RotateCcw className="h-3.5 w-3.5 animate-spin text-text-secondary" />
                 ) : saveState === "error" ? (
                   <X className="h-3.5 w-3.5" />
                 ) : (
-                  <CheckIcon className="h-3.5 w-3.5 text-[#737373]" />
+                  <CheckIcon className="h-3.5 w-3.5 text-text-secondary" />
                 )}
-                <p className="text-neutral-400 font-sans antialiased">
+                <p className="text-muted-foreground font-sans antialiased">
                 {saveState === "saving" ? "Saving…" : saveState === "error" ? "Save failed" : "Saved"}</p>
               </span>
             </div>
           </div>
           <section className="relative min-h-full">
             {coverStyle === "cover" && (
-              <div className="relative h-[164px] border-b border-[#2a2a2a] bg-[linear-gradient(106deg,#17353a_0%,#3e3a24_48%,#5a2d29_100%)]">
-                <Button type="button" variant="outline" size="sm" className="absolute right-4 top-3 bg-[#1a1a1a]">Change Cover</Button>
+              <div className="relative h-[164px] border-b border-border bg-[linear-gradient(106deg,#17353a_0%,#3e3a24_48%,#5a2d29_100%)]">
+                <Button type="button" variant="outline" size="sm" className="absolute right-4 top-3 bg-surface-subtle">Change Cover</Button>
               </div>
             )}
 
@@ -1091,9 +1091,9 @@ function FormBuilderEditor({ slug, initialDoc }) {
               </div>
 
               <div ref={canvasBottomRef} className="mt-6 flex justify-center gap-3">
-                <Button type="button" variant="outline" size="sm" onClick={addField} className="gap-1.5 bg-[#1a1a1a]"><Plus className="h-3.5 w-3.5" />Add field</Button>
-                <Button type="button" variant="outline" size="sm" onClick={addCalculated} className="gap-1.5 bg-[#1a1a1a]"><FunctionSquare className="h-3.5 w-3.5" />Calculated</Button>
-                <Button type="button" variant="outline" size="sm" onClick={addStep} className="gap-1.5 bg-[#1a1a1a]"><SplitSquareVertical className="h-3.5 w-3.5" />Add step</Button>
+                <Button type="button" variant="outline" size="sm" onClick={addField} className="gap-1.5 bg-surface-subtle"><Plus className="h-3.5 w-3.5" />Add field</Button>
+                <Button type="button" variant="outline" size="sm" onClick={addCalculated} className="gap-1.5 bg-surface-subtle"><FunctionSquare className="h-3.5 w-3.5" />Calculated</Button>
+                <Button type="button" variant="outline" size="sm" onClick={addStep} className="gap-1.5 bg-surface-subtle"><SplitSquareVertical className="h-3.5 w-3.5" />Add step</Button>
               </div>
             </div>
           </section>
@@ -1124,13 +1124,13 @@ function FormBuilderEditor({ slug, initialDoc }) {
             <DialogDescription>Snapshot the current state of this form. You can restore any saved version from the History panel.</DialogDescription>
           </DialogHeader>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-[#a3a3a3]">Change notes <span className="text-[#525252]">(optional)</span></label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Change notes <span className="text-text-tertiary">(optional)</span></label>
             <Textarea
               value={saveNotes}
               onChange={(e) => setSaveNotes(e.target.value)}
               rows={3}
               placeholder="Describe what changed in this version..."
-              className="resize-none text-[#d4d4d4]"
+              className="resize-none text-muted-foreground"
               autoFocus
             />
           </div>
@@ -1166,9 +1166,9 @@ export function FormBuilder({ formId }) {
 
   if (error) {
     return (
-      <div className="flex h-full min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-2 bg-[#121212] text-center text-sm text-[#a3a3a3]">
-        <p className="font-medium text-[#e7e7e7]">Couldn&apos;t load this form</p>
-        <p className="max-w-sm text-xs text-[#737373]">
+      <div className="flex h-full min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-2 bg-[#121212] text-center text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">Couldn&apos;t load this form</p>
+        <p className="max-w-sm text-xs text-text-secondary">
           This form couldn&apos;t be loaded right now. Refresh the page or try again shortly.
         </p>
       </div>
@@ -1178,7 +1178,7 @@ export function FormBuilder({ formId }) {
   if (!doc) {
     return (
       <div className="flex h-full min-h-[calc(100dvh-3.5rem)] items-center justify-center bg-[#121212]">
-        <RotateCcw className="h-5 w-5 animate-spin text-[#737373]" />
+        <RotateCcw className="h-5 w-5 animate-spin text-text-secondary" />
       </div>
     );
   }

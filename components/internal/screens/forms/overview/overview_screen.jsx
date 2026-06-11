@@ -156,7 +156,7 @@ function getCompletionColor(pct) {
 function getStatusClass(status) {
   const styles = {
     Published: "border-[#166534] bg-[#0d2218] text-[#4ade80]",
-    Draft: "border-[#3f3f46] bg-[#242424] text-[#a3a3a3]",
+    Draft: "border-[#3f3f46] bg-surface-active text-muted-foreground",
     Archived: "border-[#44403c] bg-[#1c1917] text-[#a8a29e]",
   };
   return styles[status] || styles.Draft;
@@ -164,31 +164,31 @@ function getStatusClass(status) {
 
 function MetricCard({ icon: Icon, label, value, detail, tone = "neutral" }) {
   const tones = {
-    neutral: "text-[#737373]",
+    neutral: "text-text-secondary",
     good: "text-[#4ade80]",
     warn: "text-[#fbbf24]",
     info: "text-[#60a5fa]",
   };
 
   return (
-    <div className="rounded-md border border-[#2a2a2a] bg-[#1a1a1a] p-4">
+    <div className="rounded-md border border-border bg-surface-subtle p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium uppercase text-[#737373]">{label}</p>
+        <p className="text-xs font-medium uppercase text-text-secondary">{label}</p>
         {Icon && <Icon className={`h-4 w-4 shrink-0 ${tones[tone]}`} />}
       </div>
       <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
-      <p className="mt-1 text-xs text-[#737373]">{detail}</p>
+      <p className="mt-1 text-xs text-text-secondary">{detail}</p>
     </div>
   );
 }
 
 function CardShell({ title, subtitle, action, children, className = "" }) {
   return (
-    <section className={`flex flex-col rounded-md border border-[#2a2a2a] bg-[#1a1a1a] ${className}`}>
-      <div className="flex items-start justify-between gap-2 border-b border-[#2a2a2a] px-4 py-3.5">
+    <section className={`flex flex-col rounded-md border border-border bg-surface-subtle ${className}`}>
+      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3.5">
         <div>
           <h2 className="text-sm font-medium text-white">{title}</h2>
-          {subtitle && <p className="mt-1 text-xs text-[#737373]">{subtitle}</p>}
+          {subtitle && <p className="mt-1 text-xs text-text-secondary">{subtitle}</p>}
         </div>
         {action}
       </div>
@@ -201,7 +201,7 @@ function EmptyChart({ label = "No data in this range yet" }) {
   return (
     <div className="flex h-full min-h-40 flex-col items-center justify-center gap-1 text-center">
       <Inbox className="h-5 w-5 text-[#3a3a3a]" />
-      <p className="text-xs text-[#525252]">{label}</p>
+      <p className="text-xs text-text-tertiary">{label}</p>
     </div>
   );
 }
@@ -218,7 +218,7 @@ function SubmissionsTrend({ data, total }) {
       subtitle="Daily responses over the last 14 days, with 7-day average"
       className="lg:col-span-3"
       action={
-        <span className="flex items-center gap-1.5 rounded-full border border-[#2a2a2a] bg-[#202020] px-2.5 py-1 text-[11px] font-medium text-[#a3a3a3]">
+        <span className="flex items-center gap-1.5 rounded-full border border-border bg-surface-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
           <TrendingUp className="h-3 w-3 text-[#60a5fa]" />
           {total.toLocaleString()} total
         </span>
@@ -272,11 +272,11 @@ function StatusBreakdown({ data, total }) {
           <div className="mt-2 space-y-1.5">
             {data.map((entry) => (
               <div key={entry.name} className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 text-[#a3a3a3]">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.fill }} />
                   {entry.name}
                 </span>
-                <span className="tabular-nums text-[#e7e7e7]">
+                <span className="tabular-nums text-foreground">
                   {entry.value} · {Math.round((entry.value / total) * 100)}%
                 </span>
               </div>
@@ -351,17 +351,17 @@ function PriorityBreakdown({ data, total, needsReview }) {
 
 function TopFormsTable({ rows }) {
   return (
-    <section className="rounded-md border border-[#2a2a2a] bg-[#1a1a1a]">
-      <div className="flex flex-col gap-1 border-b border-[#2a2a2a] px-4 py-3.5 sm:flex-row sm:items-end sm:justify-between">
+    <section className="rounded-md border border-border bg-surface-subtle">
+      <div className="flex flex-col gap-1 border-b border-border px-4 py-3.5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-sm font-medium text-white">Form performance</h2>
-          <p className="mt-1 text-xs text-[#737373]">Submissions, completion, review load, and last activity by form</p>
+          <p className="mt-1 text-xs text-text-secondary">Submissions, completion, review load, and last activity by form</p>
         </div>
-        <p className="text-xs text-[#525252]">{rows.length} form{rows.length === 1 ? "" : "s"}</p>
+        <p className="text-xs text-text-tertiary">{rows.length} form{rows.length === 1 ? "" : "s"}</p>
       </div>
       <div className="overflow-x-auto">
         {rows.length === 0 ? (
-          <div className="flex min-h-32 items-center justify-center px-4 py-8 text-center text-xs text-[#525252]">
+          <div className="flex min-h-32 items-center justify-center px-4 py-8 text-center text-xs text-text-tertiary">
             No forms yet — create one to start collecting responses.
           </div>
         ) : (
@@ -386,41 +386,41 @@ function TopFormsTable({ rows }) {
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-[#f5f5f5]">{form.name}</p>
-                        {form.category && <p className="mt-0.5 truncate text-[10px] text-[#737373]">{form.category}</p>}
+                        {form.category && <p className="mt-0.5 truncate text-[10px] text-text-secondary">{form.category}</p>}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <span className="text-sm font-medium tabular-nums text-[#e7e7e7]">{form.total.toLocaleString()}</span>
+                    <span className="text-sm font-medium tabular-nums text-foreground">{form.total.toLocaleString()}</span>
                   </TableCell>
                   <TableCell>
                     {form.completion == null ? (
-                      <span className="text-xs text-[#525252]">—</span>
+                      <span className="text-xs text-text-tertiary">—</span>
                     ) : (
                       <div className="flex min-w-32 items-center gap-2">
-                        <div className="h-1.5 w-24 rounded-full bg-[#2a2a2a]">
+                        <div className="h-1.5 w-24 rounded-full bg-surface-hover">
                           <div className="h-1.5 rounded-full" style={{ width: `${form.completion}%`, backgroundColor: getCompletionColor(form.completion) }} />
                         </div>
-                        <span className="w-9 text-right text-xs font-medium tabular-nums text-[#e7e7e7]">{form.completion}%</span>
+                        <span className="w-9 text-right text-xs font-medium tabular-nums text-foreground">{form.completion}%</span>
                       </div>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <span className={`text-sm font-medium tabular-nums ${form.needsReview > 0 ? "text-[#fb923c]" : "text-[#525252]"}`}>
+                    <span className={`text-sm font-medium tabular-nums ${form.needsReview > 0 ? "text-[#fb923c]" : "text-text-tertiary"}`}>
                       {form.needsReview || "—"}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    <span className="text-sm tabular-nums text-[#a3a3a3]">{form.avgScore == null ? "—" : form.avgScore}</span>
+                    <span className="text-sm tabular-nums text-muted-foreground">{form.avgScore == null ? "—" : form.avgScore}</span>
                   </TableCell>
                   <TableCell>
                     {form.lastAt ? (
-                      <span className="flex items-center gap-1 text-[11px] text-[#737373]">
+                      <span className="flex items-center gap-1 text-[11px] text-text-secondary">
                         <Clock3 className="h-3 w-3" />
                         {relativeTime(new Date(form.lastAt).toISOString())}
                       </span>
                     ) : (
-                      <span className="text-xs text-[#525252]">No responses</span>
+                      <span className="text-xs text-text-tertiary">No responses</span>
                     )}
                   </TableCell>
                 </TableRow>

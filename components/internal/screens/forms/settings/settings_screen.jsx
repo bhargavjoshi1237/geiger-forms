@@ -94,7 +94,7 @@ export function SettingsScreen() {
               <SettingField icon={Timer} label="Active hours" hint={`Window: ${openTime} to ${closeTime}`}>
                 <div className="flex flex-wrap items-center gap-2">
                   <Input type="time" value={openTime} disabled={!availabilityEnabled} onChange={(event) => setOpenTime(event.target.value)} className="h-8 w-auto px-2.5 [color-scheme:dark] disabled:opacity-40" />
-                  <span className="text-xs text-[#525252]">to</span>
+                  <span className="text-xs text-text-tertiary">to</span>
                   <Input type="time" value={closeTime} disabled={!availabilityEnabled} onChange={(event) => setCloseTime(event.target.value)} className="h-8 w-auto px-2.5 [color-scheme:dark] disabled:opacity-40" />
                 </div>
               </SettingField>
@@ -109,8 +109,8 @@ export function SettingsScreen() {
                       className={cn(
                         "h-7 rounded-md border px-2.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
                         activeDays.includes(day.key)
-                          ? "border-[#474747] bg-[#242424] text-white"
-                          : "border-[#2a2a2a] bg-[#161616] text-[#737373] hover:border-[#3a3a3a] hover:text-[#a3a3a3]",
+                          ? "border-border-strong bg-surface-active text-white"
+                          : "border-border bg-background text-text-secondary hover:border-border-strong hover:text-muted-foreground",
                       )}
                     >
                       {day.label}
@@ -150,7 +150,7 @@ export function SettingsScreen() {
               </SettingField>
               <SettingField icon={thankYouType === "message" ? CheckCircle2 : Link2} label={thankYouType === "message" ? "Thank-you message" : "Redirect URL"} hint={thankYouType === "message" ? "Displayed on the success screen." : "Respondents are sent here after submission."}>
                 {thankYouType === "message" ? (
-                  <Textarea value={thankYouMessage} onChange={(event) => setThankYouMessage(event.target.value)} rows={3} className="max-w-sm resize-none text-sm text-[#d4d4d4]" />
+                  <Textarea value={thankYouMessage} onChange={(event) => setThankYouMessage(event.target.value)} rows={3} className="max-w-sm resize-none text-sm text-muted-foreground" />
                 ) : (
                   <Input value={redirectUrl} onChange={(event) => setRedirectUrl(event.target.value)} placeholder="https://example.com/next-step" className="h-8 max-w-sm" />
                 )}
@@ -201,14 +201,14 @@ export function SettingsScreen() {
 
 function SettingsPanel({ icon: Icon, title, description, children }) {
   return (
-    <section className="rounded-md border border-[#2a2a2a] bg-[#1a1a1a]">
-      <div className="flex items-start gap-3 border-b border-[#2a2a2a] p-4">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[#2a2a2a] bg-[#202020]">
-          <Icon className="h-4 w-4 text-[#a3a3a3]" />
+    <section className="rounded-md border border-border bg-surface-subtle">
+      <div className="flex items-start gap-3 border-b border-border p-4">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface-card">
+          <Icon className="h-4 w-4 text-muted-foreground" />
         </span>
         <div className="w-full">
           <h2 className="text-sm font-medium text-white">{title}</h2>
-          <p className="mt-1 text-xs leading-5 text-[#737373]">{description}</p>
+          <p className="mt-1 text-xs leading-5 text-text-secondary">{description}</p>
         </div>
       </div>
       <div className="@container p-4">{children}</div>
@@ -237,12 +237,12 @@ function SettingField({ icon: Icon, label, hint, children }) {
 function SettingLabel({ icon: Icon, label, hint }) {
   return (
     <div className="flex w-full gap-3">
-      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[#2a2a2a] bg-[#202020]">
-        <Icon className="h-3.5 w-3.5 text-[#737373]" />
+      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-surface-card">
+        <Icon className="h-3.5 w-3.5 text-text-secondary" />
       </span>
       <div className="w-full">
-        <p className="text-sm font-medium text-[#d4d4d4]">{label}</p>
-        {hint ? <p className="mt-0.5 text-xs leading-5 text-[#737373]">{hint}</p> : null}
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        {hint ? <p className="mt-0.5 text-xs leading-5 text-text-secondary">{hint}</p> : null}
       </div>
     </div>
   );

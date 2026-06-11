@@ -57,10 +57,10 @@ export function TemplatesScreen() {
             return (
               <ContextMenu key={form.id}>
                 <ContextMenuTrigger asChild>
-                  <article className="group flex flex-col overflow-hidden rounded-md border border-[#2a2a2a] bg-[#1a1a1a] transition-colors hover:border-[#3a3a3a]">
+                  <article className="group flex flex-col overflow-hidden rounded-md border border-border bg-surface-subtle transition-colors hover:border-border-strong">
                     <div className="flex items-start gap-3 p-4">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#2a2a2a] bg-[#202020]">
-                        <FileText className="h-4 w-4 text-[#a3a3a3]" />
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface-card">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -71,21 +71,21 @@ export function TemplatesScreen() {
                             </span>
                           )}
                         </div>
-                        <p className="mt-1.5 text-xs leading-5 text-[#737373]">{detail}</p>
-                        <p className="mt-2 text-[11px] text-[#525252]">
+                        <p className="mt-1.5 text-xs leading-5 text-text-secondary">{detail}</p>
+                        <p className="mt-2 text-[11px] text-text-tertiary">
                           {form.fields} fields · {form.responses} responses
                         </p>
                       </div>
                     </div>
-                    <div className="mt-auto flex items-center justify-between border-t border-[#242424] px-4 py-2.5">
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-[#525252]">
+                    <div className="mt-auto flex items-center justify-between border-t border-surface-active px-4 py-2.5">
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
                         {form.category || ""}
                       </span>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => openTemplate(form.slug)}
-                        className="h-6 border-[#2a2a2a] bg-[#202020] px-3 text-xs text-[#a3a3a3] hover:border-[#474747] hover:bg-[#2a2a2a] hover:text-white"
+                        className="h-6 border-border bg-surface-card px-3 text-xs text-muted-foreground hover:border-border-strong hover:bg-surface-hover hover:text-foreground"
                       >
                         Use
                       </Button>
@@ -93,38 +93,38 @@ export function TemplatesScreen() {
                   </article>
                 </ContextMenuTrigger>
 
-                <ContextMenuContent className="w-52 bg-[#202020] border-[#333333] shadow-xl">
+                <ContextMenuContent className="w-52 bg-surface-card border-border shadow-xl">
                   <ContextMenuItem
-                    className="text-[#a3a3a3] focus:bg-[#2a2a2a] focus:text-white cursor-pointer gap-2"
+                    className="text-muted-foreground focus:bg-surface-hover focus:text-foreground cursor-pointer gap-2"
                     onSelect={() => openTemplate(form.slug)}
                   >
                     <FilePlus2 className="w-3.5 h-3.5" />
                     Use template
                   </ContextMenuItem>
                   <ContextMenuItem
-                    className="text-[#a3a3a3] focus:bg-[#2a2a2a] focus:text-white cursor-pointer gap-2"
+                    className="text-muted-foreground focus:bg-surface-hover focus:text-foreground cursor-pointer gap-2"
                     onSelect={() => previewTemplate(form.slug)}
                   >
                     <Eye className="w-3.5 h-3.5" />
                     Preview
                   </ContextMenuItem>
                   <ContextMenuItem
-                    className="text-[#a3a3a3] focus:bg-[#2a2a2a] focus:text-white cursor-pointer gap-2"
+                    className="text-muted-foreground focus:bg-surface-hover focus:text-foreground cursor-pointer gap-2"
                     onSelect={() => duplicateTemplate(form.slug)}
                   >
                     <Copy className="w-3.5 h-3.5" />
                     Duplicate
                   </ContextMenuItem>
-                  <ContextMenuSeparator className="bg-[#333333]" />
+                  <ContextMenuSeparator className="bg-surface-strong" />
                   <ContextMenuItem
-                    className="text-[#737373] focus:bg-[#2a2a2a] focus:text-white cursor-pointer gap-2"
+                    className="text-text-secondary focus:bg-surface-hover focus:text-foreground cursor-pointer gap-2"
                     onSelect={() => navigator.clipboard?.writeText(form.name)}
                   >
                     <Clipboard className="w-3.5 h-3.5" />
                     Copy name
                   </ContextMenuItem>
                   <ContextMenuItem
-                    className="text-[#737373] focus:bg-[#2a2a2a] focus:text-white cursor-pointer gap-2"
+                    className="text-text-secondary focus:bg-surface-hover focus:text-foreground cursor-pointer gap-2"
                     onSelect={() => copyTemplateLink(form.slug)}
                   >
                     <Link2 className="w-3.5 h-3.5" />
@@ -132,7 +132,7 @@ export function TemplatesScreen() {
                   </ContextMenuItem>
                   {form.category && (
                     <ContextMenuItem
-                      className="text-[#737373] focus:bg-[#2a2a2a] focus:text-white cursor-pointer gap-2"
+                      className="text-text-secondary focus:bg-surface-hover focus:text-foreground cursor-pointer gap-2"
                       onSelect={() => navigator.clipboard?.writeText(form.category)}
                     >
                       Copy category

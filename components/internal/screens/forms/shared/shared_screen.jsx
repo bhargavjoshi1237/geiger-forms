@@ -14,7 +14,7 @@ import {
 import { useForms } from "@/lib/hooks/use-forms";
 
 const roleStyle = {
-  viewer: { label: "Viewer", bg: "bg-[#202020]", text: "text-[#737373]", border: "border-[#2a2a2a]" },
+  viewer: { label: "Viewer", bg: "bg-surface-card", text: "text-text-secondary", border: "border-border" },
   editor: { label: "Editor", bg: "bg-[#0e1e2e]", text: "text-[#93c5fd]", border: "border-[#1e3a5f]" },
   admin: { label: "Admin", bg: "bg-[#1a1025]", text: "text-[#c4b5fd]", border: "border-[#3b1f6b]" },
 };
@@ -92,12 +92,12 @@ export function SharedScreen() {
       {loading ? (
         <LoadingState label="Loading shared forms…" />
       ) : (
-        <section className="overflow-hidden rounded-md border border-[#2a2a2a] bg-[#1a1a1a]">
+        <section className="overflow-hidden rounded-md border border-border bg-surface-subtle">
           {rows.length === 0 ? (
             <div className="flex min-h-56 flex-col items-center justify-center p-8 text-center">
-              <Share2 className="mb-3 h-6 w-6 text-[#525252]" />
-              <p className="text-sm font-medium text-[#e7e7e7]">No forms shared yet</p>
-              <p className="mt-1 max-w-md text-xs leading-5 text-[#737373]">
+              <Share2 className="mb-3 h-6 w-6 text-text-tertiary" />
+              <p className="text-sm font-medium text-foreground">No forms shared yet</p>
+              <p className="mt-1 max-w-md text-xs leading-5 text-text-secondary">
                 Share a form with teammates by email to start collaborating.
               </p>
             </div>
@@ -116,7 +116,7 @@ export function SharedScreen() {
                 {rows.map((item, idx) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <p className="text-sm font-medium text-[#e7e7e7]">{item.name}</p>
+                      <p className="text-sm font-medium text-foreground">{item.name}</p>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -131,7 +131,7 @@ export function SharedScreen() {
                             </span>
                           );
                         })}
-                        <span className="whitespace-nowrap text-xs text-[#525252]">
+                        <span className="whitespace-nowrap text-xs text-text-tertiary">
                           {item.members} {item.members === 1 ? "member" : "members"}
                         </span>
                       </div>
@@ -141,13 +141,13 @@ export function SharedScreen() {
                         {item.emails.slice(0, 3).map((email, i) => (
                           <div
                             key={email}
-                            className={`flex h-6 w-6 items-center justify-center rounded-full border border-[#1a1a1a] text-[9px] font-semibold text-[#d4d4d4] ${avatarColors[(idx + i) % avatarColors.length]}`}
+                            className={`flex h-6 w-6 items-center justify-center rounded-full border border-surface-subtle text-[9px] font-semibold text-muted-foreground ${avatarColors[(idx + i) % avatarColors.length]}`}
                           >
                             {shareInitials(email)}
                           </div>
                         ))}
                         {item.emails.length > 3 && (
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full border border-[#1a1a1a] bg-[#242424] text-[9px] font-semibold text-[#737373]">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full border border-surface-subtle bg-surface-active text-[9px] font-semibold text-text-secondary">
                             +{item.emails.length - 3}
                           </div>
                         )}
@@ -158,9 +158,9 @@ export function SharedScreen() {
                         {item.published ? (
                           <Link2 className="h-3.5 w-3.5 text-[#4ade80]" />
                         ) : (
-                          <Link2Off className="h-3.5 w-3.5 text-[#525252]" />
+                          <Link2Off className="h-3.5 w-3.5 text-text-tertiary" />
                         )}
-                        <span className={`whitespace-nowrap text-xs ${item.published ? "text-[#4ade80]" : "text-[#525252]"}`}>
+                        <span className={`whitespace-nowrap text-xs ${item.published ? "text-[#4ade80]" : "text-text-tertiary"}`}>
                           {item.published ? "Link on" : "Link off"}
                         </span>
                       </div>
@@ -170,7 +170,7 @@ export function SharedScreen() {
                         <button
                           type="button"
                           onClick={() => copyLink(item.slug)}
-                          className="flex h-7 items-center gap-1.5 rounded-md border border-[#2a2a2a] bg-[#202020] px-2.5 text-xs text-[#737373] transition-colors hover:border-[#474747] hover:text-white"
+                          className="flex h-7 items-center gap-1.5 rounded-md border border-border bg-surface-card px-2.5 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
                         >
                           <Copy className="h-3 w-3" />
                           Copy link

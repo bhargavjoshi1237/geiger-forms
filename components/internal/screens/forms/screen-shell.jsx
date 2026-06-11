@@ -13,14 +13,14 @@ import { cn } from "@/lib/utils";
 
 export function FormsScreenShell({ eyebrow, title, description, action, actionHref, stats = [], children }) {
   return (
-    <div className="mx-auto flex w-full flex-col gap-8 px-2 py-4 text-[#e7e7e7] lg:max-w-[85%] lg:px-0">
-      <div className="flex flex-col gap-4 border-b border-[#2a2a2a] pb-6 xl:flex-row xl:items-start xl:justify-between">
+    <div className="mx-auto flex w-full flex-col gap-8 px-2 py-4 text-foreground lg:max-w-[85%] lg:px-0">
+      <div className="flex flex-col gap-4 border-b border-border pb-6 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0 flex-1">
           {eyebrow ? (
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#737373]">{eyebrow}</p>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-text-secondary">{eyebrow}</p>
           ) : null}
-          <h1 className="text-2xl font-bold text-[#e7e7e7] md:text-3xl">{title}</h1>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-[#a3a3a3]">{description}</p>
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl">{title}</h1>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
         </div>
 
         <div className="flex shrink-0 flex-col gap-4 xl:items-end">
@@ -28,7 +28,7 @@ export function FormsScreenShell({ eyebrow, title, description, action, actionHr
             <div className="flex gap-6">
               {stats.map((stat) => (
                 <div key={stat.label} className="flex flex-col gap-1 xl:items-end">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-[#737373]">{stat.label}</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-text-secondary">{stat.label}</span>
                   <span className="text-base font-medium w-full text-center text-white">{stat.value}</span>
                 </div>
               ))}
@@ -56,12 +56,12 @@ export function MetricCard({ label, value, detail, Icon }) {
   return (
     <div className="min-w-28">
       <div className="flex items-center gap-1.5">
-        {Icon ? <Icon className="h-3 w-3 shrink-0 text-[#525252]" /> : null}
-        <p className="truncate text-[10px] font-medium uppercase text-[#737373]">{label}</p>
+        {Icon ? <Icon className="h-3 w-3 shrink-0 text-text-tertiary" /> : null}
+        <p className="truncate text-[10px] font-medium uppercase text-text-secondary">{label}</p>
       </div>
       <div className="mt-1 flex items-baseline gap-2">
         <p className="text-base font-semibold leading-none text-white">{value}</p>
-        <p className="truncate text-[11px] text-[#737373]">{detail}</p>
+        <p className="truncate text-[11px] text-text-secondary">{detail}</p>
       </div>
     </div>
   );
@@ -69,11 +69,11 @@ export function MetricCard({ label, value, detail, Icon }) {
 
 export function DataPanel({ title, description, children, className }) {
   return (
-    <section className={cn("rounded-md border border-[#2a2a2a] bg-[#1a1a1a]", className)}>
+    <section className={cn("rounded-md border border-border bg-surface-subtle", className)}>
       {title || description ? (
-        <div className="border-b border-[#2a2a2a] p-4">
+        <div className="border-b border-border p-4">
           {title ? <h2 className="text-sm font-medium text-white">{title}</h2> : null}
-          {description ? <p className="mt-1 text-xs text-[#737373]">{description}</p> : null}
+          {description ? <p className="mt-1 text-xs text-text-secondary">{description}</p> : null}
         </div>
       ) : null}
       <div className="p-4">{children}</div>
@@ -83,19 +83,19 @@ export function DataPanel({ title, description, children, className }) {
 
 export function EmptyState({ Icon, title, description }) {
   return (
-    <div className="flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed border-[#333333] bg-[#202020] p-8 text-center">
-      {Icon ? <Icon className="mb-3 h-6 w-6 text-[#525252]" /> : null}
-      <p className="text-sm font-medium text-[#e7e7e7]">{title}</p>
-      <p className="mt-1 max-w-md text-xs leading-5 text-[#737373]">{description}</p>
+    <div className="flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface-card p-8 text-center">
+      {Icon ? <Icon className="mb-3 h-6 w-6 text-text-tertiary" /> : null}
+      <p className="text-sm font-medium text-foreground">{title}</p>
+      <p className="mt-1 max-w-md text-xs leading-5 text-text-secondary">{description}</p>
     </div>
   );
 }
 
 export function LoadingState({ label = "Loading…" }) {
   return (
-    <div className="flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed border-[#2a2a2a] bg-[#1a1a1a] p-8 text-center">
-      <Loader2 className="mb-3 h-5 w-5 animate-spin text-[#737373]" />
-      <p className="text-xs text-[#737373]">{label}</p>
+    <div className="flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface-subtle p-8 text-center">
+      <Loader2 className="mb-3 h-5 w-5 animate-spin text-text-secondary" />
+      <p className="text-xs text-text-secondary">{label}</p>
     </div>
   );
 }
@@ -104,9 +104,9 @@ export function ErrorState({ title = "Something went wrong", description, onRetr
   return (
     <div className="flex min-h-56 flex-col items-center justify-center rounded-md border border-dashed border-[#7c2d12] bg-[#1a1207] p-8 text-center">
       <AlertTriangle className="mb-3 h-6 w-6 text-[#fb923c]" />
-      <p className="text-sm font-medium text-[#e7e7e7]">{title}</p>
+      <p className="text-sm font-medium text-foreground">{title}</p>
       {description ? (
-        <p className="mt-1 max-w-md text-xs leading-5 text-[#a3a3a3]">{description}</p>
+        <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">{description}</p>
       ) : null}
       {onRetry ? (
         <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
@@ -119,7 +119,7 @@ export function ErrorState({ title = "Something went wrong", description, onRetr
 
 export function SimpleTable({ columns, rows }) {
   return (
-    <div className="overflow-hidden rounded-md border border-[#2a2a2a]">
+    <div className="overflow-hidden rounded-md border border-border">
       <Table className="min-w-[640px]">
         <TableHeader>
           <TableRow>
@@ -132,7 +132,7 @@ export function SimpleTable({ columns, rows }) {
         </TableHeader>
         <TableBody>
           {rows.map((row, rowIndex) => (
-            <TableRow key={`${row.join("|")}-${rowIndex}`} className="bg-[#1a1a1a] text-[#d4d4d4]">
+            <TableRow key={`${row.join("|")}-${rowIndex}`} className="bg-surface-subtle text-muted-foreground">
               {row.map((cell, cellIndex) => (
                 <TableCell key={`${rowIndex}-${cellIndex}`}>
                   {cell}

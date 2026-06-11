@@ -95,8 +95,8 @@ function buildFieldFill(forms, perForm, responses) {
 
 function CompletionBar({ rate }) {
   return (
-    <div className="h-1.5 rounded-full bg-[#242424]">
-      <div className="h-1.5 rounded-full bg-[#474747]" style={{ width: `${Math.min(rate, 100)}%` }} />
+    <div className="h-1.5 rounded-full bg-surface-active">
+      <div className="h-1.5 rounded-full bg-border-strong" style={{ width: `${Math.min(rate, 100)}%` }} />
     </div>
   );
 }
@@ -104,7 +104,7 @@ function CompletionBar({ rate }) {
 function FillBar({ rate }) {
   const color = rate >= 80 ? "bg-[#4ade80]" : rate >= 50 ? "bg-[#fbbf24]" : "bg-[#fb923c]";
   return (
-    <div className="h-1.5 w-24 rounded-full bg-[#242424]">
+    <div className="h-1.5 w-24 rounded-full bg-surface-active">
       <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${Math.min(rate, 100)}%` }} />
     </div>
   );
@@ -175,11 +175,11 @@ export function AnalyticsScreen() {
             {completionByForm.map((f) => (
               <div key={f.id}>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <span className="truncate pr-2 text-xs text-[#a3a3a3]">{f.name}</span>
-                  <span className="shrink-0 tabular-nums text-xs font-medium text-[#e7e7e7]">{f.rate}%</span>
+                  <span className="truncate pr-2 text-xs text-muted-foreground">{f.name}</span>
+                  <span className="shrink-0 tabular-nums text-xs font-medium text-foreground">{f.rate}%</span>
                 </div>
                 <CompletionBar rate={f.rate} />
-                <p className="mt-1 text-[10px] text-[#525252]">{f.complete} of {f.total} complete</p>
+                <p className="mt-1 text-[10px] text-text-tertiary">{f.complete} of {f.total} complete</p>
               </div>
             ))}
           </div>
@@ -192,9 +192,9 @@ export function AnalyticsScreen() {
         >
           <div className="space-y-2">
             {topForms.map((f) => (
-              <div key={f.id} className="flex items-center justify-between rounded-md bg-[#202020] px-3 py-2.5">
-                <span className="truncate pr-2 text-xs text-[#d4d4d4]">{f.name}</span>
-                <span className="shrink-0 tabular-nums text-xs font-medium text-[#e7e7e7]">{f.total}</span>
+              <div key={f.id} className="flex items-center justify-between rounded-md bg-surface-card px-3 py-2.5">
+                <span className="truncate pr-2 text-xs text-muted-foreground">{f.name}</span>
+                <span className="shrink-0 tabular-nums text-xs font-medium text-foreground">{f.total}</span>
               </div>
             ))}
           </div>
@@ -210,25 +210,25 @@ export function AnalyticsScreen() {
         }
       >
         {!fieldFill || fieldFill.rows.length === 0 ? (
-          <div className="flex min-h-32 items-center justify-center px-4 py-8 text-center text-xs text-[#525252]">
+          <div className="flex min-h-32 items-center justify-center px-4 py-8 text-center text-xs text-text-tertiary">
             No fields to analyze for the most-active form yet.
           </div>
         ) : (
           <div className="overflow-hidden">
             <Table className="min-w-[480px] text-xs">
               <TableHeader className="bg-transparent">
-                <TableRow className="border-[#242424] hover:bg-transparent">
-                  <TableHead className="h-auto px-0 pb-2.5 pr-4 text-[#525252]">Field</TableHead>
-                  <TableHead className="h-auto px-0 pb-2.5 pr-4 text-right text-[#525252]">Responses</TableHead>
-                  <TableHead className="h-auto px-0 pb-2.5 pr-4 text-right text-[#525252]">Filled</TableHead>
-                  <TableHead className="h-auto px-0 pb-2.5 text-[#525252]">Fill rate</TableHead>
+                <TableRow className="border-surface-active hover:bg-transparent">
+                  <TableHead className="h-auto px-0 pb-2.5 pr-4 text-text-tertiary">Field</TableHead>
+                  <TableHead className="h-auto px-0 pb-2.5 pr-4 text-right text-text-tertiary">Responses</TableHead>
+                  <TableHead className="h-auto px-0 pb-2.5 pr-4 text-right text-text-tertiary">Filled</TableHead>
+                  <TableHead className="h-auto px-0 pb-2.5 text-text-tertiary">Fill rate</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-[#1e1e1e]">
                 {fieldFill.rows.map((row) => (
-                  <TableRow key={row.id} className="border-[#1e1e1e] text-[#d4d4d4]">
-                    <TableCell className="px-0 py-3 pr-4 font-medium text-[#e7e7e7]">{row.label}</TableCell>
-                    <TableCell className="px-0 py-3 pr-4 text-right tabular-nums text-[#737373]">{row.total.toLocaleString()}</TableCell>
+                  <TableRow key={row.id} className="border-[#1e1e1e] text-muted-foreground">
+                    <TableCell className="px-0 py-3 pr-4 font-medium text-foreground">{row.label}</TableCell>
+                    <TableCell className="px-0 py-3 pr-4 text-right tabular-nums text-text-secondary">{row.total.toLocaleString()}</TableCell>
                     <TableCell className="px-0 py-3 pr-4 text-right tabular-nums">{row.filled.toLocaleString()}</TableCell>
                     <TableCell className="px-0 py-3">
                       <div className="flex items-center gap-2">

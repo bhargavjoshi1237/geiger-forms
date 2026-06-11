@@ -22,7 +22,7 @@ export default function LandingFormShowcase({ ctaHref, ctaLabel }) {
 
   return (
     <section
-      className="rounded-2xl border border-zinc-800 bg-cover bg-center p-3 sm:rounded-3xl sm:p-6 md:p-8 xl:p-10"
+      className="rounded-2xl border border-border bg-cover bg-center p-3 sm:rounded-3xl sm:p-6 md:p-8 xl:p-10"
       style={{ backgroundImage: `url('${bg}')` }}
     >
       <div className="flex flex-col gap-6 sm:gap-10">
@@ -32,7 +32,7 @@ export default function LandingFormShowcase({ ctaHref, ctaLabel }) {
               Build in real time with the full Geiger Forms interface.
             </h3>
 
-            <p className="max-w-sm text-zinc-300">
+            <p className="max-w-sm text-muted-foreground">
               This playground shows the form builder, filler preview, response
               summary, and publishing controls together. No save and no load,
               just pure exploration.
@@ -48,8 +48,8 @@ export default function LandingFormShowcase({ ctaHref, ctaLabel }) {
           </div>
         </div>
 
-        <div className="relative rounded-2xl border border-zinc-700/80 bg-[#191919]/70 p-2 shadow-2xl backdrop-blur-md sm:p-3">
-          <div className="h-[430px] overflow-hidden rounded-xl border border-zinc-800 bg-[#161616] sm:h-[460px] lg:h-[600px]">
+        <div className="relative rounded-2xl border border-border-strong/80 bg-[#191919]/70 p-2 shadow-2xl backdrop-blur-md sm:p-3">
+          <div className="h-[430px] overflow-hidden rounded-xl border border-border bg-background sm:h-[460px] lg:h-[600px]">
             <Suspense fallback={null}>
               <FormPlayground />
             </Suspense>

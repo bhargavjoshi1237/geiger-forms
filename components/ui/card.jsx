@@ -5,7 +5,7 @@ function Card({ className, ...props }) {
   return (
     <div
       data-slot="card"
-      className={cn("rounded-md border border-[#2a2a2a] bg-[#1a1a1a] text-white shadow-sm", className)}
+      className={cn("rounded-md border border-border bg-surface-subtle text-white shadow-sm", className)}
       {...props}
     />
   );
@@ -20,7 +20,7 @@ function CardTitle({ className, ...props }) {
 }
 
 function CardDescription({ className, ...props }) {
-  return <div data-slot="card-description" className={cn("text-sm text-[#a3a3a3]", className)} {...props} />;
+  return <div data-slot="card-description" className={cn("text-sm text-muted-foreground", className)} {...props} />;
 }
 
 function CardContent({ className, ...props }) {

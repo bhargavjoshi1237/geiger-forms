@@ -46,7 +46,7 @@ function detectRespondent(fields, answers) {
 
 function TopBar({ live = false }) {
   return (
-    <header className="sticky top-0 z-10 border-b border-[#2a2a2a] bg-[#121212]/80 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-border bg-[#121212]/80 backdrop-blur">
       <TopBar/>
     </header>
   );
@@ -67,14 +67,14 @@ function StatusCard({ icon: Icon, title, description, children, tone = "default"
   const ring =
     tone === "success"
       ? "border-[#166534] bg-[#0d2218] text-[#4ade80]"
-      : "border-[#2a2a2a] bg-[#202020] text-[#a3a3a3]";
+      : "border-border bg-surface-card text-muted-foreground";
   return (
-    <section className="rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-8 text-center">
+    <section className="rounded-2xl border border-border bg-surface-subtle p-8 text-center">
       <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border ${ring}`}>
         <Icon className="h-6 w-6" />
       </div>
-      <h1 className="mt-5 text-xl font-semibold text-[#e7e7e7]">{title}</h1>
-      {description && <p className="mt-2 text-sm leading-relaxed text-[#a3a3a3]">{description}</p>}
+      <h1 className="mt-5 text-xl font-semibold text-foreground">{title}</h1>
+      {description && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>}
       {children && <div className="mt-7 flex flex-wrap justify-center gap-3">{children}</div>}
     </section>
   );
@@ -160,7 +160,7 @@ export function FormFillerContent({ formId }) {
     return (
       <Shell>
         <section className="flex items-center justify-center py-24">
-          <Loader2 className="h-6 w-6 animate-spin text-[#737373]" />
+          <Loader2 className="h-6 w-6 animate-spin text-text-secondary" />
         </section>
       </Shell>
     );
@@ -243,21 +243,21 @@ export function FormFillerContent({ formId }) {
   return (
     <Shell live>
       {/* Hero header */}
-      <div className="overflow-hidden rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a]">
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle">
         <div
           className={
             isCover
               ? "h-28 bg-[linear-gradient(106deg,#17353a_0%,#3e3a24_48%,#5a2d29_100%)] sm:h-36"
-              : "h-20 bg-gradient-to-br from-[#1f1f1f] to-[#161616] sm:h-24"
+              : "h-20 bg-gradient-to-br from-[#1f1f1f] to-background sm:h-24"
           }
         />
         <div className="px-6 py-6 sm:px-8 sm:py-7">
-          <h1 className="text-2xl font-bold text-[#e7e7e7] sm:text-3xl">{form.title}</h1>
+          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">{form.title}</h1>
           {form.description && (
-            <p className="mt-2.5 text-sm leading-relaxed text-[#a3a3a3]">{form.description}</p>
+            <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{form.description}</p>
           )}
           {questionCount > 0 && (
-            <p className="mt-3 text-xs text-[#737373]">
+            <p className="mt-3 text-xs text-text-secondary">
               {questionCount} question{questionCount === 1 ? "" : "s"}
             </p>
           )}
@@ -266,9 +266,9 @@ export function FormFillerContent({ formId }) {
 
       <form onSubmit={handleSubmit} className="mt-6">
         {/* Fields card */}
-        <div className="rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 sm:p-8">
+        <div className="rounded-2xl border border-border bg-surface-subtle p-6 sm:p-8">
           {visibleFields.length === 0 ? (
-            <p className="py-10 text-center text-sm text-[#737373]">
+            <p className="py-10 text-center text-sm text-text-secondary">
               This form has no questions yet.
             </p>
           ) : (
@@ -297,8 +297,8 @@ export function FormFillerContent({ formId }) {
 
         {/* Submit area */}
         <div className="mt-5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-xs text-[#737373]">
-            <CheckCircle2 className="h-4 w-4 text-[#525252]" />
+          <div className="flex items-center gap-2 text-xs text-text-secondary">
+            <CheckCircle2 className="h-4 w-4 text-text-tertiary" />
             Secure submission
           </div>
           <Button type="submit" disabled={submitting || visibleFields.length === 0} className="gap-2">
@@ -308,7 +308,7 @@ export function FormFillerContent({ formId }) {
         </div>
 
         {form.settings?.branding !== false && (
-          <p className="mt-8 text-center text-xs text-[#525252]">Powered by Geiger Forms</p>
+          <p className="mt-8 text-center text-xs text-text-tertiary">Powered by Geiger Forms</p>
         )}
       </form>
     </Shell>

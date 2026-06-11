@@ -33,7 +33,7 @@ const STATUS_STYLE = {
   Pending: { bg: "bg-[#1c1917]", text: "text-[#78716c]", border: "border-[#44403c]" },
 };
 
-const AVATAR_COLORS = ["bg-[#0e1e2e]", "bg-[#0d2218]", "bg-[#2a1a08]", "bg-[#1a0d2e]", "bg-[#1a1a1a]", "bg-[#0d1e1a]"];
+const AVATAR_COLORS = ["bg-[#0e1e2e]", "bg-[#0d2218]", "bg-[#2a1a08]", "bg-[#1a0d2e]", "bg-surface-subtle", "bg-[#0d1e1a]"];
 
 function parseUserAgent(ua) {
   if (!ua) return { device: "Unknown", browser: "Unknown", os: "Unknown" };
@@ -99,16 +99,16 @@ function deriveFields(response) {
 function AnalyticsRow({ label, value }) {
   return (
     <>
-      <dt className="text-[11px] text-[#525252]">{label}</dt>
-      <dd className="text-[11px] text-[#d4d4d4] text-right">{value}</dd>
+      <dt className="text-[11px] text-text-tertiary">{label}</dt>
+      <dd className="text-[11px] text-muted-foreground text-right">{value}</dd>
     </>
   );
 }
 
 function AnalyticsSection({ title, children }) {
   return (
-    <div className="rounded-lg border border-[#2a2a2a] bg-[#161616] p-3">
-      <p className="mb-2.5 text-[10px] font-medium uppercase tracking-wide text-[#525252]">{title}</p>
+    <div className="rounded-lg border border-border bg-background p-3">
+      <p className="mb-2.5 text-[10px] font-medium uppercase tracking-wide text-text-tertiary">{title}</p>
       {children}
     </div>
   );
@@ -159,15 +159,15 @@ function AnalyticsTab({ response }) {
 
         <AnalyticsSection title="Connected sheet">
           {sheetUrl ? (
-            <div className="flex items-center gap-2 rounded-md border border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2">
+            <div className="flex items-center gap-2 rounded-md border border-border bg-surface-subtle px-3 py-2">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#4ade80]" />
-              <span className="min-w-0 flex-1 truncate text-[11px] text-[#a3a3a3]" title={sheetUrl}>
+              <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground" title={sheetUrl}>
                 {sheetUrl}
               </span>
               <button
                 type="button"
                 onClick={() => { setSheetUrl(""); setShowSheetInput(false); setPendingUrl(""); }}
-                className="shrink-0 text-[#525252] transition-colors hover:text-[#a3a3a3]"
+                className="shrink-0 text-text-tertiary transition-colors hover:text-muted-foreground"
                 aria-label="Unlink sheet"
               >
                 <X className="h-3 w-3" />
@@ -179,7 +179,7 @@ function AnalyticsTab({ response }) {
                 <button
                   type="button"
                   onClick={() => { setShowSheetInput(false); }}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2 text-[11px] text-[#737373] transition-colors hover:border-[#474747] hover:text-[#d4d4d4]"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-surface-subtle px-3 py-2 text-[11px] text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground"
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5" />
                   Geiger-Office Sheet
@@ -190,8 +190,8 @@ function AnalyticsTab({ response }) {
                   className={cn(
                     "flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-[11px] transition-colors",
                     showSheetInput
-                      ? "border-[#474747] bg-[#202020] text-[#d4d4d4]"
-                      : "border-[#2a2a2a] bg-[#1a1a1a] text-[#737373] hover:border-[#474747] hover:text-[#d4d4d4]",
+                      ? "border-border-strong bg-surface-card text-muted-foreground"
+                      : "border-border bg-surface-subtle text-text-secondary hover:border-border-strong hover:text-muted-foreground",
                   )}
                 >
                   <LinkIcon className="h-3.5 w-3.5" />
@@ -207,7 +207,7 @@ function AnalyticsTab({ response }) {
                     onChange={(e) => setPendingUrl(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") confirmSheet(); if (e.key === "Escape") setShowSheetInput(false); }}
                     placeholder="Paste Google Sheet URL..."
-                    className="h-8 flex-1 text-[11px] text-[#d4d4d4]"
+                    className="h-8 flex-1 text-[11px] text-muted-foreground"
                   />
                   <Button
                     type="button"
@@ -261,12 +261,12 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
         aria-label="Close panel"
       />
 
-      <aside className="flex h-full w-full max-w-[460px] flex-col border-l border-[#2a2a2a] bg-[#1a1a1a] shadow-2xl">
+      <aside className="flex h-full w-full max-w-[460px] flex-col border-l border-border bg-surface-subtle shadow-2xl">
 
-        <div className="flex items-center gap-3 border-b border-[#2a2a2a] px-4 py-3">
+        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <div
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-[#d4d4d4]",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-muted-foreground",
               AVATAR_COLORS[index % AVATAR_COLORS.length],
             )}
           >
@@ -275,8 +275,8 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold leading-tight text-white">{response.name}</p>
-            <p className="text-xs text-[#525252]">{response.email}</p>
-            <p className="mt-0.5 text-[10px] text-[#525252]">
+            <p className="text-xs text-text-tertiary">{response.email}</p>
+            <p className="mt-0.5 text-[10px] text-text-tertiary">
               {response.form}&nbsp;·&nbsp;{response.received}
             </p>
           </div>
@@ -298,7 +298,7 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
 
             {score != null && (
               <span
-                className="rounded bg-[#202020] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-[#a3a3a3]"
+                className="rounded bg-surface-card px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground"
                 title="Triage score"
               >
                 {score}
@@ -328,7 +328,7 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
             <button
               type="button"
               onClick={onClose}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-[#737373] transition-colors hover:bg-[#242424] hover:text-white"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-active hover:text-foreground"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -336,7 +336,7 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
           </div>
         </div>
 
-        <div className="flex border-b border-[#2a2a2a]">
+        <div className="flex border-b border-border">
           {TABS.map(({ id, label }) => (
             <button
               key={id}
@@ -346,12 +346,12 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
                 "flex-1 py-2.5 text-xs font-medium transition-colors",
                 activeTab === id
                   ? "border-b-2 border-white text-white"
-                  : "text-[#737373] hover:text-[#a3a3a3]",
+                  : "text-text-secondary hover:text-muted-foreground",
               )}
             >
               {label}
               {id === "thread" && comments.length > 0 && (
-                <span className="ml-1.5 rounded-full bg-[#2a2a2a] px-1.5 text-[10px] text-[#a3a3a3]">
+                <span className="ml-1.5 rounded-full bg-surface-hover px-1.5 text-[10px] text-muted-foreground">
                   {comments.length}
                 </span>
               )}
@@ -365,22 +365,22 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
               {fields.map(({ label, value }) => (
                 <div
                   key={label}
-                  className="rounded-md px-3 py-2.5 transition-colors hover:bg-[#202020]"
+                  className="rounded-md px-3 py-2.5 transition-colors hover:bg-surface-card"
                 >
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-[#525252]">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
                     {label}
                   </p>
-                  <p className="mt-0.5 text-sm leading-relaxed text-[#d4d4d4]">{value}</p>
+                  <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{value}</p>
                 </div>
               ))}
             </div>
-            <div className="mt-4 border-t border-[#242424] pt-4">
-              <p className="text-[10px] text-[#525252]">
+            <div className="mt-4 border-t border-surface-active pt-4">
+              <p className="text-[10px] text-text-tertiary">
                 Submitted {response.received}&nbsp;·&nbsp;Internal ID #{String(response.id).slice(0, 8)}
               </p>
               <button
                 type="button"
-                className="mt-2 flex items-center gap-1.5 text-xs text-[#737373] transition-colors hover:text-white"
+                className="mt-2 flex items-center gap-1.5 text-xs text-text-secondary transition-colors hover:text-foreground"
               >
                 <Edit3 className="h-3.5 w-3.5" />
                 Request edit from respondent
@@ -398,11 +398,11 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
             <div className="scrollbar-subtle flex-1 overflow-y-auto p-4">
               {commentsLoading ? (
                 <div className="flex min-h-24 items-center justify-center text-center">
-                  <p className="text-xs text-[#525252]">Loading comments…</p>
+                  <p className="text-xs text-text-tertiary">Loading comments…</p>
                 </div>
               ) : comments.length === 0 ? (
                 <div className="flex min-h-24 items-center justify-center text-center">
-                  <p className="text-xs text-[#525252]">No comments yet. Start the review thread below.</p>
+                  <p className="text-xs text-text-tertiary">No comments yet. Start the review thread below.</p>
                 </div>
               ) : (
                 <div className="space-y-5">
@@ -410,7 +410,7 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
                     <div key={c.id} className="flex gap-3">
                       <div
                         className={cn(
-                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-[#d4d4d4]",
+                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-muted-foreground",
                           AVATAR_COLORS[i % AVATAR_COLORS.length],
                         )}
                       >
@@ -418,10 +418,10 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-[#e7e7e7]">{c.author}</span>
-                          <span className="text-[10px] text-[#525252]">{c.when}</span>
+                          <span className="text-xs font-medium text-foreground">{c.author}</span>
+                          <span className="text-[10px] text-text-tertiary">{c.when}</span>
                         </div>
-                        <p className="mt-1 text-sm leading-relaxed text-[#a3a3a3]">{c.body}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{c.body}</p>
                       </div>
                     </div>
                   ))}
@@ -429,7 +429,7 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
               )}
             </div>
 
-            <div className="border-t border-[#2a2a2a] p-3">
+            <div className="border-t border-border p-3">
               <div className="flex gap-2">
                 <Input
                   value={input}
@@ -441,7 +441,7 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
                     }
                   }}
                   placeholder="Add a comment..."
-                  className="h-8 flex-1 text-xs text-[#d4d4d4]"
+                  className="h-8 flex-1 text-xs text-muted-foreground"
                 />
                 <Button
                   type="button"
@@ -452,7 +452,7 @@ export function ResponseDetailPanel({ response, index, onClose, score, priority 
                   <Send className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <p className="mt-1.5 text-[10px] text-[#525252]">
+              <p className="mt-1.5 text-[10px] text-text-tertiary">
                 Enter to send&nbsp;·&nbsp;Visible to workspace members only
               </p>
             </div>

@@ -67,17 +67,17 @@ function shareInitials(email) {
 
 const statusStyle = {
   Published: "bg-[#0d2218] text-[#4ade80] border-[#166534]",
-  Draft: "bg-[#242424] text-[#737373] border-[#333333]",
+  Draft: "bg-surface-active text-text-secondary border-border",
   Archived: "bg-[#1c1917] text-[#78716c] border-[#44403c]",
 };
 
 const cardAccents = [
-  "from-[#0e1a2e] to-[#1a1a1a]",
-  "from-[#1a1a1e] to-[#1a1a1a]",
-  "from-[#0d2218] to-[#1a1a1a]",
-  "from-[#1e1c0e] to-[#1a1a1a]",
-  "from-[#1e0e16] to-[#1a1a1a]",
-  "from-[#1a1a1e] to-[#1a1a1a]",
+  "from-[#0e1a2e] to-surface-subtle",
+  "from-[#1a1a1e] to-surface-subtle",
+  "from-[#0d2218] to-surface-subtle",
+  "from-[#1e1c0e] to-surface-subtle",
+  "from-[#1e0e16] to-surface-subtle",
+  "from-[#1a1a1e] to-surface-subtle",
 ];
 
 function NewFormDialog({ open, onClose, onCreate }) {
@@ -132,11 +132,11 @@ function NewFormDialog({ open, onClose, onCreate }) {
         </DialogHeader>
         <div className="space-y-5">
           <div>
-            <label className="block text-xs font-medium text-[#d4d4d4]">
+            <label className="block text-xs font-medium text-muted-foreground">
               Form name <span className="text-[#ef4444]">*</span>
             </label>
             <Input
-              className="mt-2 border-[#333333] bg-[#202020] text-white"
+              className="mt-2 border-border bg-surface-card text-white"
               placeholder="e.g. Partner Application"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -148,9 +148,9 @@ function NewFormDialog({ open, onClose, onCreate }) {
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-medium text-[#d4d4d4]">Start from</label>
+            <label className="mb-2 block text-xs font-medium text-muted-foreground">Start from</label>
             <Select value={template} onValueChange={setTemplate}>
-              <SelectTrigger className="h-9 w-full border-[#333333] bg-[#202020] text-xs text-white">
+              <SelectTrigger className="h-9 w-full border-border bg-surface-card text-xs text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -162,14 +162,14 @@ function NewFormDialog({ open, onClose, onCreate }) {
               </SelectContent>
             </Select>
             {selectedTemplate?.description ? (
-              <p className="mt-1.5 text-[10px] text-[#525252]">{selectedTemplate.description}</p>
+              <p className="mt-1.5 text-[10px] text-text-tertiary">{selectedTemplate.description}</p>
             ) : null}
           </div>
 
           <div>
             <div className="mb-2 flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-[#737373]" />
-              <label className="text-xs font-medium text-[#d4d4d4]">Shared with people</label>
+              <Users className="h-3.5 w-3.5 text-text-secondary" />
+              <label className="text-xs font-medium text-muted-foreground">Shared with people</label>
             </div>
             <div className="flex gap-2">
               <Input
@@ -182,10 +182,10 @@ function NewFormDialog({ open, onClose, onCreate }) {
                   }
                 }}
                 placeholder="Add people by email…"
-                className="h-9 flex-1 border-[#333333] bg-[#202020] text-xs text-white"
+                className="h-9 flex-1 border-border bg-surface-card text-xs text-white"
               />
               <Select value={shareRole} onValueChange={setShareRole}>
-                <SelectTrigger className="h-9 w-[112px] shrink-0 border-[#333333] bg-[#202020] text-xs text-white">
+                <SelectTrigger className="h-9 w-[112px] shrink-0 border-border bg-surface-card text-xs text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -209,24 +209,24 @@ function NewFormDialog({ open, onClose, onCreate }) {
 
             <div className="mt-2 space-y-1.5">
               {people.length === 0 ? (
-                <p className="text-[10px] text-[#525252]">
+                <p className="text-[10px] text-text-tertiary">
                   Only you have access. Add teammates by email to collaborate.
                 </p>
               ) : (
                 people.map((p) => (
                   <div
                     key={p.email}
-                    className="flex items-center justify-between gap-2 rounded-md border border-[#2a2a2a] bg-[#202020] px-2.5 py-2"
+                    className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-card px-2.5 py-2"
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2a2a2a] text-[10px] font-semibold text-[#d4d4d4]">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[10px] font-semibold text-muted-foreground">
                         {shareInitials(p.email)}
                       </div>
-                      <span className="truncate text-xs text-[#d4d4d4]">{p.email}</span>
+                      <span className="truncate text-xs text-muted-foreground">{p.email}</span>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                       <Select value={p.role} onValueChange={(v) => setPersonRole(p.email, v)}>
-                        <SelectTrigger className="h-7 w-[104px] border-[#2a2a2a] bg-[#1a1a1a] text-[11px] text-[#a3a3a3]">
+                        <SelectTrigger className="h-7 w-[104px] border-border bg-surface-subtle text-[11px] text-muted-foreground">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -240,7 +240,7 @@ function NewFormDialog({ open, onClose, onCreate }) {
                       <button
                         type="button"
                         onClick={() => removePerson(p.email)}
-                        className="flex h-6 w-6 items-center justify-center rounded text-[#737373] transition-colors hover:bg-[#242424] hover:text-[#ef4444]"
+                        className="flex h-6 w-6 items-center justify-center rounded text-text-secondary transition-colors hover:bg-surface-active hover:text-[#ef4444]"
                         title="Remove access"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -302,22 +302,22 @@ function EditFormMetadataDialog({ form, categories, onSave, onClose }) {
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-[#d4d4d4]">Form name</label>
+            <label className="block text-xs font-medium text-muted-foreground">Form name</label>
             <Input className="mt-2" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#d4d4d4]">
-              Description <span className="text-[#525252]">(optional)</span>
+            <label className="block text-xs font-medium text-muted-foreground">
+              Description <span className="text-text-tertiary">(optional)</span>
             </label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="mt-2 min-h-16 resize-none text-[#d4d4d4]"
+              className="mt-2 min-h-16 resize-none text-muted-foreground"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#d4d4d4]">Category</label>
+            <label className="block text-xs font-medium text-muted-foreground">Category</label>
             <Select value={category || "none"} onValueChange={(value) => setCategory(value === "none" ? "" : value)}>
               <SelectTrigger className="mt-2 h-9">
                 <SelectValue />
@@ -333,12 +333,12 @@ function EditFormMetadataDialog({ form, categories, onSave, onClose }) {
             </Select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#d4d4d4]">Tags</label>
+            <label className="block text-xs font-medium text-muted-foreground">Tags</label>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {tags.map((t) => (
-                <span key={t} className="flex items-center gap-1 rounded-md border border-[#2a2a2a] bg-[#202020] px-1.5 py-0.5 text-[10px] text-[#a3a3a3]">
+                <span key={t} className="flex items-center gap-1 rounded-md border border-border bg-surface-card px-1.5 py-0.5 text-[10px] text-muted-foreground">
                   #{t}
-                  <button type="button" onClick={() => removeTag(t)} className="text-[#525252] hover:text-white">
+                  <button type="button" onClick={() => removeTag(t)} className="text-text-tertiary hover:text-foreground">
                     <X className="h-2.5 w-2.5" />
                   </button>
                 </span>
@@ -355,12 +355,12 @@ function EditFormMetadataDialog({ form, categories, onSave, onClose }) {
                   }
                 }}
                 placeholder="Add a tag and press Enter..."
-                className="h-8 flex-1 text-xs text-[#d4d4d4]"
+                className="h-8 flex-1 text-xs text-muted-foreground"
               />
               <button
                 type="button"
                 onClick={addTag}
-                className="h-8 rounded-md border border-[#2a2a2a] bg-[#202020] px-3 text-xs text-[#a3a3a3] hover:text-white transition-colors"
+                className="h-8 rounded-md border border-border bg-surface-card px-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 Add
               </button>
@@ -384,12 +384,12 @@ function EditFormMetadataDialog({ form, categories, onSave, onClose }) {
 function FormCard({ form, accent, onOpen, onEditMeta, onDelete, onPublish }) {
   return (
     <article
-      className="group relative flex flex-col overflow-hidden rounded-md border border-[#2a2a2a] bg-[#1a1a1a] transition-colors hover:border-[#3a3a3a] cursor-pointer"
+      className="group relative flex flex-col overflow-hidden rounded-md border border-border bg-surface-subtle transition-colors hover:border-border-strong cursor-pointer"
       onClick={onOpen}
     >
       <div className={`flex h-[72px] items-end bg-gradient-to-br ${accent} p-3`}>
-        <div className="flex h-7 w-7 items-center justify-center rounded border border-[#2a2a2a] bg-[#161616]/80">
-          <FileText className="h-3.5 w-3.5 text-[#a3a3a3]" />
+        <div className="flex h-7 w-7 items-center justify-center rounded border border-border bg-background/80">
+          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
       </div>
 
@@ -401,7 +401,7 @@ function FormCard({ form, accent, onOpen, onEditMeta, onDelete, onPublish }) {
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#737373]">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
           <span>{form.responses} responses</span>
           <span>·</span>
           <span>{form.fields} fields</span>
@@ -409,20 +409,20 @@ function FormCard({ form, accent, onOpen, onEditMeta, onDelete, onPublish }) {
 
         <div className="flex flex-wrap items-center gap-1.5">
           {form.category && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-[#2a2a2a] bg-[#202020] px-1.5 py-0.5 text-[10px] text-[#737373]">
+            <span className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-card px-1.5 py-0.5 text-[10px] text-text-secondary">
               <Tag className="h-2.5 w-2.5" />
               {form.category}
             </span>
           )}
           {form.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="rounded-md bg-[#1e1e1e] px-1.5 py-0.5 text-[10px] text-[#525252]">
+            <span key={tag} className="rounded-md bg-[#1e1e1e] px-1.5 py-0.5 text-[10px] text-text-tertiary">
               #{tag}
             </span>
           ))}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[#242424] pt-2.5">
-          <span className="flex items-center gap-1 text-[10px] text-[#525252]">
+        <div className="flex items-center justify-between border-t border-surface-active pt-2.5">
+          <span className="flex items-center gap-1 text-[10px] text-text-tertiary">
             <Clock3 className="h-3 w-3" />
             {form.lastEdited}
           </span>
@@ -431,7 +431,7 @@ function FormCard({ form, accent, onOpen, onEditMeta, onDelete, onPublish }) {
               <button
                 type="button"
                 onClick={onPublish}
-                className="flex h-6 w-6 items-center justify-center rounded text-[#737373] hover:bg-[#242424] hover:text-white transition-colors"
+                className="flex h-6 w-6 items-center justify-center rounded text-text-secondary hover:bg-surface-active hover:text-foreground transition-colors"
                 title={form.status === "Published" ? "Live — manage publishing" : "Publish"}
               >
                 {form.status === "Published" ? (
@@ -446,14 +446,14 @@ function FormCard({ form, accent, onOpen, onEditMeta, onDelete, onPublish }) {
               <button
                 type="button"
                 onClick={onEditMeta}
-                className="flex h-6 w-6 items-center justify-center rounded text-[#737373] hover:bg-[#242424] hover:text-white transition-colors"
+                className="flex h-6 w-6 items-center justify-center rounded text-text-secondary hover:bg-surface-active hover:text-foreground transition-colors"
                 title="Edit details"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
               </button>
               <Link
                 href={`/forms/${form.slug}`}
-                className="flex h-6 w-6 items-center justify-center rounded text-[#737373] hover:bg-[#242424] hover:text-white transition-colors"
+                className="flex h-6 w-6 items-center justify-center rounded text-text-secondary hover:bg-surface-active hover:text-foreground transition-colors"
                 title="Open builder"
               >
                 <Edit2 className="h-3.5 w-3.5" />
@@ -461,7 +461,7 @@ function FormCard({ form, accent, onOpen, onEditMeta, onDelete, onPublish }) {
               <Link
                 href={`/form/${form.slug}`}
                 target="_blank"
-                className="flex h-6 w-6 items-center justify-center rounded text-[#737373] hover:bg-[#242424] hover:text-white transition-colors"
+                className="flex h-6 w-6 items-center justify-center rounded text-text-secondary hover:bg-surface-active hover:text-foreground transition-colors"
                 title="Preview filler"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
@@ -469,7 +469,7 @@ function FormCard({ form, accent, onOpen, onEditMeta, onDelete, onPublish }) {
               <button
                 type="button"
                 onClick={onDelete}
-                className="flex h-6 w-6 items-center justify-center rounded text-[#737373] hover:bg-[#242424] hover:text-[#ef4444] transition-colors"
+                className="flex h-6 w-6 items-center justify-center rounded text-text-secondary hover:bg-surface-active hover:text-[#ef4444] transition-colors"
                 title="Delete"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -548,7 +548,7 @@ export function FormsScreen() {
           { label: "Archived", value: String(statusCounts.Archived), detail: "Hidden from list", Icon: Clock3 },
         ]}
       >
-        <div className="flex flex-col gap-2 rounded-lg bg-[#161616] p-2 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-2 rounded-lg bg-background p-2 lg:flex-row lg:items-center lg:justify-between">
           <SegmentedTabs
             tabs={["All", "Published", "Draft", "Archived"].map((tab) => ({
               label: tab,
@@ -561,18 +561,18 @@ export function FormsScreen() {
 
           <div className="flex flex-1 flex-wrap items-center gap-2 lg:justify-end">
             <div className="relative min-w-0 flex-1 sm:max-w-64">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#525252]" />
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search forms, tags, categories…"
-                className="h-8 w-full border-[#2a2a2a] bg-[#0d0d0d] pl-8 pr-8 text-xs text-[#d4d4d4] placeholder:text-[#525252] ring-1 ring-white/[0.04]"
+                className="h-8 w-full border-border bg-[#0d0d0d] pl-8 pr-8 text-xs text-muted-foreground placeholder:text-text-tertiary ring-1 ring-white/[0.04]"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-[#525252] hover:text-[#a3a3a3] transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-text-tertiary hover:text-muted-foreground transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -621,11 +621,11 @@ export function FormsScreen() {
               />
             ))}
             {filtered.length === 0 && (
-              <div className="col-span-full flex min-h-40 flex-col items-center justify-center rounded-md border border-dashed border-[#333333] bg-[#1a1a1a] text-center p-8">
-                <p className="text-sm font-medium text-[#e7e7e7]">
+              <div className="col-span-full flex min-h-40 flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface-subtle text-center p-8">
+                <p className="text-sm font-medium text-foreground">
                   {forms.length === 0 ? "No forms yet" : "No forms match this filter"}
                 </p>
-                <p className="mt-1 text-xs text-[#737373]">
+                <p className="mt-1 text-xs text-text-secondary">
                   {forms.length === 0 ? "Create your first form to get started." : "Try adjusting your search or switching tabs."}
                 </p>
               </div>

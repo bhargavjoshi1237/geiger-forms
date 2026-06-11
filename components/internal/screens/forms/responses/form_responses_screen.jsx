@@ -18,7 +18,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useResponses, labelAnswers } from "@/lib/hooks/use-responses";
 
-const AVATAR_COLORS = ["bg-[#0e1e2e]", "bg-[#0d2218]", "bg-[#2a1a08]", "bg-[#1a0d2e]", "bg-[#1a1a1a]", "bg-[#0d1e1a]"];
+const AVATAR_COLORS = ["bg-[#0e1e2e]", "bg-[#0d2218]", "bg-[#2a1a08]", "bg-[#1a0d2e]", "bg-surface-subtle", "bg-[#0d1e1a]"];
 
 function buildVolume(responses) {
   const days = [];
@@ -69,13 +69,13 @@ const statusChartConfig = {
 
 function StatCard({ label, value, detail, Icon }) {
   return (
-    <div className="rounded-md border border-[#2a2a2a] bg-[#1a1a1a] p-4">
+    <div className="rounded-md border border-border bg-surface-subtle p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-[#525252]">{label}</p>
-        {Icon && <Icon className="h-4 w-4 text-[#525252]" />}
+        <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">{label}</p>
+        {Icon && <Icon className="h-4 w-4 text-text-tertiary" />}
       </div>
       <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
-      <p className="mt-1 text-xs text-[#737373]">{detail}</p>
+      <p className="mt-1 text-xs text-text-secondary">{detail}</p>
     </div>
   );
 }
@@ -89,23 +89,23 @@ function ResponseRow({ r, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="grid w-full grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-4 border-b border-[#242424] px-4 py-3 text-left transition-colors hover:bg-[#202020] last:border-0"
+      className="grid w-full grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-4 border-b border-surface-active px-4 py-3 text-left transition-colors hover:bg-surface-card last:border-0"
     >
-      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-[#d4d4d4]", r.avatarColor)}>
+      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-muted-foreground", r.avatarColor)}>
         {r.initials}
       </div>
 
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-[#e7e7e7]">{r.name}</span>
-          <span className="hidden truncate text-xs text-[#525252] sm:block">{r.email}</span>
+          <span className="text-sm font-medium text-foreground">{r.name}</span>
+          <span className="hidden truncate text-xs text-text-tertiary sm:block">{r.email}</span>
         </div>
-        <p className="mt-0.5 truncate text-[10px] text-[#525252]">{fieldPreview}</p>
+        <p className="mt-0.5 truncate text-[10px] text-text-tertiary">{fieldPreview}</p>
       </div>
 
-      <span className="hidden max-w-[200px] truncate text-xs text-[#737373] sm:block">{r.submittedAt}</span>
+      <span className="hidden max-w-[200px] truncate text-xs text-text-secondary sm:block">{r.submittedAt}</span>
 
-      <span className="rounded bg-[#202020] px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-[#a3a3a3]">
+      <span className="rounded bg-surface-card px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
         {r.score}
       </span>
 
@@ -126,7 +126,7 @@ function ResponseRow({ r, onClick }) {
 
 const FORM_STATUS_STYLE = {
   Published: "bg-[#0d2218] text-[#4ade80] border-[#166534]",
-  Draft:     "bg-[#242424] text-[#737373] border-[#333333]",
+  Draft:     "bg-surface-active text-text-secondary border-border",
   Archived:  "bg-[#1c1917] text-[#78716c] border-[#44403c]",
 };
 
@@ -180,21 +180,21 @@ export function FormResponsesScreen({ form, onBack }) {
   const formStatusClass = FORM_STATUS_STYLE[form.status] ?? FORM_STATUS_STYLE.Draft;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 text-[#e7e7e7]">
+    <div className="mx-auto w-full max-w-6xl space-y-6 text-foreground">
 
-      <div className="flex items-start gap-3 border-b border-[#2a2a2a] pb-5">
+      <div className="flex items-start gap-3 border-b border-border pb-5">
         <button
           type="button"
           onClick={onBack}
-          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[#2a2a2a] bg-[#1a1a1a] text-[#737373] transition-colors hover:border-[#474747] hover:text-white"
+          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface-subtle text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
           aria-label="Back to forms"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold text-[#e7e7e7]">{form.name}</h1>
-          <p className="mt-0.5 text-xs text-[#737373]">
+          <h1 className="text-xl font-semibold text-foreground">{form.name}</h1>
+          <p className="mt-0.5 text-xs text-text-secondary">
             {total} response{total !== 1 ? "s" : ""}&nbsp;·&nbsp;{form.status}
           </p>
         </div>
@@ -205,7 +205,7 @@ export function FormResponsesScreen({ form, onBack }) {
           </span>
           <Link
             href={`/forms/${form.slug}`}
-            className="flex h-8 items-center gap-1.5 rounded-md border border-[#2a2a2a] bg-[#1a1a1a] px-3 text-xs text-[#a3a3a3] transition-colors hover:border-[#474747] hover:text-white"
+            className="flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface-subtle px-3 text-xs text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
           >
             Open builder
           </Link>
@@ -241,9 +241,9 @@ export function FormResponsesScreen({ form, onBack }) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
-        <div className="rounded-md border border-[#2a2a2a] bg-[#1a1a1a] p-5 lg:col-span-2">
+        <div className="rounded-md border border-border bg-surface-subtle p-5 lg:col-span-2">
           <p className="text-sm font-medium text-white">Response volume</p>
-          <p className="mt-0.5 text-xs text-[#737373]">Last 7 days</p>
+          <p className="mt-0.5 text-xs text-text-secondary">Last 7 days</p>
           <ChartContainer config={volumeChartConfig} className="mt-4 h-[180px] w-full">
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
               <defs>
@@ -273,9 +273,9 @@ export function FormResponsesScreen({ form, onBack }) {
           </ChartContainer>
         </div>
 
-        <div className="rounded-md border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <div className="rounded-md border border-border bg-surface-subtle p-5">
           <p className="text-sm font-medium text-white">Status breakdown</p>
-          <p className="mt-0.5 text-xs text-[#737373]">All responses</p>
+          <p className="mt-0.5 text-xs text-text-secondary">All responses</p>
           <ChartContainer config={statusChartConfig} className="mt-2 h-[180px] w-full">
             <PieChart>
               <ChartTooltip
@@ -303,9 +303,9 @@ export function FormResponsesScreen({ form, onBack }) {
               <div key={entry.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: entry.fill }} />
-                  <span className="text-xs text-[#a3a3a3]">{entry.name}</span>
+                  <span className="text-xs text-muted-foreground">{entry.name}</span>
                 </div>
-                <span className="text-xs font-medium tabular-nums text-[#e7e7e7]">{entry.value}</span>
+                <span className="text-xs font-medium tabular-nums text-foreground">{entry.value}</span>
               </div>
             ))}
           </div>
@@ -314,26 +314,26 @@ export function FormResponsesScreen({ form, onBack }) {
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#525252]" />
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Name or email..."
-            className="h-7 w-44 pl-8 pr-3 text-xs text-[#d4d4d4]"
+            className="h-7 w-44 pl-8 pr-3 text-xs text-muted-foreground"
           />
         </div>
 
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#525252]" />
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
           <Input
             value={fieldFilter}
             onChange={(e) => setFieldFilter(e.target.value)}
             placeholder="Filter by field value..."
-            className="h-7 w-48 pl-8 pr-3 text-xs text-[#d4d4d4]"
+            className="h-7 w-48 pl-8 pr-3 text-xs text-muted-foreground"
           />
         </div>
 
-        <div className="h-4 w-px bg-[#2a2a2a]" />
+        <div className="h-4 w-px bg-surface-hover" />
 
         <div className="flex items-center gap-0.5">
           {STATUS_TABS.map((tab) => (
@@ -344,8 +344,8 @@ export function FormResponsesScreen({ form, onBack }) {
               className={cn(
                 "h-7 rounded-md px-2.5 text-xs font-medium transition-colors",
                 statusFilter === tab
-                  ? "bg-[#2a2a2a] text-white"
-                  : "text-[#737373] hover:text-[#a3a3a3]",
+                  ? "bg-surface-hover text-white"
+                  : "text-text-secondary hover:text-muted-foreground",
               )}
             >
               {tab}
@@ -353,7 +353,7 @@ export function FormResponsesScreen({ form, onBack }) {
           ))}
         </div>
 
-        <div className="h-4 w-px bg-[#2a2a2a]" />
+        <div className="h-4 w-px bg-surface-hover" />
 
         <div className="flex items-center gap-0.5">
           {PRIORITY_TABS.map((tab) => (
@@ -364,8 +364,8 @@ export function FormResponsesScreen({ form, onBack }) {
               className={cn(
                 "h-7 rounded-md px-2.5 text-xs font-medium transition-colors",
                 priorityFilter === tab
-                  ? "bg-[#2a2a2a] text-white"
-                  : "text-[#737373] hover:text-[#a3a3a3]",
+                  ? "bg-surface-hover text-white"
+                  : "text-text-secondary hover:text-muted-foreground",
               )}
             >
               {tab}
@@ -373,13 +373,13 @@ export function FormResponsesScreen({ form, onBack }) {
           ))}
         </div>
 
-        <span className="ml-auto text-[11px] text-[#525252]">
+        <span className="ml-auto text-[11px] text-text-tertiary">
           {filtered.length} of {total}
         </span>
       </div>
 
-      <div className="overflow-hidden rounded-md border border-[#2a2a2a] bg-[#1a1a1a]">
-        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 border-b border-[#2a2a2a] px-4 py-2 text-[10px] font-medium uppercase tracking-wide text-[#525252]">
+      <div className="overflow-hidden rounded-md border border-border bg-surface-subtle">
+        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 border-b border-border px-4 py-2 text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
           <span className="w-8" />
           <span>Respondent</span>
           <span className="hidden sm:block">Submitted</span>
@@ -401,7 +401,7 @@ export function FormResponsesScreen({ form, onBack }) {
         ))}
 
         {filtered.length === 0 && (
-          <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-[#737373]">
+          <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-text-secondary">
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />

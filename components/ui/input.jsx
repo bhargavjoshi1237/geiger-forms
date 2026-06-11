@@ -9,7 +9,7 @@ function Input({ className, type = "text", ...props }) {
         // h-9 (36px) minus the 1px top+bottom border = 34px content box.
         // Setting line-height to fill that box lets Geist's glyphs center vertically
         // instead of riding high inside an oversized text-sm line box.
-        "h-9 w-full rounded-md border border-[#2a2a2a] bg-[#161616] px-3 text-sm/[2.125rem] text-white transition-colors placeholder:text-[#737373] focus:border-[#474747] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+        "h-9 w-full rounded-md border border-border bg-background px-3 text-sm/[2.125rem] text-white transition-colors placeholder:text-text-secondary focus:border-border-strong focus:outline-none disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}

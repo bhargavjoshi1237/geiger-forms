@@ -97,7 +97,7 @@ export default function FormsLandingPage() {
   const ctaHref = "/forms";
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-zinc-950 font-sans text-zinc-100 selection:bg-indigo-500/30">
+    <div className="flex min-h-screen w-full flex-col bg-background font-sans text-foreground selection:bg-indigo-500/30">
       <div className="pointer-events-none fixed inset-0 z-0 bg-[linear-gradient(to_right,#80808030_1px,transparent_1px),linear-gradient(to_bottom,#80808030_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
 
       <Topbar />
@@ -108,7 +108,7 @@ export default function FormsLandingPage() {
             <h1 className="mb-4 text-2xl font-semibold text-white sm:text-3xl">
               Create, publish, and manage forms from one focused workspace.
             </h1>
-            <p className="mb-6 max-w-xl text-sm text-zinc-400 sm:text-base">
+            <p className="mb-6 max-w-xl text-sm text-muted-foreground sm:text-base">
               Geiger Forms combines practical form building with response management,
               analytics, templates, and a dedicated filler route for every published form.
             </p>
@@ -130,11 +130,11 @@ export default function FormsLandingPage() {
           {utilityCards.map(({ title, description, icon: Icon }) => (
             <article
               key={title}
-              className="rounded-sm border border-zinc-800 bg-[#191919] p-5"
+              className="rounded-sm border border-border bg-[#191919] p-5"
             >
-              <Icon className="mb-3 h-5 w-5 text-zinc-300" />
-              <h2 className="font-medium text-zinc-100">{title}</h2>
-              <p className="mt-2 text-sm text-zinc-400">{description}</p>
+              <Icon className="mb-3 h-5 w-5 text-muted-foreground" />
+              <h2 className="font-medium text-foreground">{title}</h2>
+              <p className="mt-2 text-sm text-muted-foreground">{description}</p>
             </article>
           ))}
         </section>
@@ -149,12 +149,12 @@ export default function FormsLandingPage() {
                 <AccordionItem
                   key={faq.value}
                   value={faq.value}
-                  className="border-zinc-800"
+                  className="border-border"
                 >
-                  <AccordionTrigger className="text-zinc-200 hover:text-white hover:no-underline">
+                  <AccordionTrigger className="text-foreground hover:text-foreground hover:no-underline">
                     {faq.question}
                   </AccordionTrigger>
-                  <AccordionContent className="text-zinc-400">
+                  <AccordionContent className="text-muted-foreground">
                     {faq.answer}
                   </AccordionContent>
                 </AccordionItem>
@@ -165,7 +165,7 @@ export default function FormsLandingPage() {
 
         <section className="relative z-20 overflow-hidden px-4 py-16 sm:px-6 sm:py-24 lg:py-32">
           <div className="container relative z-10 mx-auto flex flex-col items-center text-center">
-            <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500 sm:text-sm">
+            <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-foreground0 sm:text-sm">
               Open source from day one
             </h3>
             <h2 className="mb-8 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-3xl font-black tracking-tighter text-transparent drop-shadow-lg sm:mb-10 sm:text-5xl lg:text-6xl">
