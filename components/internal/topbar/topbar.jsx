@@ -44,7 +44,7 @@ export function Topbar() {
         <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
-            className="group relative flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface-active px-2 text-sm text-muted-foreground shadow-sm transition-colors hover:border-border-strong sm:w-[240px] sm:justify-start sm:px-2.5"
+            className="group relative hidden h-8 w-[240px] items-center justify-start rounded-md border border-border bg-surface-active px-2.5 text-sm text-muted-foreground shadow-sm transition-colors hover:border-border-strong sm:flex"
           >
             <Search className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground sm:mr-2" />
             <span className="hidden text-muted-foreground transition-colors group-hover:text-foreground sm:inline-block">
@@ -73,7 +73,7 @@ export function Topbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="relative flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+              className="relative hidden h-8 w-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground sm:flex"
             >
               <Bell className="h-[18px] w-[18px]" strokeWidth={2} />
             </Button>

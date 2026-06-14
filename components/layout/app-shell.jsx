@@ -18,7 +18,7 @@ function SidebarContent({ activeView, onViewChange, onNavigate, showHeader = fal
             <Image src={`${assetPrefix}/logo1.svg`} alt="" width={20} height={20} className="h-5 w-5" />
           </div>
           <div className="border-l border-border pl-3">
-            <p className="text-sm font-semibold text-white">Form</p>
+            <p className="text-sm font-semibold text-white">Forms</p>
           </div>
         </div>
       ) : null}
