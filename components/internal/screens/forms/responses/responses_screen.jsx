@@ -10,18 +10,18 @@ import { summarizeResponses } from "@/lib/supabase/responses";
 import { downloadResponses } from "@/lib/forms/export";
 
 const STATUS_STYLE = {
-  Complete: { bg: "bg-[#0d2218]", text: "text-[#4ade80]", border: "border-[#166534]" },
-  "Needs review": { bg: "bg-[#2a1a08]", text: "text-[#fb923c]", border: "border-[#7c2d12]" },
-  Pending: { bg: "bg-[#1c1917]", text: "text-[#78716c]", border: "border-[#44403c]" },
+  Complete: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
+  "Needs review": { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20" },
+  Pending: { bg: "bg-surface-active", text: "text-muted-foreground", border: "border-border-strong" },
 };
 
 const PRIORITY_STYLE = {
-  High: { bg: "bg-[#2a0808]", text: "text-[#f87171]", border: "border-[#7f1d1d]" },
-  Medium: { bg: "bg-[#2a1a08]", text: "text-[#fb923c]", border: "border-[#7c2d12]" },
-  Low: { bg: "bg-[#1c1917]", text: "text-[#78716c]", border: "border-[#44403c]" },
+  High: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20" },
+  Medium: { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20" },
+  Low: { bg: "bg-surface-active", text: "text-muted-foreground", border: "border-border-strong" },
 };
 
-const AVATAR_COLORS = ["bg-[#0e1e2e]", "bg-[#0d2218]", "bg-[#2a1a08]", "bg-[#1a0d2e]", "bg-surface-subtle", "bg-[#0d1e1a]"];
+const AVATAR_COLORS = ["bg-blue-500/10", "bg-emerald-500/10", "bg-orange-500/10", "bg-violet-500/10", "bg-surface-subtle", "bg-teal-500/10"];
 const ALL_TABS = ["All", "Complete", "Needs review", "Pending"];
 const PRIORITY_TABS = ["All", "High", "Medium", "Low"];
 
@@ -54,7 +54,7 @@ function ExportMenu({ onExport }) {
 
 function PriorityDropdown({ value, onChange, counts }) {
   const [open, setOpen] = useState(false);
-  const PRIORITY_DOT = { All: "bg-border-strong", High: "bg-[#f87171]", Medium: "bg-[#fb923c]", Low: "bg-[#78716c]" };
+  const PRIORITY_DOT = { All: "bg-border-strong", High: "bg-red-400", Medium: "bg-orange-400", Low: "bg-muted-foreground" };
   return (
     <div className="relative">
       <button
@@ -78,7 +78,7 @@ function PriorityDropdown({ value, onChange, counts }) {
                 key={tab}
                 type="button"
                 onClick={() => { onChange(tab); setOpen(false); }}
-                className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs transition-colors ${value === tab ? "text-white" : "text-text-secondary hover:text-muted-foreground"}`}
+                className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs transition-colors ${value === tab ? "text-foreground" : "text-text-secondary hover:text-muted-foreground"}`}
               >
                 <span className={`h-1.5 w-1.5 rounded-full ${PRIORITY_DOT[tab]}`} />
                 {tab === "All" ? "All priorities" : tab}
@@ -140,7 +140,7 @@ export function ResponsesScreen() {
       ]}
     >
       {exportNotice && (
-        <div className="flex items-center gap-2 rounded-md border border-[#166534] bg-[#0d2218] px-3 py-2.5 text-xs text-[#4ade80]">
+        <div className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-400">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
           {exportNotice}
         </div>
@@ -169,7 +169,7 @@ export function ResponsesScreen() {
           </div>
         </div>
 
-        <div className="divide-y divide-[#242424]">
+        <div className="divide-y divide-border">
           {filtered.map((r, i) => {
             const s = STATUS_STYLE[r.status] ?? STATUS_STYLE.Pending;
             return (

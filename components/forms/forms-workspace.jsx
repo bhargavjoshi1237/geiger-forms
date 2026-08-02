@@ -12,6 +12,8 @@ import { SettingsScreen } from "@/components/internal/screens/forms/settings/set
 import { SharedScreen } from "@/components/internal/screens/forms/shared/shared_screen";
 import { TemplatesScreen } from "@/components/internal/screens/forms/templates/templates_screen";
 import { ArchivedScreen } from "@/components/internal/screens/forms/archived/archived_screen";
+import { ComingSoonScreen } from "@/components/internal/screens/forms/coming-soon/coming_soon_screen";
+import { navItemById } from "@/components/internal/sidebar/sidebar_nav";
 
 function renderActiveScreen(activeView) {
   switch (activeView) {
@@ -32,17 +34,17 @@ function renderActiveScreen(activeView) {
     case "Settings":
       return <SettingsScreen />;
     case "Forms":
-    default:
       return <FormsScreen />;
+    default:
+      // Any feature-catalog view without a real screen yet.
+      return <ComingSoonScreen view={activeView} />;
   }
 }
-
-const VALID_VIEWS = ["Overview", "Forms", "Responses", "Analytics", "Templates", "Folders", "Shared", "Archived", "Settings"];
 
 export function FormsWorkspace({ playground = false }) {
   const searchParams = useSearchParams();
   const requestedView = searchParams.get("view");
-  const initialView = VALID_VIEWS.includes(requestedView) ? requestedView : "Forms";
+  const initialView = navItemById(requestedView) ? requestedView : "Overview";
   const [activeView, setActiveView] = useState(initialView);
 
   return (

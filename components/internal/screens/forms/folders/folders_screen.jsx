@@ -79,7 +79,7 @@ export function FoldersScreen() {
                   </div>
 
                   <div className="flex-1">
-                    <h3 className="text-sm font-medium text-white">{folder.name}</h3>
+                    <h3 className="text-sm font-medium text-foreground">{folder.name}</h3>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
                       <span>
                         {folder.forms} {folder.forms === 1 ? "form" : "forms"}

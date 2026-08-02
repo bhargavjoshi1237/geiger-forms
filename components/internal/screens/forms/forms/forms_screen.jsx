@@ -1,29 +1,36 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Clock3,
-  Edit2,
   ExternalLink,
   FileText,
   Globe,
   Inbox,
   Loader2,
-  MousePointerClick,
+  MessageSquare,
+  MoreHorizontal,
+  Pencil,
   Plus,
-  Search,
   SlidersHorizontal,
   Tag,
   Trash2,
   Users,
   X,
 } from "lucide-react";
-import { FormsScreenShell, LoadingState, ErrorState } from "../screen-shell";
-import { SegmentedTabs } from "@/components/internal/shared/segmented_tabs";
+
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import {
+  DataTable,
+  EmptyState,
+  ScreenHeader,
+  SearchInput,
+  StatsBar,
+  StatusPill,
+  Toolbar,
+} from "@/components/internal/shared/screen_kit";
 import FilterDropdown from "@/components/internal/shared/filter_dropdown";
-import { FormResponsesScreen } from "../responses/form_responses_screen";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,9 +48,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 import { useForms } from "@/lib/hooks/use-forms";
 import { defaultSettings } from "@/lib/forms/schema";
 import { PublishDialog } from "@/components/forms/publish-dialog";
+import { FormResponsesScreen } from "../responses/form_responses_screen";
+import { FormDetailScreen } from "./form_detail";
+import {
+  DEFAULT_CATEGORIES,
+  FORM_STATUS_MAP,
+  STATUS_FILTER_OPTIONS,
+  formatCount,
+} from "./constants";
 
 const STARTER_TEMPLATES = [
   { id: "blank", label: "Blank form", description: "Start from scratch" },
@@ -51,8 +74,6 @@ const STARTER_TEMPLATES = [
   { id: "event-registration", label: "Event Registration", description: "Name, email, seats" },
   { id: "product-feedback", label: "Product Feedback", description: "NPS + open feedback" },
 ];
-
-const DEFAULT_CATEGORIES = ["Sales", "Product", "Operations", "HR", "Events", "Support", "Marketing"];
 
 const SHARE_ROLES = [
   { value: "viewer", label: "Can view" },
@@ -65,20 +86,11 @@ function shareInitials(email) {
   return (handle.slice(0, 2) || "?").toUpperCase();
 }
 
-const statusStyle = {
-  Published: "bg-[#0d2218] text-[#4ade80] border-[#166534]",
-  Draft: "bg-surface-active text-text-secondary border-border",
-  Archived: "bg-[#1c1917] text-[#78716c] border-[#44403c]",
+// Percent of a completion rate that may be stored 0–1 or 0–100.
+const ratePct = (rate) => {
+  const n = Number(rate) || 0;
+  return Math.min(100, Math.round(n <= 1 ? n * 100 : n));
 };
-
-const cardAccents = [
-  "from-[#0e1a2e] to-surface-subtle",
-  "from-[#1a1a1e] to-surface-subtle",
-  "from-[#0d2218] to-surface-subtle",
-  "from-[#1e1c0e] to-surface-subtle",
-  "from-[#1e0e16] to-surface-subtle",
-  "from-[#1a1a1e] to-surface-subtle",
-];
 
 function NewFormDialog({ open, onClose, onCreate }) {
   const router = useRouter();
@@ -133,10 +145,10 @@ function NewFormDialog({ open, onClose, onCreate }) {
         <div className="space-y-5">
           <div>
             <label className="block text-xs font-medium text-muted-foreground">
-              Form name <span className="text-[#ef4444]">*</span>
+              Form name <span className="text-red-400">*</span>
             </label>
             <Input
-              className="mt-2 border-border bg-surface-card text-white"
+              className="mt-2 border-border bg-surface-card text-foreground"
               placeholder="e.g. Partner Application"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -150,7 +162,7 @@ function NewFormDialog({ open, onClose, onCreate }) {
           <div>
             <label className="mb-2 block text-xs font-medium text-muted-foreground">Start from</label>
             <Select value={template} onValueChange={setTemplate}>
-              <SelectTrigger className="h-9 w-full border-border bg-surface-card text-xs text-white">
+              <SelectTrigger className="h-9 w-full border-border bg-surface-card text-xs text-foreground">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -182,10 +194,10 @@ function NewFormDialog({ open, onClose, onCreate }) {
                   }
                 }}
                 placeholder="Add people by email…"
-                className="h-9 flex-1 border-border bg-surface-card text-xs text-white"
+                className="h-9 flex-1 border-border bg-surface-card text-xs text-foreground"
               />
               <Select value={shareRole} onValueChange={setShareRole}>
-                <SelectTrigger className="h-9 w-[112px] shrink-0 border-border bg-surface-card text-xs text-white">
+                <SelectTrigger className="h-9 w-[112px] shrink-0 border-border bg-surface-card text-xs text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -240,7 +252,7 @@ function NewFormDialog({ open, onClose, onCreate }) {
                       <button
                         type="button"
                         onClick={() => removePerson(p.email)}
-                        className="flex h-6 w-6 items-center justify-center rounded text-text-secondary transition-colors hover:bg-surface-active hover:text-[#ef4444]"
+                        className="flex h-6 w-6 items-center justify-center rounded text-text-secondary transition-colors hover:bg-surface-active hover:text-red-400"
                         title="Remove access"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -252,7 +264,7 @@ function NewFormDialog({ open, onClose, onCreate }) {
             </div>
           </div>
 
-          {error && <p className="text-xs text-[#f87171]">{error}</p>}
+          {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" type="button" onClick={onClose} disabled={submitting}>
@@ -381,118 +393,20 @@ function EditFormMetadataDialog({ form, categories, onSave, onClose }) {
   );
 }
 
-function FormCard({ form, accent, onOpen, onEditMeta, onDelete, onPublish }) {
-  return (
-    <article
-      className="group relative flex flex-col overflow-hidden rounded-md border border-border bg-surface-subtle transition-colors hover:border-border-strong cursor-pointer"
-      onClick={onOpen}
-    >
-      <div className={`flex h-[72px] items-end bg-gradient-to-br ${accent} p-3`}>
-        <div className="flex h-7 w-7 items-center justify-center rounded border border-border bg-background/80">
-          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-        </div>
-      </div>
-
-      <div className="flex flex-1 flex-col gap-2.5 p-3">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-medium leading-snug text-white">{form.name}</h3>
-          <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusStyle[form.status]}`}>
-            {form.status}
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
-          <span>{form.responses} responses</span>
-          <span>·</span>
-          <span>{form.fields} fields</span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          {form.category && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-card px-1.5 py-0.5 text-[10px] text-text-secondary">
-              <Tag className="h-2.5 w-2.5" />
-              {form.category}
-            </span>
-          )}
-          {form.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="rounded-md bg-[#1e1e1e] px-1.5 py-0.5 text-[10px] text-text-tertiary">
-              #{tag}
-            </span>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between border-t border-surface-active pt-2.5">
-          <span className="flex items-center gap-1 text-[10px] text-text-tertiary">
-            <Clock3 className="h-3 w-3" />
-            {form.lastEdited}
-          </span>
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-              <button
-                type="button"
-                onClick={onPublish}
-                className="flex h-6 w-6 items-center justify-center rounded text-text-secondary hover:bg-surface-active hover:text-foreground transition-colors"
-                title={form.status === "Published" ? "Live — manage publishing" : "Publish"}
-              >
-                {form.status === "Published" ? (
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#4ade80] opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#4ade80]" />
-                  </span>
-                ) : (
-                  <Globe className="h-3.5 w-3.5" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={onEditMeta}
-                className="flex h-6 w-6 items-center justify-center rounded text-text-secondary hover:bg-surface-active hover:text-foreground transition-colors"
-                title="Edit details"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-              </button>
-              <Link
-                href={`/forms/${form.slug}`}
-                className="flex h-6 w-6 items-center justify-center rounded text-text-secondary hover:bg-surface-active hover:text-foreground transition-colors"
-                title="Open builder"
-              >
-                <Edit2 className="h-3.5 w-3.5" />
-              </Link>
-              <Link
-                href={`/form/${form.slug}`}
-                target="_blank"
-                className="flex h-6 w-6 items-center justify-center rounded text-text-secondary hover:bg-surface-active hover:text-foreground transition-colors"
-                title="Preview filler"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Link>
-              <button
-                type="button"
-                onClick={onDelete}
-                className="flex h-6 w-6 items-center justify-center rounded text-text-secondary hover:bg-surface-active hover:text-[#ef4444] transition-colors"
-                title="Delete"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
 export function FormsScreen() {
+  const router = useRouter();
   const { forms, loading, error, refresh, create, update, remove, changeStatus } = useForms();
 
-  const [activeTab, setActiveTab] = useState("All");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
 
   const [showNewForm, setShowNewForm] = useState(false);
-  const [selectedForm, setSelectedForm] = useState(null);
+  const [detailForm, setDetailForm] = useState(null);
+  const [responsesForm, setResponsesForm] = useState(null);
   const [editingForm, setEditingForm] = useState(null);
   const [publishingForm, setPublishingForm] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const categories = useMemo(() => {
     const set = new Set(DEFAULT_CATEGORIES);
@@ -500,139 +414,265 @@ export function FormsScreen() {
     return [...set];
   }, [forms]);
 
-  const statusCounts = useMemo(
-    () => ({
-      All: forms.length,
-      Published: forms.filter((f) => f.status === "Published").length,
-      Draft: forms.filter((f) => f.status === "Draft").length,
-      Archived: forms.filter((f) => f.status === "Archived").length,
-    }),
-    [forms],
-  );
+  const stats = useMemo(() => {
+    const published = forms.filter((f) => f.status === "Published").length;
+    const drafts = forms.filter((f) => f.status === "Draft").length;
+    const responses = forms.reduce((s, f) => s + (f.responses || 0), 0);
+    return [
+      { label: "Total forms", value: String(forms.length), footer: `${published} published` },
+      { label: "Responses", value: responses.toLocaleString(), footer: "Across all forms" },
+      { label: "Drafts", value: String(drafts), footer: "Not yet published" },
+      { label: "Published", value: String(published), footer: "Live now" },
+    ];
+  }, [forms]);
 
-  const totalResponses = useMemo(() => forms.reduce((sum, f) => sum + (f.responses || 0), 0), [forms]);
-
-  if (selectedForm) {
-    return <FormResponsesScreen form={selectedForm} onBack={() => setSelectedForm(null)} />;
-  }
-
-  const filtered = forms.filter((f) => {
-    if (activeTab !== "All" && f.status !== activeTab) return false;
-    if (categoryFilter !== "All" && f.category !== categoryFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      const matches =
-        f.name.toLowerCase().includes(q) ||
-        (f.category || "").toLowerCase().includes(q) ||
-        f.tags.some((t) => t.toLowerCase().includes(q));
-      if (!matches) return false;
-    }
-    return true;
-  });
+  const filtered = useMemo(() => {
+    return forms.filter((f) => {
+      if (statusFilter !== "All" && f.status !== statusFilter) return false;
+      if (categoryFilter !== "All" && f.category !== categoryFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const matches =
+          f.name.toLowerCase().includes(q) ||
+          (f.category || "").toLowerCase().includes(q) ||
+          (f.tags || []).some((t) => t.toLowerCase().includes(q));
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [forms, search, statusFilter, categoryFilter]);
 
   const handleDelete = async (form) => {
-    if (!window.confirm(`Delete "${form.name}"? This also removes its responses and cannot be undone.`)) return;
+    setDeleteTarget(null);
     await remove(form.id);
   };
 
-  return (
-    <>
-      <FormsScreenShell
-        eyebrow="Workspace"
-        title="Forms"
-        description="Manage active forms, drafts, and recently edited collection flows from one place."
-        stats={[
-          { label: "Total forms", value: String(statusCounts.All), detail: `${statusCounts.Published} published`, Icon: FileText },
-          { label: "Responses", value: String(totalResponses), detail: "Across all forms", Icon: Inbox },
-          { label: "Drafts", value: String(statusCounts.Draft), detail: "Not yet published", Icon: MousePointerClick },
-          { label: "Archived", value: String(statusCounts.Archived), detail: "Hidden from list", Icon: Clock3 },
-        ]}
-      >
-        <div className="flex flex-col gap-2 rounded-lg bg-background p-2 lg:flex-row lg:items-center lg:justify-between">
-          <SegmentedTabs
-            tabs={["All", "Published", "Draft", "Archived"].map((tab) => ({
-              label: tab,
-              value: tab,
-              count: statusCounts[tab],
-            }))}
-            value={activeTab}
-            onChange={setActiveTab}
-          />
+  const preview = (form) => {
+    if (typeof window !== "undefined") {
+      window.open(`/form/${form.slug}`, "_blank", "noopener,noreferrer");
+    }
+  };
 
-          <div className="flex flex-1 flex-wrap items-center gap-2 lg:justify-end">
-            <div className="relative min-w-0 flex-1 sm:max-w-64">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search forms, tags, categories…"
-                className="h-8 w-full border-border bg-[#0d0d0d] pl-8 pr-8 text-xs text-muted-foreground placeholder:text-text-tertiary ring-1 ring-white/[0.04]"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-text-tertiary hover:text-muted-foreground transition-colors"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
+  // Detail editor takes over the workspace, mirroring the events area.
+  if (detailForm) {
+    const live = forms.find((f) => f.id === detailForm.id) || detailForm;
+    return (
+      <FormDetailScreen
+        form={live}
+        categories={categories}
+        onBack={() => setDetailForm(null)}
+        onUpdate={update}
+        onPublish={(f) => setPublishingForm(f)}
+      />
+    );
+  }
 
-            <FilterDropdown
-              value={categoryFilter}
-              onValueChange={setCategoryFilter}
-              icon={""}
-              options={[
-                { value: "All", label: "All categories" },
-                ...categories.map((cat) => ({ value: cat, label: cat })),
-              ]}
-            />
+  if (responsesForm) {
+    return <FormResponsesScreen form={responsesForm} onBack={() => setResponsesForm(null)} />;
+  }
 
-            <Button size="sm" className="h-8 shrink-0 gap-1.5 px-3 text-xs" onClick={() => setShowNewForm(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              New form
-            </Button>
-          </div>
+  const columns = [
+    {
+      key: "name",
+      header: "Form",
+      render: (f) => (
+        <div className="flex flex-col gap-1">
+          <span className="font-medium text-foreground">{f.name}</span>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-text-secondary">
+            {f.category ? (
+              <span className="inline-flex items-center gap-1">
+                <Tag className="h-3 w-3" /> {f.category}
+              </span>
+            ) : null}
+            <span>{f.fields} fields</span>
+            {f.lastEdited ? (
+              <span className="inline-flex items-center gap-1">
+                <Clock3 className="h-3 w-3" /> {f.lastEdited}
+              </span>
+            ) : null}
+          </span>
         </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (f) => <StatusPill status={f.status} map={FORM_STATUS_MAP} />,
+    },
+    {
+      key: "responses",
+      header: "Responses",
+      align: "right",
+      className: "text-right font-semibold tabular-nums text-foreground",
+      render: (f) => formatCount(f.responses),
+    },
+    {
+      key: "completion",
+      header: "Completion",
+      render: (f) => {
+        const pct = ratePct(f.rate);
+        return (
+          <div className="w-[150px] space-y-1.5">
+            <div className="h-1.5 overflow-hidden rounded-full bg-surface-hover">
+              <div className="h-full rounded-full bg-emerald-400/80" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="text-xs text-text-secondary">{pct}% start → submit</p>
+          </div>
+        );
+      },
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      className: "text-right",
+      render: (f) => (
+        <div onClick={(ev) => ev.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 border-border bg-surface-card shadow-xl">
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
+                onClick={() => setDetailForm(f)}
+              >
+                <Pencil className="h-4 w-4" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
+                onClick={() => setEditingForm(f)}
+              >
+                <SlidersHorizontal className="h-4 w-4" /> Edit details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
+                onClick={() => setResponsesForm(f)}
+              >
+                <MessageSquare className="h-4 w-4" /> Responses
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
+                onClick={() => router.push(`/forms/${f.slug}`)}
+              >
+                <Globe className="h-4 w-4" /> Open builder
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
+                onClick={() => preview(f)}
+              >
+                <ExternalLink className="h-4 w-4" /> Preview filler
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-surface-strong" />
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 text-red-300 focus:bg-red-500/10 focus:text-red-300"
+                onClick={() => setDeleteTarget(f)}
+              >
+                <Trash2 className="h-4 w-4 text-red-300" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
+  ];
 
-        {loading ? (
-          <LoadingState label="Loading forms…" />
-        ) : error ? (
-          <ErrorState
+  return (
+    <MainScreenWrapper>
+      <ScreenHeader
+        title="All Forms"
+        description="Every form in your workspace — drafts, published, and archived. Search, filter, and manage them all from here."
+        actions={
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={() => setShowNewForm(true)}
+          >
+            <Plus className="h-4 w-4" /> New form
+          </Button>
+        }
+      />
+
+      <StatsBar stats={stats} />
+
+      <Toolbar>
+        <div className="flex items-center gap-2">
+          <FilterDropdown
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+            options={STATUS_FILTER_OPTIONS}
+            height="h-9"
+          />
+          <FilterDropdown
+            value={categoryFilter}
+            onValueChange={setCategoryFilter}
+            options={[
+              { value: "All", label: "All categories" },
+              ...categories.map((c) => ({ value: c, label: c })),
+            ]}
+            height="h-9"
+          />
+        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search forms, tags, categories…"
+          className="w-full sm:max-w-xs"
+        />
+      </Toolbar>
+
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading forms…
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-border bg-surface-subtle">
+          <EmptyState
+            icon={FileText}
             title="Couldn't load forms"
             description="Something went wrong while loading your forms. Please try again in a moment."
-            onRetry={refresh}
+            action={
+              <Button variant="outline" onClick={refresh}>
+                Try again
+              </Button>
+            }
           />
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((form, i) => (
-              <FormCard
-                key={form.id}
-                form={form}
-                accent={cardAccents[i % cardAccents.length]}
-                onOpen={() => setSelectedForm(form)}
-                onEditMeta={(e) => {
-                  e.stopPropagation();
-                  setEditingForm(form);
-                }}
-                onPublish={() => setPublishingForm(form)}
-                onDelete={() => handleDelete(form)}
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filtered}
+          getRowKey={(f) => f.id}
+          onRowClick={(f) => setDetailForm(f)}
+          empty={
+            <div className="rounded-xl border border-border bg-surface-subtle">
+              <EmptyState
+                icon={forms.length ? Inbox : FileText}
+                title={forms.length ? "No forms match your filters" : "No forms yet"}
+                description={
+                  forms.length
+                    ? "Try clearing the search or filters, or create a new form to get started."
+                    : "Create your first form to start collecting responses."
+                }
+                action={
+                  <Button
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => setShowNewForm(true)}
+                  >
+                    <Plus className="h-4 w-4" /> New form
+                  </Button>
+                }
               />
-            ))}
-            {filtered.length === 0 && (
-              <div className="col-span-full flex min-h-40 flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface-subtle text-center p-8">
-                <p className="text-sm font-medium text-foreground">
-                  {forms.length === 0 ? "No forms yet" : "No forms match this filter"}
-                </p>
-                <p className="mt-1 text-xs text-text-secondary">
-                  {forms.length === 0 ? "Create your first form to get started." : "Try adjusting your search or switching tabs."}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </FormsScreenShell>
+            </div>
+          }
+        />
+      )}
 
       <NewFormDialog open={showNewForm} onClose={() => setShowNewForm(false)} onCreate={create} />
 
@@ -657,6 +697,32 @@ export function FormsScreen() {
           />
         );
       })()}
-    </>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete form</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-text-secondary">
+            Are you sure you want to delete{" "}
+            <span className="font-medium text-foreground">{deleteTarget?.name}</span>? This also
+            removes its responses and can&apos;t be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => handleDelete(deleteTarget)}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </MainScreenWrapper>
   );
 }
+
+export default FormsScreen;

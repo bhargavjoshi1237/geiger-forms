@@ -3,36 +3,21 @@ import { Suspense } from "react";
 import { ArrowRight } from "lucide-react";
 import FormPlayground from "@/components/FormPlayground";
 
-const showcaseBackgroundImages = [
-  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-00a586c62c8782e65c0a.jpg",
-  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/internal-brand-023-3291bb4c.jpg",
-  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-0ec1f3ba625f482c9dc3.jpg",
-  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-85923e7fafe00c9c0d1f.jpg",
-  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-8e2e88cff7f33224ddd7.jpg",
-  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-0a66efa21dd4b7e6c526.jpg",
-  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-cc24ca462279ca23250c.jpg",
-];
-
-function getRandomBackground() {
-  return showcaseBackgroundImages[Math.floor(Math.random() * showcaseBackgroundImages.length)];
-}
-
-export default function LandingFormShowcase({ ctaHref, ctaLabel }) {
-  const bg = getRandomBackground();
-
+export default function LandingFormShowcase({ ctaHref, ctaLabel, backgroundImage }) {
   return (
     <section
-      className="rounded-2xl border border-border bg-cover bg-center p-3 sm:rounded-3xl sm:p-6 md:p-8 xl:p-10"
-      style={{ backgroundImage: `url('${bg}')` }}
+      className="relative overflow-hidden rounded-2xl border border-border bg-cover bg-center bg-no-repeat p-3 sm:rounded-3xl sm:p-6 md:p-8 xl:p-10"
+      style={backgroundImage ? { backgroundImage: `url('${backgroundImage}')` } : undefined}
     >
-      <div className="flex flex-col gap-6 sm:gap-10">
+      <div className="absolute inset-0 bg-[#080808]/75" />
+      <div className="relative z-10 flex flex-col gap-6 sm:gap-10">
         <div className="space-y-5">
           <div className="mx-auto mb-4 mt-4 flex w-[92%] flex-col items-start gap-4 sm:mb-6 sm:mt-6 sm:w-[90%]">
             <h3 className="text-3xl font-semibold leading-tight text-white">
               Build in real time with the full Geiger Forms interface.
             </h3>
 
-            <p className="max-w-sm text-muted-foreground">
+            <p className="max-w-sm text-[#bcbcbc]">
               This playground shows the form builder, filler preview, response
               summary, and publishing controls together. No save and no load,
               just pure exploration.

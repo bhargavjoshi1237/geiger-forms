@@ -15,11 +15,11 @@ import { useForms } from "@/lib/hooks/use-forms";
 
 const roleStyle = {
   viewer: { label: "Viewer", bg: "bg-surface-card", text: "text-text-secondary", border: "border-border" },
-  editor: { label: "Editor", bg: "bg-[#0e1e2e]", text: "text-[#93c5fd]", border: "border-[#1e3a5f]" },
-  admin: { label: "Admin", bg: "bg-[#1a1025]", text: "text-[#c4b5fd]", border: "border-[#3b1f6b]" },
+  editor: { label: "Editor", bg: "bg-blue-500/10", text: "text-blue-300", border: "border-blue-500/20" },
+  admin: { label: "Admin", bg: "bg-violet-500/10", text: "text-violet-300", border: "border-violet-500/20" },
 };
 
-const avatarColors = ["bg-[#0e1e2e]", "bg-[#0d2218]", "bg-[#2a1a08]", "bg-[#1a1025]"];
+const avatarColors = ["bg-blue-500/10", "bg-emerald-500/10", "bg-orange-500/10", "bg-violet-500/10"];
 
 function shareInitials(email) {
   const handle = (email.split("@")[0] || email).replace(/[^a-z0-9]/gi, "");
@@ -156,11 +156,11 @@ export function SharedScreen() {
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         {item.published ? (
-                          <Link2 className="h-3.5 w-3.5 text-[#4ade80]" />
+                          <Link2 className="h-3.5 w-3.5 text-emerald-400" />
                         ) : (
                           <Link2Off className="h-3.5 w-3.5 text-text-tertiary" />
                         )}
-                        <span className={`whitespace-nowrap text-xs ${item.published ? "text-[#4ade80]" : "text-text-tertiary"}`}>
+                        <span className={`whitespace-nowrap text-xs ${item.published ? "text-emerald-400" : "text-text-tertiary"}`}>
                           {item.published ? "Link on" : "Link off"}
                         </span>
                       </div>

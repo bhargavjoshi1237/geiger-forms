@@ -64,9 +64,9 @@ export function TemplatesScreen() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-sm font-medium text-white">{form.name}</h3>
+                          <h3 className="text-sm font-medium text-foreground">{form.name}</h3>
                           {popular && (
-                            <span className="rounded-full border border-[#166534] bg-[#0d2218] px-1.5 py-0 text-[10px] font-medium text-[#4ade80]">
+                            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0 text-[10px] font-medium text-emerald-400">
                               Popular
                             </span>
                           )}

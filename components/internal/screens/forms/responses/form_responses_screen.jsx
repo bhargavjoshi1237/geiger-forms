@@ -18,7 +18,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useResponses, labelAnswers } from "@/lib/hooks/use-responses";
 
-const AVATAR_COLORS = ["bg-[#0e1e2e]", "bg-[#0d2218]", "bg-[#2a1a08]", "bg-[#1a0d2e]", "bg-surface-subtle", "bg-[#0d1e1a]"];
+const AVATAR_COLORS = ["bg-blue-500/10", "bg-emerald-500/10", "bg-orange-500/10", "bg-violet-500/10", "bg-surface-subtle", "bg-teal-500/10"];
 
 function buildVolume(responses) {
   const days = [];
@@ -46,15 +46,15 @@ function formatDateTime(iso) {
 }
 
 const STATUS_STYLE = {
-  Complete:       { bg: "bg-[#0d2218]", text: "text-[#4ade80]", border: "border-[#166534]" },
-  "Needs review": { bg: "bg-[#2a1a08]", text: "text-[#fb923c]", border: "border-[#7c2d12]" },
-  Pending:        { bg: "bg-[#1c1917]", text: "text-[#78716c]", border: "border-[#44403c]" },
+  Complete:       { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
+  "Needs review": { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20" },
+  Pending:        { bg: "bg-surface-active", text: "text-muted-foreground", border: "border-border-strong" },
 };
 
 const PRIORITY_STYLE = {
-  High:   { bg: "bg-[#2a0808]", text: "text-[#f87171]", border: "border-[#7f1d1d]" },
-  Medium: { bg: "bg-[#2a1a08]", text: "text-[#fb923c]", border: "border-[#7c2d12]" },
-  Low:    { bg: "bg-[#1c1917]", text: "text-[#78716c]", border: "border-[#44403c]" },
+  High:   { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20" },
+  Medium: { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20" },
+  Low:    { bg: "bg-surface-active", text: "text-muted-foreground", border: "border-border-strong" },
 };
 
 const volumeChartConfig = {
@@ -74,7 +74,7 @@ function StatCard({ label, value, detail, Icon }) {
         <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">{label}</p>
         {Icon && <Icon className="h-4 w-4 text-text-tertiary" />}
       </div>
-      <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
+      <p className="mt-3 text-2xl font-semibold text-foreground">{value}</p>
       <p className="mt-1 text-xs text-text-secondary">{detail}</p>
     </div>
   );
@@ -125,9 +125,9 @@ function ResponseRow({ r, onClick }) {
 }
 
 const FORM_STATUS_STYLE = {
-  Published: "bg-[#0d2218] text-[#4ade80] border-[#166534]",
+  Published: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   Draft:     "bg-surface-active text-text-secondary border-border",
-  Archived:  "bg-[#1c1917] text-[#78716c] border-[#44403c]",
+  Archived:  "bg-surface-active text-muted-foreground border-border-strong",
 };
 
 export function FormResponsesScreen({ form, onBack }) {
@@ -242,7 +242,7 @@ export function FormResponsesScreen({ form, onBack }) {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
         <div className="rounded-md border border-border bg-surface-subtle p-5 lg:col-span-2">
-          <p className="text-sm font-medium text-white">Response volume</p>
+          <p className="text-sm font-medium text-foreground">Response volume</p>
           <p className="mt-0.5 text-xs text-text-secondary">Last 7 days</p>
           <ChartContainer config={volumeChartConfig} className="mt-4 h-[180px] w-full">
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
@@ -274,7 +274,7 @@ export function FormResponsesScreen({ form, onBack }) {
         </div>
 
         <div className="rounded-md border border-border bg-surface-subtle p-5">
-          <p className="text-sm font-medium text-white">Status breakdown</p>
+          <p className="text-sm font-medium text-foreground">Status breakdown</p>
           <p className="mt-0.5 text-xs text-text-secondary">All responses</p>
           <ChartContainer config={statusChartConfig} className="mt-2 h-[180px] w-full">
             <PieChart>
@@ -344,7 +344,7 @@ export function FormResponsesScreen({ form, onBack }) {
               className={cn(
                 "h-7 rounded-md px-2.5 text-xs font-medium transition-colors",
                 statusFilter === tab
-                  ? "bg-surface-hover text-white"
+                  ? "bg-surface-hover text-foreground"
                   : "text-text-secondary hover:text-muted-foreground",
               )}
             >
@@ -364,7 +364,7 @@ export function FormResponsesScreen({ form, onBack }) {
               className={cn(
                 "h-7 rounded-md px-2.5 text-xs font-medium transition-colors",
                 priorityFilter === tab
-                  ? "bg-surface-hover text-white"
+                  ? "bg-surface-hover text-foreground"
                   : "text-text-secondary hover:text-muted-foreground",
               )}
             >

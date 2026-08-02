@@ -83,7 +83,7 @@ export function SettingsScreen() {
             title="Collection rules"
             description="Control when forms can be submitted and how many responses a form accepts."
           >
-            <div className="divide-y divide-[#242424]">
+            <div className="divide-y divide-border">
               <SettingToggle
                 icon={Timer}
                 label="Use an availability window"
@@ -109,7 +109,7 @@ export function SettingsScreen() {
                       className={cn(
                         "h-7 rounded-md border px-2.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
                         activeDays.includes(day.key)
-                          ? "border-border-strong bg-surface-active text-white"
+                          ? "border-border-strong bg-surface-active text-foreground"
                           : "border-border bg-background text-text-secondary hover:border-border-strong hover:text-muted-foreground",
                       )}
                     >
@@ -136,7 +136,7 @@ export function SettingsScreen() {
             title="After submission"
             description="What respondents see once they submit, and whether the Geiger footer is shown."
           >
-            <div className="divide-y divide-[#242424]">
+            <div className="divide-y divide-border">
               <SettingField icon={CheckCircle2} label="After submission" hint="Choose what respondents see after submitting.">
                 <Select value={thankYouType} onValueChange={setThankYouType}>
                   <SelectTrigger className="h-8 w-full max-w-sm">
@@ -172,7 +172,7 @@ export function SettingsScreen() {
             title="Scoring defaults"
             description="Default score bands for calculated-field triage."
           >
-            <div className="divide-y divide-[#242424]">
+            <div className="divide-y divide-border">
               <SettingToggle
                 icon={Wand2}
                 label="Enable response scoring"
@@ -207,7 +207,7 @@ function SettingsPanel({ icon: Icon, title, description, children }) {
           <Icon className="h-4 w-4 text-muted-foreground" />
         </span>
         <div className="w-full">
-          <h2 className="text-sm font-medium text-white">{title}</h2>
+          <h2 className="text-sm font-medium text-foreground">{title}</h2>
           <p className="mt-1 text-xs leading-5 text-text-secondary">{description}</p>
         </div>
       </div>

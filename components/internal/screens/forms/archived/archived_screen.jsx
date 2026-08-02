@@ -52,7 +52,7 @@ export function ArchivedScreen() {
             <TableBody>
               {archived.map((item) => (
                 <TableRow key={item.id} className="bg-surface-subtle text-muted-foreground">
-                  <TableCell className="font-medium text-[#f5f5f5]">{item.name}</TableCell>
+                  <TableCell className="font-medium text-foreground">{item.name}</TableCell>
                   <TableCell>{item.category || "—"}</TableCell>
                   <TableCell className="text-right tabular-nums">{item.responses}</TableCell>
                   <TableCell>{item.lastEdited}</TableCell>
@@ -70,7 +70,7 @@ export function ArchivedScreen() {
                       <button
                         type="button"
                         onClick={() => handleDelete(item)}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-active hover:text-[#ef4444]"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-active hover:text-red-400"
                         title="Delete permanently"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

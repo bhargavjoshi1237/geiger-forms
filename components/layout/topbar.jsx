@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { Bell, HelpCircle, PanelLeft, Search, UserCircle } from "lucide-react";
+import { Bell, HelpCircle, PanelLeft, Search } from "lucide-react";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import ThemeToggle from "@/components/ui/theme-toggle";
+import { ProfileDropdown } from "@/components/layout/profile-dropdown";
 
 const assetPrefix = process.env.NEXT_PUBLIC_ASSET_PREFIX || "";
 
@@ -66,13 +67,7 @@ export function Topbar({ onMenuClick, title = "Form", actionsBeforeSearch }) {
             >
               <Bell className="h-[18px] w-[18px]" strokeWidth={2} />
             </button>
-            <button
-              type="button"
-              className="ml-1 flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-border text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
-              aria-label="Profile"
-            >
-              <UserCircle className="h-5 w-5" />
-            </button>
+            <ProfileDropdown />
           </div>
         </div>
       </div>

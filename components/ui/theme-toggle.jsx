@@ -8,6 +8,13 @@ import { cn } from "@/lib/utils";
 
 export default function ThemeToggle({ className = "" }) {
   const { resolvedTheme, setTheme } = useTheme();
+  // resolvedTheme is only known on the client; gate theme-dependent output on
+  // mount so the server and first client render match (avoids hydration mismatch).
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
   const isDark = resolvedTheme === "dark";
 
   return (
@@ -18,7 +25,7 @@ export default function ThemeToggle({ className = "" }) {
         "relative flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground",
         className,
       )}
-      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      title={mounted ? (isDark ? "Switch to light mode" : "Switch to dark mode") : undefined}
       aria-label="Toggle color theme"
     >
       <Sun className="h-[18px] w-[18px] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />

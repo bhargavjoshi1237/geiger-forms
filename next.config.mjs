@@ -3,6 +3,7 @@ const assetPrefix = isProd ? "/forms" : "";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ["@geiger/ui"],
   assetPrefix,
   allowedDevOrigins: ["127.0.0.1"],
   env: {

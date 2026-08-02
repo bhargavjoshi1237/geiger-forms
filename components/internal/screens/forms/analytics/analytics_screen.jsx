@@ -102,7 +102,7 @@ function CompletionBar({ rate }) {
 }
 
 function FillBar({ rate }) {
-  const color = rate >= 80 ? "bg-[#4ade80]" : rate >= 50 ? "bg-[#fbbf24]" : "bg-[#fb923c]";
+  const color = rate >= 80 ? "bg-emerald-400" : rate >= 50 ? "bg-amber-400" : "bg-orange-400";
   return (
     <div className="h-1.5 w-24 rounded-full bg-surface-active">
       <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${Math.min(rate, 100)}%` }} />
@@ -224,16 +224,16 @@ export function AnalyticsScreen() {
                   <TableHead className="h-auto px-0 pb-2.5 text-text-tertiary">Fill rate</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-[#1e1e1e]">
+              <TableBody className="divide-y divide-border">
                 {fieldFill.rows.map((row) => (
-                  <TableRow key={row.id} className="border-[#1e1e1e] text-muted-foreground">
+                  <TableRow key={row.id} className="border-border text-muted-foreground">
                     <TableCell className="px-0 py-3 pr-4 font-medium text-foreground">{row.label}</TableCell>
                     <TableCell className="px-0 py-3 pr-4 text-right tabular-nums text-text-secondary">{row.total.toLocaleString()}</TableCell>
                     <TableCell className="px-0 py-3 pr-4 text-right tabular-nums">{row.filled.toLocaleString()}</TableCell>
                     <TableCell className="px-0 py-3">
                       <div className="flex items-center gap-2">
                         <FillBar rate={row.rate} />
-                        <span className={`tabular-nums text-[10px] font-medium ${row.rate >= 80 ? "text-[#4ade80]" : row.rate >= 50 ? "text-[#fbbf24]" : "text-[#fb923c]"}`}>
+                        <span className={`tabular-nums text-[10px] font-medium ${row.rate >= 80 ? "text-emerald-400" : row.rate >= 50 ? "text-amber-400" : "text-orange-400"}`}>
                           {row.rate}%
                         </span>
                       </div>

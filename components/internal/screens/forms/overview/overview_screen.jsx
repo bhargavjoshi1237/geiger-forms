@@ -1,20 +1,36 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  Area,
-  Bar,
-  BarChart,
+  AlertCircle,
+  ArrowDownRight,
+  ArrowUpRight,
+  ChevronRight,
+  Download,
+  FileText,
+  Flame,
+  Gauge,
+  Plug,
+  ShieldAlert,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
+import {
   CartesianGrid,
-  Cell,
-  ComposedChart,
+  LabelList,
   Line,
+  LineChart,
   Pie,
   PieChart,
   XAxis,
-  YAxis,
 } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import {
   Table,
   TableBody,
@@ -23,498 +39,531 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FormsScreenShell, LoadingState } from "../screen-shell";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Clock3,
-  FileText,
-  Inbox,
-  TrendingUp,
-  Users,
-} from "lucide-react";
-import { useForms } from "@/lib/hooks/use-forms";
-import { useResponses } from "@/lib/hooks/use-responses";
-import { summarizeResponses } from "@/lib/supabase/responses";
-import { relativeTime } from "@/lib/forms/schema";
+import FilterDropdown from "@/components/internal/shared/filter_dropdown";
+import { cn } from "@/lib/utils";
 
-const STATUS_COLORS = {
-  Complete: "#4ade80",
-  "Needs review": "#fb923c",
-  Pending: "#60a5fa",
+// Monochrome accent for primary chart series — theme-aware (dark on light, light
+// on dark) so the elegant single-color look survives light mode.
+const ACCENT = "var(--foreground)";
+// Status donut palette — matches the app's response-status colors (Complete →
+// emerald, Needs review → orange, Pending → neutral) used across the responses screens.
+const STATUS_SERIES_COLORS = ["#4ade80", "#fb923c", "#525252"];
+// Theme-aware chart chrome (grid + axis).
+const GRID_STROKE = "var(--border)";
+const AXIS_TICK = { fill: "var(--muted-foreground)", fontSize: 11 };
+
+// --- Sample data (placeholder until backend is connected) --------------------
+
+// Compact workspace summary shown beside the page title.
+const WORKSPACE_SUMMARY = [
+  { label: "Forms", value: "18" },
+  { label: "Published", value: "11" },
+  { label: "Responses", value: "4,206" },
+];
+
+const STATS = [
+  { label: "Responses", value: "4,206", delta: "+9.8%", trend: "up", footer: "vs last period" },
+  { label: "Completion Rate", value: "11%", delta: "+4.1%", trend: "up", footer: "vs last period" },
+  { label: "Avg. Time to Complete", value: "2m 41s", delta: "-6.2%", trend: "up", footer: "faster than last period" },
+  { label: "Needs Review", value: "63", delta: "+12.0%", trend: "down", footer: "vs last period" },
+];
+
+const TREND_SERIES = {
+  submissions: [120, 168, 142, 205, 188, 240, 276, 262, 318, 356, 402, 468],
+  completed: [82, 120, 104, 150, 138, 182, 210, 205, 248, 280, 320, 372],
+  started: [180, 230, 210, 288, 265, 330, 372, 360, 420, 470, 520, 600],
 };
 
-const PRIORITY_COLORS = {
-  High: "#f87171",
-  Medium: "#fbbf24",
-  Low: "#737373",
+const TREND_RANGE_OPTIONS = [
+  { value: "submissions", label: "Submissions" },
+  { value: "completed", label: "Completed" },
+  { value: "started", label: "Started" },
+];
+
+// Triage state of every response collected in the period.
+const STATUS_MIX = [
+  { key: "complete", label: "Complete", value: 124 },
+  { key: "review", label: "Needs review", value: 782 },
+  { key: "pending", label: "Pending", value: 400 },
+];
+
+// Forms ranked by performance for the selected period.
+const TOP_FORMS = [
+  { name: "Customer Onboarding Survey", status: "Published", responses: 1284, completion: 88, momentum: "fast" },
+  { name: "Bug Report Intake", status: "Published", responses: 962, completion: 74, momentum: "track" },
+  { name: "Event RSVP — Q3 Summit", status: "Published", responses: 640, completion: 91, momentum: "fast" },
+  { name: "Job Application — Design", status: "Draft", responses: 148, completion: 52, momentum: "slow" },
+  { name: "Product Feedback (NPS)", status: "Published", responses: 420, completion: 66, momentum: "slow" },
+];
+
+const MOMENTUM_META = {
+  fast: { label: "Filling fast", icon: Flame, className: "text-emerald-300" },
+  track: { label: "On track", icon: TrendingUp, className: "text-sky-300" },
+  slow: { label: "Slow", icon: TrendingDown, className: "text-amber-300" },
 };
 
-function dayKey(value) {
-  const d = new Date(value);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+const FORM_STATUS_META = {
+  Published: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+  Draft: "border-border bg-surface-card text-muted-foreground",
+  Archived: "border-border bg-surface-card text-muted-foreground",
+};
 
-function buildDailySeries(responses, days = 14) {
-  const buckets = [];
-  const index = new Map();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+// Operational tasks waiting on the owner — the reason to open this screen.
+const ATTENTION_ITEMS = [
+  { key: "review", label: "Responses to review", hint: "Awaiting your triage", value: "63", cta: "Review", icon: AlertCircle, urgency: "urgent" },
+  { key: "spam", label: "Flagged as spam", hint: "Across 4 forms", value: "17", cta: "Clean up", icon: ShieldAlert, urgency: "urgent" },
+  { key: "capacity", label: "Forms near response limit", hint: "Over 90% of plan quota", value: "2", cta: "Manage", icon: Gauge, urgency: "soon" },
+  { key: "integrations", label: "Integrations failing", hint: "Reconnect to resume delivery", value: "1", cta: "Fix", icon: Plug, urgency: "soon" },
+  { key: "exports", label: "Exports ready", hint: "CSV bundles to download", value: "3", cta: "Download", icon: Download, urgency: "routine" },
+  { key: "drafts", label: "Unpublished drafts", hint: "Ready to go live", value: "5", cta: "Publish", icon: FileText, urgency: "routine" },
+];
 
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const entry = {
-      key: dayKey(d),
-      label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      responses: 0,
-    };
-    index.set(entry.key, entry);
-    buckets.push(entry);
-  }
+const URGENCY_ORDER = ["urgent", "soon", "routine"];
 
-  for (const r of responses) {
-    if (!r.submittedAt) continue;
-    const entry = index.get(dayKey(r.submittedAt));
-    if (entry) entry.responses += 1;
-  }
+const URGENCY_LABELS = { urgent: "Urgent", soon: "Soon", routine: "Routine" };
 
-  buckets.forEach((b, i) => {
-    const window = buckets.slice(Math.max(0, i - 6), i + 1);
-    const sum = window.reduce((acc, x) => acc + x.responses, 0);
-    b.avg = Math.round((sum / window.length) * 10) / 10;
-  });
+// --- Animated odometer (mirrors geiger-events RollingNumber) -----------------
 
-  return buckets;
-}
+const ROLL_DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-function aggregateForms(forms, responses) {
-  const byForm = new Map();
-  for (const r of responses) {
-    if (!byForm.has(r.formId)) {
-      byForm.set(r.formId, { total: 0, complete: 0, needsReview: 0, pending: 0, scoreSum: 0, scoreCount: 0, lastAt: 0 });
-    }
-    const agg = byForm.get(r.formId);
-    agg.total += 1;
-    if (r.status === "Complete") agg.complete += 1;
-    else if (r.status === "Needs review") agg.needsReview += 1;
-    else if (r.status === "Pending") agg.pending += 1;
-    if (typeof r.score === "number") {
-      agg.scoreSum += r.score;
-      agg.scoreCount += 1;
-    }
-    const t = r.submittedAt ? new Date(r.submittedAt).getTime() : 0;
-    if (t && t > agg.lastAt) agg.lastAt = t;
-  }
-
-  return forms
-    .map((f) => {
-      const agg = byForm.get(f.id) || { total: 0, complete: 0, needsReview: 0, pending: 0, scoreSum: 0, scoreCount: 0, lastAt: 0 };
-      return {
-        id: f.id,
-        name: f.name,
-        status: f.status,
-        category: f.category,
-        total: agg.total,
-        completion: agg.total ? Math.round((agg.complete / agg.total) * 100) : null,
-        needsReview: agg.needsReview,
-        avgScore: agg.scoreCount ? Math.round(agg.scoreSum / agg.scoreCount) : null,
-        lastAt: agg.lastAt,
-      };
-    })
-    .sort((a, b) => b.total - a.total);
-}
-
-function buildCounts(forms, responses) {
-  const now = Date.now();
-  const dayMs = 86_400_000;
-  const todayKey = dayKey(new Date());
-  let submittedToday = 0;
-  let last7 = 0;
-  for (const r of responses) {
-    if (!r.submittedAt) continue;
-    if (dayKey(r.submittedAt) === todayKey) submittedToday += 1;
-    if (now - new Date(r.submittedAt).getTime() <= 7 * dayMs) last7 += 1;
-  }
-  return {
-    published: forms.filter((f) => f.status === "Published").length,
-    drafts: forms.filter((f) => f.status === "Draft").length,
-    archived: forms.filter((f) => f.status === "Archived").length,
-    submittedToday,
-    last7,
-  };
-}
-
-function getCompletionColor(pct) {
-  if (pct == null) return "#525252";
-  if (pct >= 85) return "#4ade80";
-  if (pct >= 70) return "#60a5fa";
-  if (pct >= 50) return "#fbbf24";
-  return "#f87171";
-}
-
-function getStatusClass(status) {
-  const styles = {
-    Published: "border-[#166534] bg-[#0d2218] text-[#4ade80]",
-    Draft: "border-[#3f3f46] bg-surface-active text-muted-foreground",
-    Archived: "border-[#44403c] bg-[#1c1917] text-[#a8a29e]",
-  };
-  return styles[status] || styles.Draft;
-}
-
-function MetricCard({ icon: Icon, label, value, detail, tone = "neutral" }) {
-  const tones = {
-    neutral: "text-text-secondary",
-    good: "text-[#4ade80]",
-    warn: "text-[#fbbf24]",
-    info: "text-[#60a5fa]",
-  };
-
+function RollingDigit({ digit, active, delay }) {
   return (
-    <div className="rounded-md border border-border bg-surface-subtle p-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium uppercase text-text-secondary">{label}</p>
-        {Icon && <Icon className={`h-4 w-4 shrink-0 ${tones[tone]}`} />}
-      </div>
-      <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
-      <p className="mt-1 text-xs text-text-secondary">{detail}</p>
-    </div>
+    <span className="relative inline-block h-[1em] w-[1ch] overflow-hidden align-baseline">
+      <span
+        className="absolute inset-x-0 top-0 flex flex-col transition-transform duration-[900ms] ease-out"
+        style={{ transform: `translateY(-${(active ? digit : 0) * 10}%)`, transitionDelay: `${delay}ms` }}
+      >
+        {ROLL_DIGITS.map((n) => (
+          <span key={n} className="flex h-[1em] items-center justify-center leading-none">
+            {n}
+          </span>
+        ))}
+      </span>
+    </span>
   );
 }
 
-function CardShell({ title, subtitle, action, children, className = "" }) {
+function RollingNumber({ value, className }) {
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setActive(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const chars = String(value).split("");
+
   return (
-    <section className={`flex flex-col rounded-md border border-border bg-surface-subtle ${className}`}>
-      <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3.5">
-        <div>
-          <h2 className="text-sm font-medium text-white">{title}</h2>
-          {subtitle && <p className="mt-1 text-xs text-text-secondary">{subtitle}</p>}
-        </div>
-        {action}
-      </div>
-      <div className="flex-1 p-4">{children}</div>
-    </section>
+    <span className={cn("inline-flex tabular-nums", className)}>
+      {chars.map((char, i) => {
+        if (/\d/.test(char)) {
+          const digitIndex = chars.slice(0, i).filter((c) => /\d/.test(c)).length;
+          return <RollingDigit key={i} digit={Number(char)} active={active} delay={digitIndex * 70} />;
+        }
+        return <span key={i}>{char}</span>;
+      })}
+    </span>
   );
 }
 
-function EmptyChart({ label = "No data in this range yet" }) {
+// --- Summary stats bar (mirrors geiger-events StatsBar) ----------------------
+
+function StatsBar({ stats }) {
   return (
-    <div className="flex h-full min-h-40 flex-col items-center justify-center gap-1 text-center">
-      <Inbox className="h-5 w-5 text-[#3a3a3a]" />
-      <p className="text-xs text-text-tertiary">{label}</p>
-    </div>
-  );
-}
-
-function SubmissionsTrend({ data, total }) {
-  const config = {
-    responses: { label: "Submissions", color: "#60a5fa" },
-    avg: { label: "7-day avg", color: "#fbbf24" },
-  };
-
-  return (
-    <CardShell
-      title="Submissions trend"
-      subtitle="Daily responses over the last 14 days, with 7-day average"
-      className="lg:col-span-3"
-      action={
-        <span className="flex items-center gap-1.5 rounded-full border border-border bg-surface-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-          <TrendingUp className="h-3 w-3 text-[#60a5fa]" />
-          {total.toLocaleString()} total
-        </span>
-      }
-    >
-      {total === 0 ? (
-        <EmptyChart label="No submissions yet" />
-      ) : (
-        <ChartContainer config={config} className="h-72 w-full">
-          <ComposedChart data={data} margin={{ top: 16, right: 10, left: -18, bottom: 0 }}>
-            <defs>
-              <linearGradient id="overviewResponses" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid stroke="#2a2a2a" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="label" tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={16} />
-            <YAxis tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Area type="monotone" dataKey="responses" stroke="#60a5fa" strokeWidth={2} fill="url(#overviewResponses)" dot={false} activeDot={{ r: 4, fill: "#60a5fa", strokeWidth: 0 }} />
-            <Line type="monotone" dataKey="avg" stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
-          </ComposedChart>
-        </ChartContainer>
-      )}
-    </CardShell>
-  );
-}
-
-function StatusBreakdown({ data, total }) {
-  const config = Object.fromEntries(
-    Object.entries(STATUS_COLORS).map(([k, color]) => [k, { label: k, color }]),
-  );
-
-  return (
-    <CardShell title="Response status" subtitle="Triage state of all responses" className="lg:col-span-2">
-      {total === 0 ? (
-        <EmptyChart label="No responses to triage" />
-      ) : (
-        <>
-          <ChartContainer config={config} className="mx-auto h-44 w-full">
-            <PieChart>
-              <ChartTooltip content={<ChartTooltipContent formatter={(value, name) => [`${value} (${Math.round((value / total) * 100)}%)`, name]} />} />
-              <Pie data={data} cx="50%" cy="50%" innerRadius={46} outerRadius={72} dataKey="value" nameKey="name" strokeWidth={0} paddingAngle={2}>
-                {data.map((entry) => (
-                  <Cell key={entry.name} fill={entry.fill} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ChartContainer>
-          <div className="mt-2 space-y-1.5">
-            {data.map((entry) => (
-              <div key={entry.name} className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.fill }} />
-                  {entry.name}
+    <Card className="gap-0 overflow-hidden rounded-xl border-border bg-surface-subtle py-0 text-foreground">
+      <CardContent className="p-0">
+        <div className="grid grid-cols-2 md:grid-cols-4">
+          {stats.map((stat, i) => {
+            const up = stat.trend === "up";
+            const TrendIcon = up ? ArrowUpRight : ArrowDownRight;
+            return (
+              <div
+                key={stat.label}
+                className={cn(
+                  "p-4",
+                  i % 2 !== 0 && "border-l border-border",
+                  i >= 2 && "border-t border-border",
+                  "md:border-l md:border-border md:border-t-0",
+                  i === 0 && "md:border-l-0",
+                )}
+              >
+                <span className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">
+                  {stat.label}
                 </span>
-                <span className="tabular-nums text-foreground">
-                  {entry.value} · {Math.round((entry.value / total) * 100)}%
-                </span>
+                <div className="mt-1 flex items-end gap-2">
+                  <RollingNumber value={stat.value} className="text-2xl font-bold leading-none text-foreground" />
+                  {stat.delta ? (
+                    <span
+                      className={cn(
+                        "mb-0.5 inline-flex items-center gap-0.5 text-xs font-medium",
+                        up ? "text-emerald-400" : "text-red-400",
+                      )}
+                    >
+                      <TrendIcon className="h-3 w-3" />
+                      {stat.delta}
+                    </span>
+                  ) : null}
+                </div>
+                {stat.footer ? (
+                  <span className="mt-1 block text-[11px] text-text-tertiary">{stat.footer}</span>
+                ) : null}
               </div>
-            ))}
-          </div>
-        </>
-      )}
-    </CardShell>
-  );
-}
-
-function TopFormsChart({ data }) {
-  const config = { total: { label: "Submissions", color: "#60a5fa" } };
-
-  return (
-    <CardShell title="Top forms by submissions" subtitle="Where responses are actually coming in">
-      {data.length === 0 ? (
-        <EmptyChart label="No submissions yet" />
-      ) : (
-        <ChartContainer config={config} className="h-64 w-full">
-          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-            <CartesianGrid stroke="#2a2a2a" strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-            <YAxis type="category" dataKey="name" tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} width={130} />
-            <ChartTooltip content={<ChartTooltipContent formatter={(value, name, item) => [`${value} submissions${item?.payload?.completion != null ? ` · ${item.payload.completion}% complete` : ""}`, item?.payload?.name]} />} />
-            <Bar dataKey="total" radius={[0, 3, 3, 0]} maxBarSize={18}>
-              {data.map((entry) => (
-                <Cell key={entry.id} fill={getCompletionColor(entry.completion)} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ChartContainer>
-      )}
-    </CardShell>
-  );
-}
-
-function PriorityBreakdown({ data, total, needsReview }) {
-  const config = { count: { label: "Responses", color: "#60a5fa" } };
-
-  return (
-    <CardShell
-      title="Incoming priority"
-      subtitle="Priority of responses and current review load"
-      action={
-        <span className="flex items-center gap-1.5 rounded-full border border-[#7c2d12] bg-[#2a1a08] px-2.5 py-1 text-[11px] font-medium text-[#fb923c]">
-          <AlertCircle className="h-3 w-3" />
-          {needsReview} to review
-        </span>
-      }
-    >
-      {total === 0 ? (
-        <EmptyChart label="No responses yet" />
-      ) : (
-        <ChartContainer config={config} className="h-64 w-full">
-          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-            <CartesianGrid stroke="#2a2a2a" strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" tick={{ fill: "#737373", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-            <YAxis type="category" dataKey="name" tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} width={64} />
-            <ChartTooltip content={<ChartTooltipContent formatter={(value, name, item) => [`${value} responses`, item?.payload?.name]} />} />
-            <Bar dataKey="count" radius={[0, 3, 3, 0]} maxBarSize={30}>
-              {data.map((entry) => (
-                <Cell key={entry.name} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ChartContainer>
-      )}
-    </CardShell>
-  );
-}
-
-function TopFormsTable({ rows }) {
-  return (
-    <section className="rounded-md border border-border bg-surface-subtle">
-      <div className="flex flex-col gap-1 border-b border-border px-4 py-3.5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-sm font-medium text-white">Form performance</h2>
-          <p className="mt-1 text-xs text-text-secondary">Submissions, completion, review load, and last activity by form</p>
+            );
+          })}
         </div>
-        <p className="text-xs text-text-tertiary">{rows.length} form{rows.length === 1 ? "" : "s"}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Widget shells -----------------------------------------------------------
+
+function WidgetShell({ children, className, contentClassName }) {
+  return (
+    <Card
+      className={cn(
+        "h-full gap-0 overflow-hidden rounded-xl border-border bg-surface-subtle py-0 text-foreground",
+        className,
+      )}
+    >
+      <CardContent className={cn("h-full p-4", contentClassName)}>{children}</CardContent>
+    </Card>
+  );
+}
+
+function WidgetHeader({ title, subtitle, action }) {
+  return (
+    <div className="flex w-full items-start justify-between gap-3">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
-      <div className="overflow-x-auto">
-        {rows.length === 0 ? (
-          <div className="flex min-h-32 items-center justify-center px-4 py-8 text-center text-xs text-text-tertiary">
-            No forms yet — create one to start collecting responses.
-          </div>
-        ) : (
-          <Table className="min-w-[760px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Form</TableHead>
-                <TableHead className="text-right">Submissions</TableHead>
-                <TableHead>Completion</TableHead>
-                <TableHead className="text-right">Needs review</TableHead>
-                <TableHead className="text-right">Avg score</TableHead>
-                <TableHead>Last activity</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((form) => (
-                <TableRow key={form.id}>
-                  <TableCell className="w-[34%]">
-                    <div className="flex items-center gap-2.5">
-                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${getStatusClass(form.status)}`}>
-                        {form.status}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-[#f5f5f5]">{form.name}</p>
-                        {form.category && <p className="mt-0.5 truncate text-[10px] text-text-secondary">{form.category}</p>}
-                      </div>
+      {action}
+    </div>
+  );
+}
+
+// --- Submissions over time (line + label, with detail) -----------------------
+
+function SubmissionsTrendWidget() {
+  const [metric, setMetric] = useState("submissions");
+  const selected = TREND_RANGE_OPTIONS.find((o) => o.value === metric) || TREND_RANGE_OPTIONS[0];
+  const series = TREND_SERIES[metric];
+  const data = series.map((value, i) => ({ label: `W${i + 1}`, value }));
+  const formatValue = (value) => value.toLocaleString();
+
+  return (
+    <WidgetShell contentClassName="flex flex-col">
+      <WidgetHeader
+        title="Submissions Over Time"
+        subtitle={`${selected.label} across your forms.`}
+        action={<FilterDropdown value={metric} onValueChange={setMetric} options={TREND_RANGE_OPTIONS} height="h-9" />}
+      />
+      <div className="mt-4 flex min-h-0 flex-1 items-center justify-center">
+        <ChartContainer config={{ value: { label: selected.label, color: ACCENT } }} className="mx-auto h-full w-full">
+          <LineChart data={data} margin={{ top: 24, right: 16, left: 12, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke={GRID_STROKE} strokeDasharray="3 3" />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} tick={AXIS_TICK} />
+            <ChartTooltip
+              cursor={false}
+              content={
+                <ChartTooltipContent
+                  indicator="line"
+                  hideLabel
+                  formatter={(value) => (
+                    <span className="font-medium tabular-nums text-foreground">{formatValue(value)}</span>
+                  )}
+                />
+              }
+            />
+            <Line
+              dataKey="value"
+              type="monotone"
+              stroke={ACCENT}
+              strokeWidth={2}
+              dot={{ fill: ACCENT, r: 3 }}
+              activeDot={{ r: 5 }}
+              isAnimationActive
+            >
+              <LabelList dataKey="value" position="top" offset={10} className="fill-muted-foreground" fontSize={11} formatter={formatValue} />
+            </Line>
+          </LineChart>
+        </ChartContainer>
+      </div>
+    </WidgetShell>
+  );
+}
+
+// --- Response status mix (donut) ---------------------------------------------
+
+function StatusMixWidget() {
+  const [selectedType, setSelectedType] = useState(STATUS_MIX[0].key);
+  const total = STATUS_MIX.reduce((sum, item) => sum + item.value, 0);
+  const chartData = STATUS_MIX.map((item, index) => ({
+    ...item,
+    fill: STATUS_SERIES_COLORS[index % STATUS_SERIES_COLORS.length],
+  }));
+  const selectedIndex = Math.max(chartData.findIndex((item) => item.key === selectedType), 0);
+  const selectedItem = chartData[selectedIndex] || chartData[0];
+  const typeOptions = STATUS_MIX.map((item) => ({ value: item.key, label: item.label }));
+  const chartConfig = STATUS_MIX.reduce(
+    (config, item, index) => ({
+      ...config,
+      [item.key]: { label: item.label, color: STATUS_SERIES_COLORS[index % STATUS_SERIES_COLORS.length] },
+    }),
+    {},
+  );
+
+  return (
+    <WidgetShell contentClassName="flex flex-col">
+      <WidgetHeader
+        title="Response Status Mix"
+        subtitle="Triage state across all responses."
+        action={<FilterDropdown value={selectedType} onValueChange={setSelectedType} options={typeOptions} height="h-9" />}
+      />
+      <div className="relative mt-4 flex min-h-0 w-full flex-1 items-center justify-center">
+        <ChartContainer config={chartConfig} className="mx-auto h-[220px] w-[220px]">
+          <PieChart>
+            <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel nameKey="key" />} />
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="key"
+              cx="50%"
+              cy="50%"
+              innerRadius={44}
+              outerRadius={78}
+              activeIndex={selectedIndex}
+              activeShape={{ outerRadius: 88 }}
+              onMouseEnter={(_, index) => setSelectedType(chartData[index]?.key || selectedType)}
+              stroke="var(--background)"
+              strokeWidth={2}
+              isAnimationActive
+            />
+          </PieChart>
+        </ChartContainer>
+        <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
+          <span className="text-3xl font-bold leading-none text-foreground">{selectedItem?.value.toLocaleString()}</span>
+          <span className="mt-1 text-xs font-medium text-muted-foreground">{selectedItem?.label}</span>
+        </div>
+      </div>
+      <p className="mt-2 text-center text-xs text-text-secondary">
+        {selectedItem?.label} is {Math.round((selectedItem.value / total) * 100)}% of {total.toLocaleString()} responses
+      </p>
+    </WidgetShell>
+  );
+}
+
+// --- Top performing forms (table) --------------------------------------------
+
+const TOP_FORMS_SORT_OPTIONS = [
+  { value: "responses", label: "Responses" },
+  { value: "completion", label: "Completion" },
+];
+
+function TopFormsTable() {
+  const [sortBy, setSortBy] = useState("responses");
+  const sorted = [...TOP_FORMS].sort((a, b) =>
+    sortBy === "responses" ? b.responses - a.responses : b.completion - a.completion,
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <WidgetHeader title="Top Performing Forms" subtitle="Ranked by responses and completion rate." />
+        <FilterDropdown value={sortBy} onValueChange={setSortBy} options={TOP_FORMS_SORT_OPTIONS} height="h-9" />
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border">
+              <TableHead>Form</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-[180px]">Completion</TableHead>
+              <TableHead className="text-right">Responses</TableHead>
+              <TableHead>Momentum</TableHead>
+              <TableHead className="text-right"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.map((form) => {
+              const meta = MOMENTUM_META[form.momentum] || MOMENTUM_META.track;
+              const MomentumIcon = meta.icon;
+              return (
+                <TableRow key={form.name} className="border-border">
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-medium text-foreground">{form.name}</span>
+                      <p className="text-xs text-text-secondary">
+                        {form.responses.toLocaleString()} responses
+                      </p>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <span className="text-sm font-medium tabular-nums text-foreground">{form.total.toLocaleString()}</span>
+                  <TableCell className="whitespace-nowrap">
+                    <span
+                      className={cn(
+                        "inline-flex min-w-[80px] justify-center rounded-md border px-2 py-0.5 text-[10px] font-medium",
+                        FORM_STATUS_META[form.status] || FORM_STATUS_META.Draft,
+                      )}
+                    >
+                      {form.status}
+                    </span>
                   </TableCell>
                   <TableCell>
-                    {form.completion == null ? (
-                      <span className="text-xs text-text-tertiary">—</span>
-                    ) : (
-                      <div className="flex min-w-32 items-center gap-2">
-                        <div className="h-1.5 w-24 rounded-full bg-surface-hover">
-                          <div className="h-1.5 rounded-full" style={{ width: `${form.completion}%`, backgroundColor: getCompletionColor(form.completion) }} />
-                        </div>
-                        <span className="w-9 text-right text-xs font-medium tabular-nums text-foreground">{form.completion}%</span>
+                    <div className="w-[140px] space-y-1.5">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-surface-hover">
+                        <div className="h-full rounded-full bg-foreground" style={{ width: `${form.completion}%` }} />
                       </div>
-                    )}
+                      <p className="text-xs text-text-secondary">{form.completion}%</p>
+                    </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <span className={`text-sm font-medium tabular-nums ${form.needsReview > 0 ? "text-[#fb923c]" : "text-text-tertiary"}`}>
-                      {form.needsReview || "—"}
+                  <TableCell className="text-right font-semibold tabular-nums text-foreground">
+                    {form.responses.toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    <span className={cn("inline-flex items-center gap-1.5 font-medium", meta.className)}>
+                      <MomentumIcon className="h-3.5 w-3.5" />
+                      {meta.label}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    <span className="text-sm tabular-nums text-muted-foreground">{form.avgScore == null ? "—" : form.avgScore}</span>
-                  </TableCell>
-                  <TableCell>
-                    {form.lastAt ? (
-                      <span className="flex items-center gap-1 text-[11px] text-text-secondary">
-                        <Clock3 className="h-3 w-3" />
-                        {relativeTime(new Date(form.lastAt).toISOString())}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-text-tertiary">No responses</span>
-                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                    >
+                      <ArrowUpRight className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+              );
+            })}
+          </TableBody>
+        </Table>
       </div>
-    </section>
+    </div>
   );
 }
 
-export function OverviewScreen() {
-  const { forms, loading: formsLoading } = useForms();
-  const { responses, loading: responsesLoading } = useResponses();
+// --- Overall stats (attention items) -----------------------------------------
 
-  const summary = useMemo(() => summarizeResponses(responses), [responses]);
-  const dailySeries = useMemo(() => buildDailySeries(responses, 14), [responses]);
-  const formAggregates = useMemo(() => aggregateForms(forms, responses), [forms, responses]);
-
-  const counts = useMemo(() => buildCounts(forms, responses), [forms, responses]);
-
-  const statusData = useMemo(
-    () =>
-      Object.entries(summary.byStatus)
-        .filter(([, value]) => value > 0)
-        .map(([name, value]) => ({ name, value, fill: STATUS_COLORS[name] || "#737373" })),
-    [summary],
+function GeneralStatsCard() {
+  const sorted = [...ATTENTION_ITEMS].sort(
+    (a, b) => URGENCY_ORDER.indexOf(a.urgency) - URGENCY_ORDER.indexOf(b.urgency),
   );
-
-  const priorityData = useMemo(
-    () =>
-      ["High", "Medium", "Low"].map((name) => ({
-        name,
-        count: summary.byPriority[name] || 0,
-        fill: PRIORITY_COLORS[name],
-      })),
-    [summary],
-  );
-
-  const topForms = useMemo(() => formAggregates.filter((f) => f.total > 0).slice(0, 6), [formAggregates]);
-
-  if (formsLoading || responsesLoading) {
-    return (
-      <FormsScreenShell title="Overview">
-        <LoadingState label="Crunching your workspace metrics…" />
-      </FormsScreenShell>
-    );
-  }
+  const total = ATTENTION_ITEMS.length;
 
   return (
-    <FormsScreenShell title="Overview">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <MetricCard
-          icon={FileText}
-          label="Published forms"
-          value={String(counts.published)}
-          detail={`${counts.drafts} draft${counts.drafts === 1 ? "" : "s"} · ${counts.archived} archived`}
-          tone="info"
-        />
-        <MetricCard
-          icon={Users}
-          label="Responses"
-          value={summary.total.toLocaleString()}
-          detail={`+${counts.submittedToday} today · ${counts.last7} this week`}
-          tone="good"
-        />
-        <MetricCard
-          icon={CheckCircle2}
-          label="Completion rate"
-          value={`${summary.completePct}%`}
-          detail={`${summary.byStatus.Complete} of ${summary.total || 0} complete`}
-          tone="good"
-        />
-        <MetricCard
-          icon={AlertCircle}
-          label="Needs review"
-          value={String(summary.byStatus["Needs review"])}
-          detail={`${summary.byStatus.Pending} pending · ${summary.respondents} respondents`}
-          tone="warn"
-        />
-      </div>
+    <WidgetShell contentClassName="flex flex-col">
+      <WidgetHeader
+        title="Overall Stats"
+        subtitle="A quick snapshot of what needs attention across your forms."
+        action={
+          <span className="shrink-0 rounded-md border border-border bg-surface-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {total} items
+          </span>
+        }
+      />
 
-      <div className="grid items-start gap-4 lg:grid-cols-5">
-        <SubmissionsTrend data={dailySeries} total={summary.total} />
-        <StatusBreakdown data={statusData} total={summary.total} />
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {sorted.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              className="group flex items-center gap-3.5 rounded-xl p-3.5 text-left transition-colors hover:bg-surface-card"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
+                <Icon className="h-[18px] w-[18px]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-sm font-semibold text-foreground">{item.label}</span>
+                  <span className="shrink-0 rounded-md border border-border bg-surface-card px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
+                    {URGENCY_LABELS[item.urgency]}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate text-xs text-text-secondary">{item.hint}</p>
+              </div>
+              <span className="shrink-0 text-xl font-bold tabular-nums text-foreground">{item.value}</span>
+              <span className="shrink-0 inline-flex items-center gap-0.5 text-xs font-medium text-text-secondary transition-colors group-hover:text-foreground">
+                <ChevronRight className="h-3 w-3" />
+              </span>
+            </button>
+          );
+        })}
       </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TopFormsChart data={topForms} />
-        <PriorityBreakdown data={priorityData} total={summary.total} needsReview={summary.byStatus["Needs review"]} />
-      </div>
-
-      <TopFormsTable rows={formAggregates} />
-    </FormsScreenShell>
+    </WidgetShell>
   );
 }
+
+// --- Screen ------------------------------------------------------------------
+
+export function OverviewScreen() {
+  return (
+    <div className="mx-auto flex w-full flex-col gap-8 px-2 py-4 text-foreground lg:max-w-[85%] lg:px-0">
+      {/* Header: title + workspace summary stats */}
+      <div className="mt-2">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            <div className="flex w-full items-center justify-center gap-3 text-center md:w-auto md:justify-start md:text-left">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Forms Overview</h1>
+              <span className="shrink-0 rounded border border-border bg-surface-subtle px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-text-secondary">
+                WORKSPACE
+              </span>
+            </div>
+            <p className="mt-1 text-center text-sm text-muted-foreground md:text-left">
+              Track submissions, completion, review load, and response quality across all your forms.
+            </p>
+          </div>
+          <div className="w-full md:w-auto">
+            <div className="flex w-full md:w-auto md:gap-0">
+              {WORKSPACE_SUMMARY.map((stat, i) => {
+                const last = i === WORKSPACE_SUMMARY.length - 1;
+                return (
+                  <div
+                    key={stat.label}
+                    className={cn(
+                      "flex flex-1 flex-col items-center md:flex-none",
+                      i === 0 && "md:pr-8",
+                      i > 0 && "border-l border-border",
+                      i > 0 && !last && "md:px-8",
+                      last && i > 0 && "md:pl-8",
+                    )}
+                  >
+                    <span className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">{stat.label}</span>
+                    <RollingNumber value={stat.value} className="mt-0.5 text-2xl font-bold text-foreground" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary stats bar */}
+      <StatsBar stats={STATS} />
+
+      {/* Bento hero: wide trend + donut */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="h-[360px] lg:col-span-2">
+          <SubmissionsTrendWidget />
+        </div>
+        <div className="h-[360px]">
+          <StatusMixWidget />
+        </div>
+      </div>
+
+      {/* Top performing forms table */}
+      <TopFormsTable />
+
+      {/* Overall stats */}
+      <GeneralStatsCard />
+    </div>
+  );
+}
+
+export default OverviewScreen;
