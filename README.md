@@ -114,13 +114,14 @@ app/
   forms/[formId]/        Form builder
   form/[formId]/         Public filler for a published form
   print/                 Printable responses
-  api/                   Public filler API, workspace actions, cron, REST v1
+  api/                   Public filler API, workspace actions, payment webhooks, cron, REST v1, MCP
 components/
   forms/                 Builder, field renderers, filler, response panel, workspace router
   internal/screens/      Workspace screens (overview, responses, analytics, security, templates, settings…)
   internal/shared/       Screen wrappers, pagination, filter dropdown
 lib/forms/               Domain logic (field types, schema, logic, export, templates, theme)
 lib/server/              Server-only code (submission pipeline, email, Stripe, webhooks, storage, crypto)
+lib/mcp/                 MCP server (tool catalog, connection and permission checks, audit log)
 lib/supabase/            Browser data-access layer
 supabase/migrations/     Timestamped @up/@down migrations (npm run db:push)
 ```
