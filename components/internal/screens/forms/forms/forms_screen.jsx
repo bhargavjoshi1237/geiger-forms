@@ -58,6 +58,7 @@ import {
 
 import { useForms } from "@/lib/hooks/use-forms";
 import { defaultSettings } from "@/lib/forms/schema";
+import { withPrefix } from "@/lib/workspace/base-path";
 import { PublishDialog } from "@/components/forms/publish-dialog";
 import { FormResponsesScreen } from "../responses/form_responses_screen";
 import { FormDetailScreen } from "./form_detail";
@@ -129,7 +130,7 @@ function NewFormDialog({ open, onClose, onCreate }) {
         settings: { ...defaultSettings(), template, sharing: people },
       });
       onClose();
-      router.push(`/forms/${form.slug}`);
+      router.push(withPrefix(`/forms/${form.slug}`));
     } catch (err) {
       setError(err.message || "Could not create form.");
       setSubmitting(false);
@@ -449,7 +450,7 @@ export function FormsScreen() {
 
   const preview = (form) => {
     if (typeof window !== "undefined") {
-      window.open(`/form/${form.slug}`, "_blank", "noopener,noreferrer");
+      window.open(withPrefix(`/form/${form.slug}`), "_blank", "noopener,noreferrer");
     }
   };
 
@@ -559,7 +560,7 @@ export function FormsScreen() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground"
-                onClick={() => router.push(`/forms/${f.slug}`)}
+                onClick={() => router.push(withPrefix(`/forms/${f.slug}`))}
               >
                 <Globe className="h-4 w-4" /> Open builder
               </DropdownMenuItem>

@@ -12,13 +12,14 @@ import {
 } from "@geiger/ui/dialog";
 import { Button } from "@geiger/ui/button";
 import { Switch } from "@geiger/ui/switch";
+import { withPrefix } from "@/lib/workspace/base-path";
 
 export function PublishDialog({ open, onOpenChange, slug, status, onChange }) {
   const isPublished = status === "Published";
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const url = `${typeof window !== "undefined" ? window.location.origin : ""}/form/${slug}`;
+  const url = `${typeof window !== "undefined" ? window.location.origin : ""}${withPrefix(`/form/${slug}`)}`;
 
   const toggle = async (next) => {
     setBusy(true);

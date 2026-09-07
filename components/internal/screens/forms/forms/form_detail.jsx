@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 import { FORM_STATUS_MAP } from "./constants";
 import { NAV_GROUPS, SECTIONS } from "./form_sections";
+import { withPrefix } from "@/lib/workspace/base-path";
 
 // Per-form editor: content on the left, a grouped topic nav on the right —
 // the same shape as the events area's event_detail.jsx. The active section
@@ -59,11 +60,11 @@ export function FormDetailScreen({ form: initialForm, onBack, onUpdate, onPublis
     setSaved(true);
   };
 
-  const openBuilder = () => router.push(`/forms/${form.slug}`);
+  const openBuilder = () => router.push(withPrefix(`/forms/${form.slug}`));
 
   const preview = () => {
     if (typeof window !== "undefined") {
-      window.open(`/form/${form.slug}`, "_blank", "noopener,noreferrer");
+      window.open(withPrefix(`/form/${form.slug}`), "_blank", "noopener,noreferrer");
     }
   };
 

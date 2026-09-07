@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormsWorkspace } from "@/components/forms/forms-workspace";
 import { useProject, pickDefaultProjectId } from "@/context/project-context";
 import { LoadingState } from "@/components/internal/screens/forms/screen-shell";
+import { withPrefix } from "@/lib/workspace/base-path";
 
 export default function ProjectWorkspacePage() {
   const router = useRouter();
@@ -13,12 +14,12 @@ export default function ProjectWorkspacePage() {
   useEffect(() => {
     if (loading) return;
     if (projects.length === 0) {
-      router.replace("/forms");
+      router.replace(withPrefix("/forms"));
       return;
     }
     if (project) return;
     const fallback = pickDefaultProjectId(projects);
-    if (fallback) router.replace(`/project/${fallback}`);
+    if (fallback) router.replace(withPrefix(`/project/${fallback}`));
   }, [loading, project, projects, router]);
 
   if (loading) return <LoadingState label="Loading workspace…" />;

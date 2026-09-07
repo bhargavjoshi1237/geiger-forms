@@ -70,6 +70,7 @@ import { cn } from "@/lib/utils";
 import { hydrateFields, serializeBuilderDoc } from "@/lib/forms/builder";
 import { FIELD_TYPE_LIST, getFieldIcon } from "@/lib/forms/field-types";
 import { blankFormDoc, titleFromSlug } from "@/lib/forms/schema";
+import { withPrefix } from "@/lib/workspace/base-path";
 import { getFormBySlug, saveFormBySlug, setFormStatus } from "@/lib/supabase/forms";
 import { useVersions } from "@/lib/hooks/use-versions";
 import { PublishDialog } from "@/components/forms/publish-dialog";
@@ -104,7 +105,7 @@ export function FormBuilderTopbarActions({ formId = "" }) {
   };
 
   const copyLink = () => {
-    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/form/${formId}`;
+    const url = `${typeof window !== "undefined" ? window.location.origin : ""}${withPrefix(`/form/${formId}`)}`;
     navigator.clipboard.writeText(url).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -118,7 +119,7 @@ export function FormBuilderTopbarActions({ formId = "" }) {
       <Button type="button" variant="ghost" size="icon" onClick={copyLink} aria-label={copied ? "Copied!" : "Copy link"} className={copied ? "text-[#4ade80]" : undefined}>
         {copied ? <CheckIcon className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
       </Button>
-      <Button type="button" variant="ghost" size="icon" aria-label="Preview" onClick={() => { if (typeof window !== "undefined") window.open(`/form/${formId}`, "_blank", "noopener"); }}><Eye className="h-4 w-4" /></Button>
+      <Button type="button" variant="ghost" size="icon" aria-label="Preview" onClick={() => { if (typeof window !== "undefined") window.open(withPrefix(`/form/${formId}`), "_blank", "noopener"); }}><Eye className="h-4 w-4" /></Button>
       <Button
         type="button"
         size="sm"

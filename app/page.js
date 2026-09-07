@@ -19,6 +19,7 @@ import {
   AccordionTrigger,
 } from "@geiger/ui/accordion";
 import { Header } from "@/components/header";
+import { withPrefix } from "@/lib/workspace/base-path";
 import LandingFormShowcase from "@/components/LandingFormShowcase";
 
 export const metadata = {
@@ -199,7 +200,7 @@ export default function FormsLandingPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                href="/form/demo"
+                href={withPrefix("/form/demo")}
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-zinc-100 px-6 text-sm font-medium text-zinc-950 transition-colors hover:bg-white sm:w-auto"
               >
                 Preview Filler

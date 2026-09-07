@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@geiger/ui/table";
 import { useForms } from "@/lib/hooks/use-forms";
+import { withPrefix } from "@/lib/workspace/base-path";
 
 const roleStyle = {
   viewer: { label: "Viewer", bg: "bg-surface-card", text: "text-text-secondary", border: "border-border" },
@@ -74,7 +75,7 @@ export function SharedScreen() {
 
   const copyLink = (slug) => {
     if (typeof window === "undefined") return;
-    navigator.clipboard?.writeText(`${window.location.origin}/form/${slug}`);
+    navigator.clipboard?.writeText(`${window.location.origin}${withPrefix(`/form/${slug}`)}`);
   };
 
   return (

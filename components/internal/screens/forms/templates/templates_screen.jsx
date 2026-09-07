@@ -19,18 +19,19 @@ import {
   ContextMenuTrigger,
 } from "@geiger/ui/context-menu";
 import { useForms } from "@/lib/hooks/use-forms";
+import { withPrefix } from "@/lib/workspace/base-path";
 
 export function TemplatesScreen() {
   const router = useRouter();
   const { forms, loading } = useForms();
 
-  const openTemplate = (slug) => router.push(`/forms/${slug}`);
-  const previewTemplate = (slug) => router.push(`/form/${slug}`);
-  const duplicateTemplate = (slug) => router.push(`/forms/${slug}-copy`);
+  const openTemplate = (slug) => router.push(withPrefix(`/forms/${slug}`));
+  const previewTemplate = (slug) => router.push(withPrefix(`/form/${slug}`));
+  const duplicateTemplate = (slug) => router.push(withPrefix(`/forms/${slug}-copy`));
   const copyTemplateLink = (slug) => {
     if (typeof window === "undefined") return;
 
-    navigator.clipboard?.writeText(`${window.location.origin}/forms/${slug}`);
+    navigator.clipboard?.writeText(`${window.location.origin}${withPrefix(`/forms/${slug}`)}`);
   };
 
   return (

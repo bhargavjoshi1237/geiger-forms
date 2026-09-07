@@ -8,6 +8,7 @@ import {
   pickDefaultProjectId,
 } from "@/context/project-context";
 import { LoadingState } from "@/components/internal/screens/forms/screen-shell";
+import { withPrefix } from "@/lib/workspace/base-path";
 
 function ProjectResolver() {
   const router = useRouter();
@@ -18,11 +19,11 @@ function ProjectResolver() {
     // Forms has no standalone login page — fall back to the unscoped
     // workspace when the user holds no project.
     if (projects.length === 0) {
-      router.replace("/forms");
+      router.replace(withPrefix("/forms"));
       return;
     }
     const id = pickDefaultProjectId(projects);
-    if (id) router.replace(`/project/${id}`);
+    if (id) router.replace(withPrefix(`/project/${id}`));
   }, [loading, projects, router]);
 
   return <LoadingState label="Loading workspace…" />;
