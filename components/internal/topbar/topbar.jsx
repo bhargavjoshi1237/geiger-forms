@@ -2,9 +2,9 @@
 
 import React from "react";
 import { Bell, HelpCircle, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import ThemeToggle from "@/components/ui/theme-toggle";
+import { Button } from "@geiger/ui/button";
+import { Kbd, KbdGroup } from "@geiger/ui/kbd";
+import ThemeToggle from "@geiger/ui/theme-toggle";
 import { SupabaseActivityLine } from "./supabase_activity_line";
 
 export function Topbar() {

@@ -9,15 +9,15 @@ import {
   FileSpreadsheet,
   Link2 as LinkIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
 import { useComments } from "@/lib/hooks/use-comments";
 

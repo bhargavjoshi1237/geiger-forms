@@ -35,10 +35,10 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@geiger/ui/accordion";
+import { Badge } from "@geiger/ui/badge";
+import { Button } from "@geiger/ui/button";
+import { Card } from "@geiger/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -46,7 +46,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@geiger/ui/dialog";
 import {
   ContextMenu,
   ContextMenuCheckboxItem,
@@ -55,17 +55,17 @@ import {
   ContextMenuLabel,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu";
-import { Input } from "@/components/ui/input";
+} from "@geiger/ui/context-menu";
+import { Input } from "@geiger/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+} from "@geiger/ui/select";
+import { Switch } from "@geiger/ui/switch";
+import { Textarea } from "@geiger/ui/textarea";
 import { cn } from "@/lib/utils";
 import { hydrateFields, serializeBuilderDoc } from "@/lib/forms/builder";
 import { FIELD_TYPE_LIST, getFieldIcon } from "@/lib/forms/field-types";

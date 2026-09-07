@@ -9,9 +9,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+} from "@geiger/ui/dialog";
+import { Button } from "@geiger/ui/button";
+import { Switch } from "@geiger/ui/switch";
 
 export function PublishDialog({ open, onOpenChange, slug, status, onChange }) {
   const isPublished = status === "Published";

@@ -15,7 +15,8 @@ and the shared kit (`components/internal/shared`).
 | Shared screen primitives | `components/internal/shared/screen_kit.jsx` | `ScreenHeader`, `StatsBar`, `DataTable`… |
 | Page-width wrappers | `components/internal/shared/screen_wrappers.jsx` | `MainScreenWrapper`, `SecondaryScreenWrapper` |
 | Lookups & formatters | `components/internal/screens/<area>/constants.js` | status/type `*_MAP`, `*_FILTER_OPTIONS`, `formatDate`/`currency` |
-| shadcn primitives | `components/ui/*` | `@/components/ui/<name>` |
+| shadcn primitives | `@geiger/ui/*` (shared suite library) | `import { Button } from "@geiger/ui/button"` |
+| Local-only primitive | `components/ui/file-input.jsx` | `@/components/ui/file-input` (no suite equivalent yet) |
 | Permissions catalog | `lib/rbac.js` | `WORKSPACE_PERMISSIONS`, dot-namespaced keys |
 | Supabase client | `lib/supabase/client.js` | `createClient()` (browser, activity-tracked) |
 | Data layer (per area) | `lib/supabase/<area>.js` | `list*/get*/create*/update*/softDelete*`, `normalize*/toRow` |
@@ -187,8 +188,9 @@ controls; it does not secure data.
 
 ## UI conventions
 
-- **Components:** prefer `shadcn/ui` primitives (`@/components/ui/*`) and
-  **Lucide** icons. Build screens out of the shared kit
+- **Components:** prefer the shared suite library (`@geiger/ui/*`, same as
+  geiger-events) and **Lucide** icons. Only `components/ui/file-input.jsx` stays
+  local — `@geiger/ui` has no file-input equivalent yet. Build screens out of the shared kit
   (`@/components/internal/shared/screen_kit`) before writing bespoke layout —
   `ScreenHeader`, `StatsBar`/`StatGrid`, `SectionCard`, `Toolbar` + `SearchInput`,
   `DataTable`, `StatusPill`, `EmptyState`, `SettingsList`/`SettingRow`, `Field`.

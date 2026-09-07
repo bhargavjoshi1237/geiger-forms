@@ -10,8 +10,8 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Input } from "@/components/ui/input";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@geiger/ui/chart";
+import { Input } from "@geiger/ui/input";
 import { ResponseDetailPanel } from "@/components/forms/response-detail-panel";
 import { ArrowLeft, CheckCircle2, Loader2, Search, Star, Timer, Zap } from "lucide-react";
 import Link from "next/link";

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Loader2, AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   Table,
   TableBody,
@@ -8,7 +8,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@geiger/ui/table";
 import { cn } from "@/lib/utils";
 
 export function FormsScreenShell({ eyebrow, title, description, action, actionHref, stats = [], children }) {

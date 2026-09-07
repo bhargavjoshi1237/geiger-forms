@@ -1,10 +1,10 @@
 "use client";
 
 import { Equal } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
+import { Checkbox } from "@geiger/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@geiger/ui/radio-group";
 import { FileInput } from "@/components/ui/file-input";
 import { cn } from "@/lib/utils";
 import { getFieldType } from "@/lib/forms/field-types";

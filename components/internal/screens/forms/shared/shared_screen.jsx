@@ -10,7 +10,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@geiger/ui/table";
 import { useForms } from "@/lib/hooks/use-forms";
 
 const roleStyle = {

@@ -8,7 +8,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+} from "@geiger/ui/context-menu";
 import { useForms } from "@/lib/hooks/use-forms";
 import { relativeTime } from "@/lib/forms/schema";
 

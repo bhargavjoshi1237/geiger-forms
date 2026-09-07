@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { Bell, HelpCircle, PanelLeft, Search } from "lucide-react";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import ThemeToggle from "@/components/ui/theme-toggle";
+import { Kbd, KbdGroup } from "@geiger/ui/kbd";
+import ThemeToggle from "@geiger/ui/theme-toggle";
 import { ProfileDropdown } from "@/components/layout/profile-dropdown";
 
 const assetPrefix = process.env.NEXT_PUBLIC_ASSET_PREFIX || "";

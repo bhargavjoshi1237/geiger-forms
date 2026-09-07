@@ -25,8 +25,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+} from "@geiger/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@geiger/ui/avatar";
 import { getUser, invalidateUserCache } from "@/lib/supabase/user";
 import { createClient } from "@/lib/supabase/client";
 

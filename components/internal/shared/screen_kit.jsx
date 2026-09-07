@@ -4,9 +4,9 @@ import React, { useEffect, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Card, CardContent } from "@geiger/ui/card";
+import { Badge } from "@geiger/ui/badge";
+import { Switch } from "@geiger/ui/switch";
 import {
   Table,
   TableBody,
@@ -14,7 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@geiger/ui/table";
 
 /**
  * Shared building blocks for internal feature screens. Ported from the Geiger

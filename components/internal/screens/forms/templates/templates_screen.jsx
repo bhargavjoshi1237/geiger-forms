@@ -10,14 +10,14 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormsScreenShell, LoadingState, EmptyState } from "../screen-shell";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+} from "@geiger/ui/context-menu";
 import { useForms } from "@/lib/hooks/use-forms";
 
 export function TemplatesScreen() {

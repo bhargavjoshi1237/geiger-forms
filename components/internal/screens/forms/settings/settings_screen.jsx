@@ -11,17 +11,17 @@ import {
   Wand2,
 } from "lucide-react";
 import { FormsScreenShell } from "../screen-shell";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+} from "@geiger/ui/select";
+import { Switch } from "@geiger/ui/switch";
+import { Textarea } from "@geiger/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const DAYS = [

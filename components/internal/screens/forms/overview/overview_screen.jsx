@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@geiger/ui/button";
+import { Card, CardContent } from "@geiger/ui/card";
 import {
   AlertCircle,
   ArrowDownRight,
@@ -30,7 +30,7 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@/components/ui/chart";
+} from "@geiger/ui/chart";
 import {
   Table,
   TableBody,
@@ -38,7 +38,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@geiger/ui/table";
 import FilterDropdown from "@/components/internal/shared/filter_dropdown";
 import { cn } from "@/lib/utils";
 

@@ -11,13 +11,13 @@ import {
   Smartphone,
   Users,
 } from "lucide-react";
-import Footer from "@/components/ui/footer";
+import Footer from "@geiger/ui/footer";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
+} from "@geiger/ui/accordion";
 import { Header } from "@/components/header";
 import LandingFormShowcase from "@/components/LandingFormShowcase";
 
