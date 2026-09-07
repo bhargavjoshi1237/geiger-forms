@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { can as rbacCan, evaluate as rbacEvaluate, resolveGrants } from "@geiger/rbac";
 
 import rbacConfig from "@/geiger-rbac.config";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { getUser } from "@/lib/supabase/user";
 import { ensureMembership, ensureSystemRoles, listRoles, listUserGrants } from "@/lib/supabase/rbac";
 
@@ -32,7 +33,10 @@ const PERMISSIVE = Object.freeze({
 
 export function RbacProvider({ children }) {
   const searchParams = useSearchParams();
-  const projectId = searchParams?.get("project") ?? null;
+  // Route params win (/project/<id>/…); ?project= stays as a fallback so
+  // unscoped surfaces and deep links keep working.
+  const { projectId: routeProjectId } = useWorkspaceUrl();
+  const projectId = routeProjectId ?? searchParams?.get("project") ?? null;
 
   const [userId, setUserId] = useState(null);
   const [roles, setRoles] = useState([]);

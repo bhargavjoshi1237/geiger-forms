@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { AnalyticsScreen } from "@/components/internal/screens/forms/analytics/analytics_screen";
 import { OverviewScreen } from "@/components/internal/screens/forms/overview/overview_screen";
 import { FoldersScreen } from "@/components/internal/screens/forms/folders/folders_screen";
@@ -43,14 +44,20 @@ function renderActiveScreen(activeView) {
 
 export function FormsWorkspace({ playground = false }) {
   const searchParams = useSearchParams();
+  const { projectId, view: routeView, setView } = useWorkspaceUrl();
   const requestedView = searchParams.get("view");
   const initialView = navItemById(requestedView) ? requestedView : "Overview";
-  const [activeView, setActiveView] = useState(initialView);
+  const [legacyView, setLegacyView] = useState(initialView);
+
+  // Under /project/<id> the view lives in the URL path (hub-compatible);
+  // the legacy /forms entry point keeps its ?view= state.
+  const activeView = projectId ? routeView : legacyView;
+  const handleViewChange = projectId ? setView : setLegacyView;
 
   return (
     <AppShell
       activeView={activeView}
-      onViewChange={setActiveView}
+      onViewChange={handleViewChange}
       className={playground ? "h-full" : undefined}
       contentClassName={playground ? "p-3 md:p-5" : undefined}
     >

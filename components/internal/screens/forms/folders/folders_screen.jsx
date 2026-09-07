@@ -10,6 +10,7 @@ import {
   ContextMenuTrigger,
 } from "@geiger/ui/context-menu";
 import { useForms } from "@/lib/hooks/use-forms";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { relativeTime } from "@/lib/forms/schema";
 
 const UNCATEGORIZED = "Uncategorized";
@@ -39,12 +40,18 @@ function buildFolders(forms) {
 
 export function FoldersScreen() {
   const { forms, loading } = useForms();
+  const { projectId, buildUrl } = useWorkspaceUrl();
 
   const folders = useMemo(() => buildFolders(forms), [forms]);
 
+  const folderHref = (slug) =>
+    projectId
+      ? buildUrl({ view: "Forms", category: slug })
+      : `/forms?view=Forms&category=${slug}`;
+
   const copyFolderLink = (slug) => {
     if (typeof window === "undefined") return;
-    navigator.clipboard?.writeText(`${window.location.origin}/forms?view=Forms&category=${slug}`);
+    navigator.clipboard?.writeText(`${window.location.origin}${folderHref(slug)}`);
   };
 
   return (
@@ -69,7 +76,7 @@ export function FoldersScreen() {
             <ContextMenu key={folder.name}>
               <ContextMenuTrigger asChild>
                 <a
-                  href={`/forms?view=Forms&category=${folder.slug}`}
+                  href={folderHref(folder.slug)}
                   className="flex flex-col gap-3 rounded-md border border-border bg-surface-subtle p-4 transition-colors hover:border-border-strong"
                 >
                   <div className="flex items-start justify-between">
@@ -98,7 +105,7 @@ export function FoldersScreen() {
 
               <ContextMenuContent className="w-52 bg-surface-card border-border shadow-xl">
                 <ContextMenuItem asChild className="text-muted-foreground focus:bg-surface-hover focus:text-foreground cursor-pointer gap-2">
-                  <a href={`/forms?view=Forms&category=${folder.slug}`}>
+                  <a href={folderHref(folder.slug)}>
                     <FolderOpen className="w-3.5 h-3.5" />
                     Open
                   </a>
