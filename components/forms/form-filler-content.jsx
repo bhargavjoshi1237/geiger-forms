@@ -10,6 +10,7 @@ import {
   Send,
 } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { LogoLoading } from "@geiger/ui/logo-loading";
 import { FormFieldRenderer } from "@/components/forms/form-field-renderer";
 import { getPublishedFormBySlug } from "@/lib/supabase/forms";
 import { createResponse } from "@/lib/supabase/responses";
@@ -160,7 +161,7 @@ export function FormFillerContent({ formId }) {
     return (
       <Shell>
         <section className="flex items-center justify-center py-24">
-          <Loader2 className="h-6 w-6 animate-spin text-text-secondary" />
+          <LogoLoading size={72} />
         </section>
       </Shell>
     );

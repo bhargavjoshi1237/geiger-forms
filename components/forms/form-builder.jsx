@@ -36,6 +36,7 @@ import {
   X,
 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@geiger/ui/accordion";
+import { LogoLoading } from "@geiger/ui/logo-loading";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Card } from "@geiger/ui/card";
@@ -1179,7 +1180,7 @@ export function FormBuilder({ formId }) {
   if (!doc) {
     return (
       <div className="flex h-full min-h-[calc(100dvh-3.5rem)] items-center justify-center bg-[#121212]">
-        <RotateCcw className="h-5 w-5 animate-spin text-text-secondary" />
+        <LogoLoading size={88} />
       </div>
     );
   }
