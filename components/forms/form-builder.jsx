@@ -1,1189 +1,506 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  AlignLeft,
-  Calendar,
-  ChevronDown,
-  CircleHelp,
-  Clock,
-  Equal,
-  EyeOff,
-  Eye,
-  FileText,
-  FolderOpen,
-  FunctionSquare,
-  GitBranch,
-  GripVertical,
-  Hash,
-  History,
-  Target,
-  Link2,
-  Mail,
-  Plus,
-  RotateCcw,
-  Settings2,
-  Share2,
-  Undo2,
-  Redo2,
-  Copy,
-  Globe,
-  CheckCircle2 as CheckIcon,
-  SlidersHorizontal,
-  SplitSquareVertical,
-  Star,
-  Wand2,
-  X,
-} from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@geiger/ui/accordion";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, ArrowLeft, CheckCircle2, CloudOff, FilePlus2, FileQuestion, Loader2, Redo2, RefreshCw, Undo2, X } from "lucide-react";
+import { toast } from "sonner";
 import { LogoLoading } from "@geiger/ui/logo-loading";
-import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
-import { Card } from "@geiger/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@geiger/ui/dialog";
-import {
-  ContextMenu,
-  ContextMenuCheckboxItem,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuLabel,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@geiger/ui/context-menu";
-import { Input } from "@geiger/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@geiger/ui/select";
-import { Switch } from "@geiger/ui/switch";
-import { Textarea } from "@geiger/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@geiger/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { hydrateFields, serializeBuilderDoc } from "@/lib/forms/builder";
-import { FIELD_TYPE_LIST, getFieldIcon } from "@/lib/forms/field-types";
-import { blankFormDoc, titleFromSlug } from "@/lib/forms/schema";
+import { serializeBuilderDoc } from "@/lib/forms/builder";
+import { normalizeSettings, titleFromSlug } from "@/lib/forms/schema";
 import { withPrefix } from "@/lib/workspace/base-path";
-import { getFormBySlug, saveFormBySlug, setFormStatus } from "@/lib/supabase/forms";
+import { createForm, getFormById, getFormBySlug, setFormStatus, updateForm } from "@/lib/supabase/forms";
 import { useVersions } from "@/lib/hooks/use-versions";
-import { PublishDialog } from "@/components/forms/publish-dialog";
+import { useCan } from "@/context/rbac-context";
+import { useDocHistory } from "@/components/forms/builder/doc-history";
+import { canonicalizeFields, convertLegacySteps, createField, duplicateField } from "@/components/forms/builder/field-defaults";
+import { collectWarnings, hashString } from "@/components/forms/builder/doc-checks";
+import { conditionSources } from "@/components/forms/builder/conditions-editor";
+import { BuilderCanvas } from "@/components/forms/builder/builder-canvas";
+import { BuilderSidebar } from "@/components/forms/builder/builder-sidebar";
+import { BuilderPreview } from "@/components/forms/builder/builder-preview";
+import { BuilderTopbarActions } from "@/components/forms/builder/builder-topbar";
+import { useAutosave } from "@/components/forms/builder/use-autosave";
+import { useBuilderPresence } from "@/components/forms/builder/use-builder-presence";
 
-const SAVE_DEBOUNCE_MS = 1000;
-
-const OPERATORS = ["Equals", "Contains", "Does Not Equal", "Is Empty"];
-
-export function FormBuilderTopbarActions({ formId = "" }) {
-  const [favourite, setFavourite] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [publishOpen, setPublishOpen] = useState(false);
-  const [isPublished, setIsPublished] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    getFormBySlug(formId)
-      .then((form) => active && form && setIsPublished(form.status === "Published"))
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [formId]);
-
-  const applyStatus = async (status) => {
-    let form = await getFormBySlug(formId);
-    if (!form) {
-      form = await saveFormBySlug(formId, { title: titleFromSlug(formId) });
-    }
-    await setFormStatus(form.id, status);
-    setIsPublished(status === "Published");
+// Editor doc from a loaded form; legacy settings.steps become real page breaks once.
+function buildDoc(form) {
+  const fields = canonicalizeFields(form.fieldDefs);
+  const settings = normalizeSettings(form.settings);
+  const converted = convertLegacySteps(fields, settings.steps);
+  return {
+    doc: {
+      title: form.title || "",
+      description: form.description || "",
+      fields: converted || fields,
+      settings: converted ? { ...settings, steps: [] } : settings,
+    },
+    converted: Boolean(converted),
   };
+}
 
-  const copyLink = () => {
-    const url = `${typeof window !== "undefined" ? window.location.origin : ""}${withPrefix(`/form/${formId}`)}`;
-    navigator.clipboard.writeText(url).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+function scrollToField(id) {
+  requestAnimationFrame(() => {
+    document.querySelector(`[data-field-id="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+}
 
+function insertAt(fields, field, { afterId, beforeId } = {}) {
+  const next = [...fields];
+  if (beforeId) {
+    const i = next.findIndex((f) => f.id === beforeId);
+    next.splice(i === -1 ? next.length : i, 0, field);
+  } else if (afterId) {
+    const i = next.findIndex((f) => f.id === afterId);
+    next.splice(i === -1 ? next.length : i + 1, 0, field);
+  } else {
+    next.push(field);
+  }
+  return next;
+}
+
+function SaveStatus({ status }) {
   return (
-    <>
-      <Button type="button" variant="ghost" size="icon" aria-label="Favourite" onClick={() => setFavourite((v) => !v)} className={favourite ? "text-white" : undefined}>
-        <Star className={cn("h-4 w-4", favourite && "fill-white")} />
-      </Button>
-      <Button type="button" variant="ghost" size="icon" onClick={copyLink} aria-label={copied ? "Copied!" : "Copy link"} className={copied ? "text-[#4ade80]" : undefined}>
-        {copied ? <CheckIcon className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-      </Button>
-      <Button type="button" variant="ghost" size="icon" aria-label="Preview" onClick={() => { if (typeof window !== "undefined") window.open(withPrefix(`/form/${formId}`), "_blank", "noopener"); }}><Eye className="h-4 w-4" /></Button>
-      <Button
-        type="button"
-        size="sm"
-        onClick={() => setPublishOpen(true)}
-        className={cn("gap-1.5 h-8", isPublished ? "border border-[#166534] bg-[#0d2218] text-[#4ade80] hover:bg-[#0f2a1d]" : "")}
-      >
-        {isPublished ? (
- <span className="relative flex h-2.5 w-2.5 shrink-0">
-                {isPublished && (
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#4ade80] opacity-75" />
-                )}
-                <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${isPublished ? "bg-[#4ade80]" : "bg-[#525252]"}`} />
-              </span>
-        ) : (
-          <Globe className="h-3.5 w-3.5" />
-        )}
-        {isPublished ? "Live" : "Publish"}
-      </Button>
-
-      <PublishDialog
-        open={publishOpen}
-        onOpenChange={setPublishOpen}
-        slug={formId}
-        status={isPublished ? "Published" : "Draft"}
-        onChange={applyStatus}
-      />
-    </>
+    <span className={cn("flex items-center gap-1.5 text-xs", status === "error" ? "text-red-400" : "text-muted-foreground")}>
+      {status === "saving" ? <Loader2 className="h-3.5 w-3.5 animate-spin text-text-secondary" /> : status === "error" ? <CloudOff className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5 text-text-secondary" />}
+      {status === "saving" ? "Saving…" : status === "error" ? "Save failed — retrying" : "Saved"}
+    </span>
   );
 }
 
-function TinySwitch({ checked = false, onCheckedChange, label }) {
-  return <Switch checked={checked} onCheckedChange={onCheckedChange} aria-label={label} />;
-}
-
-function FormIntroCard({ title, description, onTitleChange, onDescriptionChange }) {
+function IconAction({ label, shortcut, onClick, disabled, children }) {
   return (
-    <Card className="relative p-6">
-      <Input value={title} onChange={(e) => onTitleChange(e.target.value)} aria-label="Form title" className="h-10 border-transparent bg-transparent px-0 text-[26px] font-semibold leading-tight text-white" />
-      <Textarea value={description} onChange={(e) => onDescriptionChange(e.target.value)} aria-label="Form description" className="mt-4 min-h-24 resize-none border-border bg-surface-card pr-3 text-[13px] leading-5 text-muted-foreground" />
-    </Card>
-  );
-}
-
-function StepDivider({ step, onTitleChange, onRemove }) {
-  return (
-    <div className="relative flex items-center gap-3">
-      <div className="h-px flex-1 bg-surface-hover" />
-      <div className="flex items-center gap-2 rounded-md border border-border bg-surface-subtle px-2 py-1">
-        <SplitSquareVertical className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
-        <Input value={step.title} onChange={(e) => onTitleChange(e.target.value)} className="h-auto w-32 border-transparent bg-transparent px-0 py-0 text-xs font-medium text-muted-foreground focus:border-transparent focus:text-foreground" placeholder="Step name..." />
-        <button type="button" onClick={onRemove} className="text-text-tertiary transition-colors hover:text-muted-foreground"><X className="h-3 w-3" /></button>
-      </div>
-      <div className="h-px flex-1 bg-surface-hover" />
-    </div>
-  );
-}
-
-function ConditionsPanel({ conditions, allFields, onAdd, onUpdate, onRemove }) {
-  return (
-    <div className="rounded-lg border border-border bg-background p-3.5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <GitBranch className="h-4 w-4 text-text-secondary" />
-          Show This Field Only When
-        </span>
-        <Button type="button" variant="outline" size="sm" onClick={onAdd} className="h-8 gap-1.5">
-          <Plus className="h-3.5 w-3.5" />
-          Add Condition
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button type="button" variant="ghost" size="icon-sm" aria-label={label} onClick={onClick} disabled={disabled} className="text-text-secondary">
+          {children}
         </Button>
-      </div>
-
-      {conditions.length === 0 ? (
-        <div className="rounded-md border border-dashed border-border bg-surface-subtle px-3 py-4 text-center">
-          <p className="text-xs text-text-secondary">No conditions yet — this field is always visible.</p>
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {conditions.map((cond, i) => {
-            const needsValue = cond.operator !== "Is Empty";
-            return (
-              <div key={cond.id} className="rounded-md border border-border bg-surface-subtle p-3">
-                <div className="flex gap-2">
-                  <Badge className="mt-1.5 h-6 w-9 shrink-0 justify-center rounded-md px-0 text-[10px] font-semibold tracking-wide text-muted-foreground">
-                    {i === 0 ? "IF" : "OR"}
-                  </Badge>
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Select value={cond.fieldId} onValueChange={(value) => onUpdate(cond.id, { fieldId: value })}>
-                        <SelectTrigger className="h-9 flex-1 text-sm">
-                          <SelectValue placeholder="Select a field…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {allFields.map((f) => <SelectItem key={f.id} value={f.id}>{f.title}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onRemove(cond.id)}
-                        aria-label="Remove condition"
-                        className="h-9 w-9 shrink-0 text-text-secondary hover:bg-[#2a0808] hover:text-[#f87171]"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className={cn("grid gap-2", needsValue && "sm:grid-cols-2")}>
-                      <Select value={cond.operator} onValueChange={(value) => onUpdate(cond.id, { operator: value })}>
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {OPERATORS.map((op) => <SelectItem key={op} value={op}>{op}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      {needsValue && (
-                        <Input
-                          value={cond.value}
-                          onChange={(e) => onUpdate(cond.id, { value: e.target.value })}
-                          placeholder="Enter a value…"
-                          className="h-9 text-sm text-muted-foreground"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+      </TooltipTrigger>
+      <TooltipContent>{label} <span className="ml-1 opacity-60">{shortcut}</span></TooltipContent>
+    </Tooltip>
   );
 }
 
-function OptionsEditor({ options, onChange }) {
-  const update = (i, value) => onChange(options.map((o, idx) => (idx === i ? value : o)));
-  const remove = (i) => onChange(options.filter((_, idx) => idx !== i));
-  const add = () => onChange([...options, `Option ${options.length + 1}`]);
-
-  return (
-    <div className="mt-3">
-      <span className="text-xs font-medium text-foreground">Choices</span>
-      <div className="mt-2 space-y-1.5">
-        {options.map((opt, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <Input
-              value={opt}
-              onChange={(e) => update(i, e.target.value)}
-              className="h-8 flex-1 bg-background text-sm"
-              placeholder={`Option ${i + 1}`}
-            />
-            <button type="button" onClick={() => remove(i)} className="text-text-tertiary transition-colors hover:text-[#ef4444]">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ))}
-        {options.length === 0 && <p className="text-[10px] text-text-tertiary">No choices yet — add at least one.</p>}
-      </div>
-      <button type="button" onClick={add} className="mt-2 flex items-center gap-1 text-[10px] text-text-secondary transition-colors hover:text-foreground">
-        <Plus className="h-3 w-3" />Add Choice
-      </button>
-    </div>
-  );
-}
-
-function FieldCard({ field, allFields, onChange, onRemove, dragging, onDragStart, onDragOver, onDrop, onDragEnd }) {
-  const hasConditions = field.conditions.length > 0;
-  const isCalculated = field.type === "calculated";
-  const [showConditions, setShowConditions] = useState(() => field.conditions.length > 0);
-
-  const addCondition = () => onChange({ conditions: [...field.conditions, { id: `c-${Date.now()}`, fieldId: "", operator: "equals", value: "" }] });
-  const updateCondition = (id, patch) => onChange({ conditions: field.conditions.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
-  const removeCondition = (id) => onChange({ conditions: field.conditions.filter((c) => c.id !== id) });
-
-  return (
-    <div
-      draggable
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-      className={cn("group relative transition-all duration-150", dragging && "opacity-30 scale-[0.99]")}
-    >
-      <button
-        type="button"
-        aria-label="Drag field"
-        className="absolute -left-8 top-3 z-10 cursor-grab rounded p-1 text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100 hover:text-muted-foreground active:cursor-grabbing"
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
-
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <Card className="w-full p-4">
-            <Accordion type="single" collapsible defaultValue="details">
-              <AccordionItem value="details" className="border-0">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <Input value={field.title} onChange={(e) => onChange({ title: e.target.value })} aria-label={`${field.title} field name`} className="h-9 min-w-0 flex-1 border-transparent bg-transparent px-0 text-base font-semibold text-white" />
-                    {isCalculated && (
-                      <Badge className="shrink-0 border-[#1e3a5f] bg-[#0e1e2e] px-2 py-0.5 text-[11px] font-medium text-[#60a5fa]">Calc</Badge>
-                    )}
-                    {hasConditions && (
-                      <Badge className="text-[11px] text-text-secondary">
-                        <GitBranch className="h-3 w-3" />{field.conditions.length}
-                      </Badge>
-                    )}
-                    {field.required && (
-                      <Badge className="shrink-0 border-border-strong bg-surface-active px-2 py-0.5 text-[11px] text-muted-foreground">Required</Badge>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <AccordionTrigger
-                      aria-label={`${field.title} details`}
-                      className="h-8 w-8 flex-none items-center justify-center rounded-md p-0 py-0 text-text-secondary hover:bg-surface-active hover:text-foreground hover:no-underline data-[state=open]:bg-surface-active data-[state=open]:text-foreground [&>svg.accordion-chevron]:hidden"
-                    >
-                      <ChevronDown className="h-4 w-4" /><span className="sr-only">Toggle details</span>
-                    </AccordionTrigger>
-                    <Button type="button" variant="ghost" size="icon" aria-label="Remove field" className="h-8 w-8 text-text-secondary hover:text-foreground" onClick={onRemove}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <AccordionContent className="pb-0 pt-4">
-                  {isCalculated ? (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="mb-1.5 block text-xs font-medium text-foreground">Formula</label>
-                        <div className="relative">
-                          <Equal className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
-                          <Input value={field.formula ?? ""} onChange={(e) => onChange({ formula: e.target.value })} placeholder="{Field A} + {Field B} x 1.5" className="h-9 pl-8 pr-3 font-mono text-sm text-[#60a5fa]" />
-                        </div>
-                        <p className="mt-1.5 text-[10px] text-text-tertiary">Reference other fields using curly braces: {"{Field Name}"}. Supports +, −, ×, ÷, and IF statements.</p>
-                      </div>
-                      <div className="rounded-md border border-[#1e3a5f] bg-[#0a1929] px-3 py-2.5">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">Live preview</p>
-                        <p className="mt-1 font-mono text-sm text-[#93c5fd]">= 84.0 pts</p>
-                        <p className="mt-0.5 text-[10px] text-text-tertiary">Calculated from current field values</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <label className="block">
-                        <span className="text-xs font-medium text-foreground">Field type</span>
-                        <Select
-                          value={field.type}
-                          onValueChange={(type) =>
-                            onChange({ type, select: type === "select", Icon: getFieldIcon(type) })
-                          }
-                        >
-                          <SelectTrigger className="mt-2 h-9 bg-background text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {FIELD_TYPE_LIST.filter((t) => t.type !== "calculated").map((t) => (
-                              <SelectItem key={t.type} value={t.type}>{t.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </label>
-                      <label className="mt-3 block">
-                        <span className="text-xs font-medium text-foreground">Question label</span>
-                        <Input value={field.firstValue} onChange={(e) => onChange({ firstValue: e.target.value })} className={cn("mt-2 h-9 bg-background text-sm", field.required && "border-[#737373] shadow-[0_0_0_1px_rgba(255,255,255,0.18)]")} />
-                      </label>
-                      <label className="mt-3 block">
-                        <span className="text-xs font-medium text-foreground">{field.type === "file" ? "Hint" : "Placeholder"}</span>
-                        <Input value={field.secondValue} onChange={(e) => onChange({ secondValue: e.target.value })} className="mt-2 h-9 bg-background text-sm text-muted-foreground" />
-                      </label>
-                      {field.type === "select" && (
-                        <OptionsEditor
-                          options={field.options || []}
-                          onChange={(options) => onChange({ options })}
-                        />
-                      )}
-                    </>
-                  )}
-
-                  {showConditions && (
-                    <div className="mt-4 border-t border-border pt-4">
-                      <ConditionsPanel
-                        conditions={field.conditions}
-                        allFields={allFields.filter((f) => f.id !== field.id)}
-                        onAdd={addCondition}
-                        onUpdate={updateCondition}
-                        onRemove={removeCondition}
-                      />
-                    </div>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </Card>
-        </ContextMenuTrigger>
-
-        <ContextMenuContent className="w-52 bg-surface-card border-border shadow-xl">
-          {!isCalculated && (
-            <>
-              <ContextMenuCheckboxItem checked={field.info} onCheckedChange={(info) => onChange({ info })}>
-                <CircleHelp className="h-3.5 w-3.5" />Info tooltip
-              </ContextMenuCheckboxItem>
-              <ContextMenuCheckboxItem checked={field.required} onCheckedChange={(required) => onChange({ required })}>
-                Required field
-              </ContextMenuCheckboxItem>
-              <ContextMenuSeparator className="bg-surface-strong" />
-            </>
-          )}
-          <ContextMenuCheckboxItem
-            checked={showConditions}
-            onCheckedChange={(v) => setShowConditions(v)}
-          >
-            <GitBranch className="h-3.5 w-3.5" />Conditional visibility
-            {hasConditions && (
-              <span className="ml-auto rounded-full border border-border px-1.5 py-0 text-[10px] text-text-tertiary">{field.conditions.length}</span>
-            )}
-          </ContextMenuCheckboxItem>
-          <ContextMenuSeparator className="bg-surface-strong" />
-          <ContextMenuItem variant="destructive" onSelect={onRemove}>
-            <X className="h-3.5 w-3.5" />Remove field
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
-    </div>
-  );
-}
-
-function SidebarField({ field, onToggle }) {
-  const Icon = field.Icon || Mail;
-  return (
-    <div className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
-      <GripVertical className="h-3.5 w-3.5 shrink-0 text-text-secondary" />
-      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1 truncate">{field.title}</span>
-      {field.type === "calculated" && <span className="mr-1 rounded-full border border-[#1e3a5f] bg-[#0e1e2e] px-1 text-[9px] text-[#60a5fa]">Calc</span>}
-      <TinySwitch checked={field.included} onCheckedChange={onToggle} label={`${field.title} included`} />
-    </div>
-  );
-}
-
-function FieldGroup({ title, icon: Icon, count, children, defaultOpen = true }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div>
-      <div className="flex h-8 items-center gap-2">
-        <button type="button" onClick={() => setOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground" aria-expanded={open}>
-          <Icon className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{title}</span>
-          <Badge className="ml-1 rounded-full px-1.5 py-0 text-[10px]">{count}</Badge>
-        </button>
-        <button type="button" onClick={() => setOpen((v) => !v)} className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-active hover:text-foreground">
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
-        </button>
-      </div>
-      {open && <div className="mt-1 space-y-1">{children}</div>}
-    </div>
-  );
-}
-
-function CoverChoice({ label, active, onClick }) {
-  return (
-    <Button type="button" variant="outline" onClick={onClick} className={cn("h-[64px] flex-1 flex-col gap-1 bg-background text-xs", active && "border-[#737373] bg-surface-card text-white")}>
-      <FileText className="h-5 w-5" />{label}
-    </Button>
-  );
-}
-
-function ResizeHandle({ label, onMouseDown }) {
-  return (
-    <button type="button" aria-label={label} title={label} onMouseDown={onMouseDown} className="absolute bottom-1 right-1 grid h-7 w-7 cursor-nwse-resize place-items-center rounded-md p-1 text-muted-foreground opacity-50 transition-opacity hover:bg-surface-active hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-strong">
-      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-        <path d="M 6 10 L 10 6 L 10 10 Z" fill="currentColor" />
-        <path d="M 2 10 L 10 2 L 10 4 L 4 10 Z" fill="currentColor" />
-      </svg>
-    </button>
-  );
-}
-
-function SidebarRow({ label, hint, children }) {
-  return (
-    <div className="flex items-start justify-between gap-3 py-2.5">
-      <div className="min-w-0">
-        <p className="text-sm text-muted-foreground leading-snug">{label}</p>
-        {hint && <p className="mt-0.5 text-[10px] text-text-tertiary">{hint}</p>}
-      </div>
-      <div className="shrink-0 pt-0.5">{children}</div>
-    </div>
-  );
-}
-
-function RightSidebar({
-  fields, onToggleField, onAddField, onAddCalculated,
-  coverStyle, onCoverStyleChange, showIcon, onShowIconChange,
-  branding, onBrandingChange, submitAnother, onSubmitAnotherChange,
-  openDate, closeDate, onOpenDateChange, onCloseDateChange,
-  steps, onAddStep, onUpdateStep, onRemoveStep,
-  responseLimit, onResponseLimitChange,
-  thankYouType, thankYouText, thankYouUrl, onThankYouTypeChange, onThankYouTextChange, onThankYouUrlChange,
-  versions, versionsLoading, onRestoreVersion, onOpenSaveDialog,
-  scoringEnabled, onScoringEnabledChange, highThreshold, onHighThresholdChange, mediumThreshold, onMediumThresholdChange,
-  branchingEnabled, onBranchingEnabledChange, branches, onAddBranch, onUpdateBranch, onRemoveBranch,
-}) {
-  const included = fields.filter((f) => f.included);
-  const excluded = fields.filter((f) => !f.included);
-  const now = new Date().toISOString().slice(0, 10);
-  const scheduleActive = openDate || closeDate;
-
-  return (
-    <aside className="hidden w-[286px] shrink-0 flex-col border-l border-border bg-surface-subtle lg:flex">
-      <div className="scrollbar-subtle flex-1 overflow-y-auto px-4 py-4">
-        <Accordion type="multiple" defaultValue={["fields", "form-style", "submission"]}>
-
-          <AccordionItem value="fields" className="border-border">
-            <AccordionTrigger className="py-2 text-sm font-semibold text-white hover:no-underline">
-              <span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />Fields</span>
-            </AccordionTrigger>
-            <AccordionContent className="pb-5">
-              <div className="space-y-3">
-                <FieldGroup title="Included" icon={Eye} count={included.length}>
-                  {included.map((f) => <SidebarField key={f.id} field={f} onToggle={() => onToggleField(f.id)} />)}
-                </FieldGroup>
-                <FieldGroup title="Excluded" icon={EyeOff} count={excluded.length}>
-                  {excluded.map((f) => <SidebarField key={f.id} field={f} onToggle={() => onToggleField(f.id)} />)}
-                </FieldGroup>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <Button type="button" variant="outline" className="flex-1 text-xs" onClick={onAddField}>
-                  <Plus className="h-3.5 w-3.5" />Field
-                </Button>
-                <Button type="button" variant="outline" className="flex-1 text-xs" onClick={onAddCalculated}>
-                  <FunctionSquare className="h-3.5 w-3.5" />Calculated
-                </Button>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="steps" className="border-border">
-            <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
-              <span className="inline-flex items-center gap-2">
-                <SplitSquareVertical className="h-4 w-4" />Steps
-                {steps.length > 0 && <Badge className="ml-1 rounded-full px-1.5 py-0 text-[10px]">{steps.length}</Badge>}
-              </span>
-            </AccordionTrigger>
-            <AccordionContent className="pb-5 space-y-2">
-              {steps.map((s, i) => (
-                <div key={s.id} className="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5">
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[10px] font-semibold text-text-secondary">{i + 1}</span>
-                  <Input value={s.title} onChange={(e) => onUpdateStep(s.id, e.target.value)} className="h-auto min-w-0 flex-1 border-transparent bg-transparent px-0 py-0 text-xs text-muted-foreground focus:border-transparent" placeholder="Step name..." />
-                  <button type="button" onClick={() => onRemoveStep(s.id)} className="text-text-tertiary hover:text-muted-foreground"><X className="h-3.5 w-3.5" /></button>
-                </div>
-              ))}
-              <Button type="button" variant="outline" className="w-full h-8 text-xs" onClick={onAddStep}><Plus className="h-3.5 w-3.5" />Add step</Button>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="branches" className="border-border">
-            <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
-              <span className="inline-flex items-center gap-2">
-                <GitBranch className="h-4 w-4" />Branches
-                {branchingEnabled && branches.length > 0 && (
-                  <Badge className="ml-1 rounded-full px-1.5 py-0 text-[10px]">{branches.length}</Badge>
-                )}
-              </span>
-            </AccordionTrigger>
-            <AccordionContent className="pb-5">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">Enable branching paths</p>
-                    <p className="text-[10px] text-text-tertiary">Route respondents through different section sequences</p>
-                  </div>
-                  <Switch checked={branchingEnabled} onCheckedChange={onBranchingEnabledChange} />
-                </div>
-                {branchingEnabled && (
-                  <div className="space-y-2">
-                    {branches.map((b) => (
-                      <div key={b.id} className="space-y-2 rounded-md border border-border bg-background p-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <Input
-                            value={b.name}
-                            onChange={(e) => onUpdateBranch(b.id, { name: e.target.value })}
-                            className="h-auto flex-1 border-transparent bg-transparent px-0 py-0 text-xs font-medium text-muted-foreground focus:border-transparent"
-                            placeholder="Branch name..."
-                          />
-                          <button type="button" onClick={() => onRemoveBranch(b.id)} className="shrink-0 text-text-tertiary hover:text-muted-foreground">
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                        <div className="space-y-1.5">
-                          <p className="text-[10px] uppercase tracking-wide text-text-tertiary">Condition</p>
-                          <Input
-                            value={b.condition}
-                            onChange={(e) => onUpdateBranch(b.id, { condition: e.target.value })}
-                            className="h-6 bg-surface-subtle px-2 text-xs text-muted-foreground"
-                            placeholder="e.g. Priority equals Urgent"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <p className="text-[10px] uppercase tracking-wide text-text-tertiary">Named outcome</p>
-                          <Input
-                            value={b.outcome}
-                            onChange={(e) => onUpdateBranch(b.id, { outcome: e.target.value })}
-                            className="h-6 bg-surface-subtle px-2 text-xs text-muted-foreground"
-                            placeholder="e.g. Escalated"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <Button type="button" variant="outline" className="w-full h-8 text-xs" onClick={onAddBranch}>
-                      <Plus className="h-3.5 w-3.5" />Add branch
-                    </Button>
-                    <p className="text-[10px] leading-4 text-text-tertiary">
-                      Each named outcome is tracked separately in analytics with its own completion rate and drop-off data.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="form-style" className="border-border">
-            <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
-              <span className="inline-flex items-center gap-2"><Wand2 className="h-4 w-4" />Form Style</span>
-            </AccordionTrigger>
-            <AccordionContent className="pb-5">
-              <p className="mb-3 inline-flex items-center gap-2 text-xs text-muted-foreground"><FileText className="h-3.5 w-3.5" />Cover Image</p>
-              <div className="flex gap-3">
-                <CoverChoice label="No Cover" active={coverStyle === "none"} onClick={() => onCoverStyleChange("none")} />
-                <CoverChoice label="Cover Image" active={coverStyle === "cover"} onClick={() => onCoverStyleChange("cover")} />
-              </div>
-              <label className="mt-4 flex h-8 items-center justify-between text-sm font-medium text-muted-foreground">
-                Show Icon<TinySwitch checked={showIcon} onCheckedChange={onShowIconChange} label="Show icon" />
-              </label>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="schedule" className="border-border">
-            <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
-              <span className="inline-flex items-center gap-2">
-                <Clock className="h-4 w-4" />Schedule
-                {scheduleActive && <span className="ml-1 h-1.5 w-1.5 rounded-full bg-[#4ade80]" />}
-              </span>
-            </AccordionTrigger>
-            <AccordionContent className="pb-5 space-y-3">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Open date</label>
-                <div className="relative">
-                  <Calendar className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
-                  <Input type="date" value={openDate} onChange={(e) => onOpenDateChange(e.target.value)} className="h-8 pl-8 pr-2 text-xs text-muted-foreground [color-scheme:dark]" />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Close date</label>
-                <div className="relative">
-                  <Calendar className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
-                  <Input type="date" value={closeDate} onChange={(e) => onCloseDateChange(e.target.value)} className="h-8 pl-8 pr-2 text-xs text-muted-foreground [color-scheme:dark]" />
-                </div>
-              </div>
-              {scheduleActive && <button type="button" onClick={() => { onOpenDateChange(""); onCloseDateChange(""); }} className="text-[10px] text-text-tertiary transition-colors hover:text-muted-foreground">Clear schedule</button>}
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="submission" className="border-border">
-            <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
-              <span className="inline-flex items-center gap-2"><FolderOpen className="h-4 w-4" />Submission</span>
-            </AccordionTrigger>
-            <AccordionContent className="pb-5 space-y-0">
-              <SidebarRow label={<span className="inline-flex items-center gap-2">Geiger branding <Badge className="rounded-full px-1.5 py-0 text-[9px] uppercase">Pro</Badge></span>}>
-                <TinySwitch checked={branding} onCheckedChange={onBrandingChange} label="Geiger branding" />
-              </SidebarRow>
-              <SidebarRow label='"Submit Another" button'>
-                <TinySwitch checked={submitAnother} onCheckedChange={onSubmitAnotherChange} label="Submit another" />
-              </SidebarRow>
-
-              <div className="border-t border-surface-active pt-3 mt-1">
-                <label className="mb-1.5 block text-xs font-medium text-muted-foreground"><Hash className="mr-1 inline h-3 w-3" />Response limit</label>
-                <div className="flex gap-2">
-                  <Input type="number" min="1" value={responseLimit} onChange={(e) => onResponseLimitChange(e.target.value)} placeholder="No limit" className="h-8 flex-1 px-2.5 text-xs text-muted-foreground" />
-                  {responseLimit && <button type="button" onClick={() => onResponseLimitChange("")} className="text-text-tertiary hover:text-muted-foreground"><X className="h-3.5 w-3.5" /></button>}
-                </div>
-              </div>
-
-              <div className="border-t border-surface-active pt-3 mt-3">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">Post-submission screen</p>
-                <div className="flex gap-1 rounded-md border border-border bg-background p-1">
-                  {["message", "redirect"].map((type) => (
-                    <button key={type} type="button" onClick={() => onThankYouTypeChange(type)} className={cn("flex-1 rounded py-1 text-xs font-medium capitalize transition-colors", thankYouType === type ? "bg-surface-hover text-white" : "text-text-secondary hover:text-muted-foreground")}>
-                      {type === "message" ? "Message" : "Redirect"}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-2">
-                  {thankYouType === "message" ? (
-                    <Textarea value={thankYouText} onChange={(e) => onThankYouTextChange(e.target.value)} rows={3} placeholder="Thank you message..." className="min-h-20 resize-none px-2.5 py-2 text-xs text-muted-foreground" />
-                  ) : (
-                    <div className="relative">
-                      <Link2 className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
-                      <Input type="url" value={thankYouUrl} onChange={(e) => onThankYouUrlChange(e.target.value)} placeholder="https://..." className="h-8 pl-8 pr-2.5 text-xs text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="scoring" className="border-border">
-            <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
-              <span className="inline-flex items-center gap-2"><Target className="h-4 w-4" />Auto-triage</span>
-            </AccordionTrigger>
-            <AccordionContent className="pb-5">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">Enable response scoring</p>
-                    <p className="text-[10px] text-text-tertiary">Score each submission; auto-assign priority</p>
-                  </div>
-                  <Switch checked={scoringEnabled} onCheckedChange={onScoringEnabledChange} />
-                </div>
-                {scoringEnabled && (
-                  <div className="space-y-3 rounded-md border border-border bg-background p-3">
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">Priority thresholds</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-16 shrink-0 rounded-full border border-[#7f1d1d] bg-[#2a0808] px-2 py-0.5 text-center text-[10px] font-medium text-[#f87171]">High</span>
-                        <span className="text-xs text-text-tertiary">≥</span>
-                        <Input
-                          type="number"
-                          value={highThreshold}
-                          onChange={(e) => onHighThresholdChange(e.target.value)}
-                          className="h-6 w-16 bg-surface-subtle px-2 text-xs"
-                          min="0"
-                        />
-                        <span className="text-xs text-text-tertiary">points</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-16 shrink-0 rounded-full border border-[#7c2d12] bg-[#2a1a08] px-2 py-0.5 text-center text-[10px] font-medium text-[#fb923c]">Medium</span>
-                        <span className="text-xs text-text-tertiary">≥</span>
-                        <Input
-                          type="number"
-                          value={mediumThreshold}
-                          onChange={(e) => onMediumThresholdChange(e.target.value)}
-                          className="h-6 w-16 bg-surface-subtle px-2 text-xs"
-                          min="0"
-                        />
-                        <span className="text-xs text-text-tertiary">points</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-16 shrink-0 rounded-full border border-[#44403c] bg-[#1c1917] px-2 py-0.5 text-center text-[10px] font-medium text-[#78716c]">Low</span>
-                        <span className="text-xs text-text-tertiary">{"< "}{mediumThreshold || "—"} points</span>
-                      </div>
-                    </div>
-                    <p className="text-[10px] leading-4 text-text-tertiary">
-                      Assign point values to individual answer options in the field editor. The total determines priority on submission.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="history" className="border-border">
-            <AccordionTrigger className="py-4 text-sm font-semibold text-white hover:no-underline">
-              <span className="inline-flex items-center gap-2"><History className="h-4 w-4" />History</span>
-            </AccordionTrigger>
-            <AccordionContent className="pb-5">
-              <div className="space-y-2">
-                {versionsLoading && <p className="text-[10px] text-text-tertiary">Loading versions…</p>}
-                {!versionsLoading && versions.length === 0 && (
-                  <p className="text-[10px] leading-4 text-text-tertiary">No saved versions yet. Save one to snapshot this form.</p>
-                )}
-                {versions.map((v) => (
-                  <div key={v.id} className={cn("rounded-md border p-3", v.current ? "border-border-strong bg-surface-card" : "border-border bg-background")}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-white">{v.label}</span>
-                      {v.current && <span className="rounded-full bg-surface-hover px-1.5 py-0 text-[10px] text-text-secondary">Current</span>}
-                    </div>
-                    <p className="mt-0.5 text-[10px] text-text-tertiary">{v.when} · {v.author}</p>
-                    <p className="mt-1.5 text-[10px] leading-4 text-text-secondary">{v.notes}</p>
-                    {!v.current && (
-                      <button type="button" onClick={() => onRestoreVersion(v)} className="mt-2 flex items-center gap-1 text-[10px] text-text-tertiary transition-colors hover:text-foreground">
-                        <RotateCcw className="h-3 w-3" />Restore this version
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 flex flex-col gap-2">
-                <Button type="button" variant="outline" className="w-full text-xs" onClick={onOpenSaveDialog}>
-                  <History className="h-3.5 w-3.5" />Save current version
-                </Button>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-        </Accordion>
-      </div>
-    </aside>
-  );
-}
-
-function FormBuilderEditor({ slug, initialDoc }) {
-  const settings0 = initialDoc.settings;
-  const initialFields = useMemo(() => hydrateFields(initialDoc.fieldDefs), [initialDoc]);
-
-  const [title, setTitle] = useState(initialDoc.title);
-  const [description, setDescription] = useState(initialDoc.description || "");
-  const [fields, setFieldsRaw] = useState(initialFields);
-  const fieldsRef = useRef(initialFields);
-  const [past, setPast] = useState([]);
-  const [future, setFuture] = useState([]);
-
-  useEffect(() => { fieldsRef.current = fields; }, [fields]);
-
-  const setFields = (updater) => {
-    const current = fieldsRef.current;
-    const next = typeof updater === "function" ? updater(current) : updater;
-    setPast((p) => [...p.slice(-50), current]);
-    setFuture([]);
-    setFieldsRaw(next);
-  };
-
-  const undo = () => {
-    if (past.length === 0) return;
-    const prev = past[past.length - 1];
-    setFuture((f) => [fieldsRef.current, ...f]);
-    setFieldsRaw(prev);
-    fieldsRef.current = prev;
-    setPast((p) => p.slice(0, -1));
-  };
-
-  const redo = () => {
-    if (future.length === 0) return;
-    const next = future[0];
-    setPast((p) => [...p, fieldsRef.current]);
-    setFieldsRaw(next);
-    fieldsRef.current = next;
-    setFuture((f) => f.slice(1));
-  };
-
-  const canUndo = past.length > 0;
-  const canRedo = future.length > 0;
-
-  const [coverStyle, setCoverStyle] = useState(settings0.coverStyle);
-  const [showIcon, setShowIcon] = useState(settings0.showIcon);
-  const [branding, setBranding] = useState(settings0.branding);
-  const [submitAnother, setSubmitAnother] = useState(settings0.submitAnother);
-  const [canvasWidth, setCanvasWidth] = useState(760);
-
-  const [steps, setSteps] = useState(settings0.steps || []);
-  const [openDate, setOpenDate] = useState(settings0.openDate);
-  const [closeDate, setCloseDate] = useState(settings0.closeDate);
-  const [responseLimit, setResponseLimit] = useState(settings0.responseLimit);
-  const [thankYouType, setThankYouType] = useState(settings0.thankYouType);
-  const [thankYouText, setThankYouText] = useState(settings0.thankYouText);
-  const [thankYouUrl, setThankYouUrl] = useState(settings0.thankYouUrl);
-
-  const { versions, loading: versionsLoading, save: saveVersionRow } = useVersions(initialDoc.id);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [saveNotes, setSaveNotes] = useState("");
-
-  const [scoringEnabled, setScoringEnabled] = useState(settings0.scoringEnabled);
-  const [highThreshold, setHighThreshold] = useState(settings0.highThreshold);
-  const [mediumThreshold, setMediumThreshold] = useState(settings0.mediumThreshold);
-
-  const [branchingEnabled, setBranchingEnabled] = useState(Boolean(settings0.branchingEnabled));
-  const [branches, setBranches] = useState(Array.isArray(settings0.branches) ? settings0.branches : []);
-
-  const [dragId, setDragId] = useState(null);
-  const [dragOverId, setDragOverId] = useState(null);
-
-  const addBranch = () => setBranches((cur) => [...cur, { id: `br-${Date.now()}`, name: `Path ${cur.length + 1}`, condition: "", outcome: "" }]);
-  const updateBranch = (id, patch) => setBranches((cur) => cur.map((b) => (b.id === id ? { ...b, ...patch } : b)));
-  const removeBranch = (id) => setBranches((cur) => cur.filter((b) => b.id !== id));
-
-  const reorderField = (fromId, toId) => {
-    setFields((cur) => {
-      const arr = [...cur];
-      const fi = arr.findIndex((f) => f.id === fromId);
-      if (fi === -1) return cur;
-      if (toId === "__end__") {
-        const [item] = arr.splice(fi, 1);
-        arr.push(item);
-        return arr;
-      }
-      const ti = arr.findIndex((f) => f.id === toId);
-      if (ti === -1 || fi === ti) return cur;
-      const [item] = arr.splice(fi, 1);
-      arr.splice(ti, 0, item);
-      return arr;
-    });
-  };
-
-  const includedFields = useMemo(() => fields.filter((f) => f.included), [fields]);
-
-  const canvasBottomRef = useRef(null);
-  const prevIncludedLengthRef = useRef(includedFields.length);
+function FormBuilderEditor({ form, backHref }) {
+  const [initial] = useState(() => buildDoc(form));
+  const baseSettings = form.settings;
+  const { doc, set, undo, redo, canUndo, canRedo } = useDocHistory(initial.doc);
+  const docRef = useRef(doc);
   useEffect(() => {
-    if (includedFields.length > prevIncludedLengthRef.current) {
-      canvasBottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-    prevIncludedLengthRef.current = includedFields.length;
-  }, [includedFields.length]);
+    docRef.current = doc;
+  }, [doc]);
 
+  const [selectedId, setSelectedId] = useState(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [status, setStatus] = useState(form.status);
+  const [remoteUpdate, setRemoteUpdate] = useState(null);
+  const canPublish = useCan("forms.form.publish");
+
+  const serialize = useCallback(
+    (d) => serializeBuilderDoc({ title: d.title, description: d.description, fields: d.fields, settings: d.settings, baseSettings }),
+    [baseSettings],
+  );
+  const payload = useMemo(() => serialize(doc), [serialize, doc]);
+  const signature = useMemo(() => JSON.stringify(payload), [payload]);
+  const [initialSignature] = useState(() => (initial.converted ? "" : JSON.stringify(serialize(initial.doc))));
+
+  // Co-editing: presence avatars plus "saved" broadcasts after each autosave.
+  const { others, broadcastSaved } = useBuilderPresence(form.id, {
+    onRemoteSave: (msg) => {
+      if (!msg?.signature || msg.signature === hashString(signature)) return;
+      setRemoteUpdate({ name: msg.name || "Someone", at: msg.at });
+    },
+  });
+  const onSaved = useCallback((sig) => broadcastSaved(hashString(sig)), [broadcastSaved]);
+  const { status: saveStatus, dirty, markSaved } = useAutosave({ formId: form.id, signature, initialSignature, onSaved });
+
+  // --- Doc edits (all undoable) ---
+  const setTitle = useCallback((title) => set((d) => ({ ...d, title }), "title"), [set]);
+  const setDescription = useCallback((description) => set((d) => ({ ...d, description }), "description"), [set]);
+  const updateSettings = useCallback((patch, key) => set((d) => ({ ...d, settings: { ...d.settings, ...patch } }), key), [set]);
+  const updateField = useCallback(
+    (id, patch) => set((d) => ({ ...d, fields: d.fields.map((f) => (f.id === id ? { ...f, ...patch } : f)) }), `field:${id}:${Object.keys(patch).sort().join()}`),
+    [set],
+  );
+  const toggleIncluded = useCallback(
+    (id) => set((d) => ({ ...d, fields: d.fields.map((f) => (f.id === id ? { ...f, included: f.included === false } : f)) })),
+    [set],
+  );
+
+  const selectField = useCallback((id) => setSelectedId(id), []);
+  const revealField = useCallback(
+    (id) => {
+      setPreviewing(false);
+      setSelectedId(id);
+      const field = docRef.current.fields.find((f) => f.id === id);
+      if (field?.included === false) toast.message("This field is excluded — turn it back on in the Fields list to show it.");
+      scrollToField(id);
+    },
+    [],
+  );
+
+  const insertField = useCallback(
+    (type, position = {}) => {
+      const field = createField(type, docRef.current.fields);
+      set((d) => ({ ...d, fields: insertAt(d.fields, field, position) }));
+      setSelectedId(field.id);
+      scrollToField(field.id);
+    },
+    [set],
+  );
+
+  const duplicate = useCallback(
+    (id) => {
+      const source = docRef.current.fields.find((f) => f.id === id);
+      if (!source) return;
+      const copy = duplicateField(source, docRef.current.fields);
+      set((d) => ({ ...d, fields: insertAt(d.fields, copy, { afterId: id }) }));
+      setSelectedId(copy.id);
+      scrollToField(copy.id);
+    },
+    [set],
+  );
+
+  const remove = useCallback(
+    (id) => {
+      const field = docRef.current.fields.find((f) => f.id === id);
+      set((d) => ({ ...d, fields: d.fields.filter((f) => f.id !== id) }));
+      setSelectedId((cur) => (cur === id ? null : cur));
+      toast(`${field?.type === "page" ? "Page break" : `“${field?.title || "Field"}”`} deleted`, {
+        action: { label: "Undo", onClick: () => undo() },
+      });
+    },
+    [set, undo],
+  );
+
+  const move = useCallback(
+    (fromId, beforeId) =>
+      set((d) => {
+        const item = d.fields.find((f) => f.id === fromId);
+        if (!item) return d;
+        const rest = d.fields.filter((f) => f.id !== fromId);
+        return { ...d, fields: insertAt(rest, item, beforeId ? { beforeId } : {}) };
+      }),
+    [set],
+  );
+
+  // Keyboard undo / redo over the whole doc.
   useEffect(() => {
     const handler = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
-      if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || previewing) return;
+      // Dialogs (version notes, publish) keep their own native undo.
+      if (e.target instanceof Element && e.target.closest('[role="dialog"]')) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        redo();
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [past, future]);
+  }, [undo, redo, previewing]);
 
-  const updateField = (id, patch) => setFields((cur) => cur.map((f) => (f.id === id ? { ...f, ...patch } : f)));
-  const toggleField = (id) => setFields((cur) => cur.map((f) => (f.id === id ? { ...f, included: !f.included } : f)));
+  // Stable, structural list of condition sources so cards only re-render when it really changes.
+  const sourcesKey = JSON.stringify(conditionSources(doc.fields).map((f) => ({ id: f.id, title: f.title, type: f.type, options: f.options })));
+  const sources = useMemo(() => JSON.parse(sourcesKey), [sourcesKey]);
+  const warnings = useMemo(() => collectWarnings({ fields: doc.fields, settings: doc.settings }), [doc.fields, doc.settings]);
+  const scoring = Boolean(doc.settings.scoringEnabled);
+  const quiz = Boolean(doc.settings.quiz?.enabled);
+  const currency = doc.settings.payments?.currency || "usd";
 
-  const addField = () => {
-    const idx = fields.filter((f) => f.type !== "calculated").length + 1;
-    setFields((cur) => [...cur, { id: `field-${Date.now()}`, title: `Field ${idx}`, Icon: AlignLeft, included: true, type: "text", firstLabel: "Field label", firstValue: `Field ${idx}`, secondLabel: "Placeholder", secondValue: "Enter value…", info: false, required: false, conditions: [] }]);
-  };
+  // --- Versions ---
+  const { versions, loading: versionsLoading, save: saveVersionRow } = useVersions(form.id);
+  const currentDoc = useMemo(() => ({ fields: payload.schema.fields, settings: payload.settings }), [payload]);
+  const buildTarget = useCallback(
+    (v) => ({
+      fields: canonicalizeFields(v.schema?.fields),
+      settings: normalizeSettings({ ...docRef.current.settings, ...(v.settings || {}) }),
+    }),
+    [],
+  );
 
-  const addCalculated = () => {
-    const idx = fields.filter((f) => f.type === "calculated").length + 1;
-    setFields((cur) => [...cur, { id: `calc-${Date.now()}`, title: `Calculated Field ${idx}`, Icon: FunctionSquare, included: true, type: "calculated", formula: "", info: false, required: false, conditions: [] }]);
-  };
+  const saveVersion = useCallback(
+    async (notes) => {
+      try {
+        await saveVersionRow({ notes: notes || "Manual version save", schema: payload.schema, settings: payload.settings });
+        toast.success("Version saved");
+        return true;
+      } catch (err) {
+        console.error("[builder.saveVersion]", err);
+        toast.error("Couldn't save the version.");
+        return false;
+      }
+    },
+    [saveVersionRow, payload],
+  );
 
-  const addStep = () => setSteps((cur) => [...cur, { id: `step-${Date.now()}`, title: `Step ${cur.length + 1}` }]);
-  const updateStep = (id, title) => setSteps((cur) => cur.map((s) => (s.id === id ? { ...s, title } : s)));
-  const removeStep = (id) => setSteps((cur) => cur.filter((s) => s.id !== id));
+  const restoreVersion = useCallback(
+    async (v) => {
+      try {
+        await saveVersionRow({ notes: `Before restore of ${v.label}`, schema: payload.schema, settings: payload.settings });
+        const target = buildTarget(v);
+        const nextDoc = { ...docRef.current, fields: target.fields, settings: target.settings };
+        const nextPayload = serialize(nextDoc);
+        await updateForm(form.id, nextPayload);
+        const sig = JSON.stringify(nextPayload);
+        markSaved(sig);
+        set(nextDoc);
+        setSelectedId(null);
+        broadcastSaved(hashString(sig));
+        toast.success(`Restored ${v.label}`, { description: "Your previous state was saved as a new version." });
+        return true;
+      } catch (err) {
+        console.error("[builder.restore]", err);
+        toast.error("Couldn't restore that version.");
+        return false;
+      }
+    },
+    [saveVersionRow, payload, buildTarget, serialize, form.id, markSaved, set, broadcastSaved],
+  );
 
-  const saveVersion = async (notes) => {
-    const doc = JSON.parse(docSignature);
-    await saveVersionRow({ notes: notes.trim() || "Manual version save", schema: doc.schema, settings: doc.settings });
-    setSaveNotes("");
-    setSaveDialogOpen(false);
-  };
-
-  const restoreVersion = async (v) => {
-    await saveFormBySlug(slug, { schema: v.schema, settings: v.settings });
-    if (typeof window !== "undefined") window.location.reload();
-  };
-
-  const startResize = (e) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startW = canvasWidth;
-    const move = (me) => setCanvasWidth(Math.min(760, Math.max(420, startW + (me.clientX - startX) * 2)));
-    const up = () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-  };
-
-  const stepsPerField = steps.length > 0 ? Math.ceil(includedFields.length / (steps.length + 1)) : null;
-
-  const settingsBag = {
-    coverStyle, showIcon, branding, submitAnother, steps, openDate, closeDate, responseLimit,
-    thankYouType, thankYouText, thankYouUrl,
-    scoringEnabled, highThreshold, mediumThreshold,
-    branchingEnabled, branches,
-  };
-  const docSignature = JSON.stringify(serializeBuilderDoc({ title, description, fields, settings: settingsBag }));
-  const [saveState, setSaveState] = useState("saved");
-  const firstSaveRef = useRef(true);
-
-  useEffect(() => {
-    if (firstSaveRef.current) {
-      firstSaveRef.current = false;
-      return;
+  const reloadRemote = async () => {
+    try {
+      const fresh = await getFormById(form.id);
+      if (!fresh) throw new Error("Form not found");
+      const next = buildDoc(fresh).doc;
+      markSaved(JSON.stringify(serialize(next)));
+      set(next);
+      setStatus(fresh.status);
+      setRemoteUpdate(null);
+    } catch (err) {
+      console.error("[builder.reload]", err);
+      toast.error("Couldn't load the latest version.");
     }
-    setSaveState("saving");
-    const timer = setTimeout(() => {
-      saveFormBySlug(slug, JSON.parse(docSignature))
-        .then(() => setSaveState("saved"))
-        .catch(() => setSaveState("error"));
-    }, SAVE_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [docSignature, slug]);
+  };
+
+  const applyStatus = async (next) => {
+    try {
+      const updated = await setFormStatus(form.id, next);
+      setStatus(updated?.status || next);
+      toast.success(next === "Published" ? "Form is live" : "Form unpublished");
+    } catch (err) {
+      console.error("[builder.status]", err);
+      toast.error("Couldn't change the form's status.");
+    }
+  };
+
+  const history = { versions, loading: versionsLoading, currentDoc, buildTarget, onSave: saveVersion, onRestore: restoreVersion };
 
   return (
-    <div className="flex h-full min-h-[calc(100dvh-3.5rem)] flex-col overflow-hidden bg-[#121212] text-white">
-      <div className="flex min-h-0 flex-1">
-        <main className="scrollbar-subtle min-w-0 flex-1 overflow-y-auto bg-[#121212]">
-          <div className="flex items-center gap-1.5 border-b border-border px-4 py-2.5">
-            <button type="button" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-active hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">
-              <Undo2 className="h-4 w-4" />
-            </button>
-            <button type="button" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-active hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">
-              <Redo2 className="h-4 w-4" />
-            </button>
-            <div className="ml-auto flex items-center gap-3 text-xs">
-              <span className={cn(
-                "flex items-center gap-1.5",
-                saveState === "error" ? "text-[#f87171]" : "text-muted-foreground",
-              )}>
-                {saveState === "saving" ? (
-                  <RotateCcw className="h-3.5 w-3.5 animate-spin text-text-secondary" />
-                ) : saveState === "error" ? (
-                  <X className="h-3.5 w-3.5" />
-                ) : (
-                  <CheckIcon className="h-3.5 w-3.5 text-text-secondary" />
-                )}
-                <p className="text-muted-foreground font-sans antialiased">
-                {saveState === "saving" ? "Saving…" : saveState === "error" ? "Save failed" : "Saved"}</p>
-              </span>
-            </div>
-          </div>
-          <section className="relative min-h-full">
-            {coverStyle === "cover" && (
-              <div className="relative h-[164px] border-b border-border bg-[linear-gradient(106deg,#17353a_0%,#3e3a24_48%,#5a2d29_100%)]">
-                <Button type="button" variant="outline" size="sm" className="absolute right-4 top-3 bg-surface-subtle">Change Cover</Button>
-              </div>
-            )}
-
-            <div className={cn("mx-auto w-full px-0 pb-8", coverStyle === "cover" ? "-mt-[66px]" : "mt-6")} style={{ maxWidth: `${canvasWidth}px` }}>
-              <div className="relative">
-                <FormIntroCard title={title} description={description} onTitleChange={setTitle} onDescriptionChange={setDescription} />
-                <ResizeHandle label="Resize form width" onMouseDown={startResize} />
-              </div>
-
-              <div className="mt-5 space-y-4">
-                {includedFields.map((field, idx) => {
-                  const showIndicator = dragId && dragId !== field.id && dragOverId === field.id;
-                  return (
-                    <div key={field.id} className="relative">
-                      {showIndicator && (
-                        <div className="pointer-events-none absolute -top-2.5 inset-x-0 z-30 flex items-center gap-0">
-                          <div className="h-2 w-2 rounded-full bg-[#4a9eff]" />
-                          <div className="h-px flex-1 bg-[#4a9eff]" />
-                        </div>
-                      )}
-                      {steps.length > 0 && stepsPerField && idx > 0 && idx % stepsPerField === 0 && (
-                        <div className="mb-4">
-                          <StepDivider
-                            step={steps[Math.floor(idx / stepsPerField) - 1] ?? steps[steps.length - 1]}
-                            onTitleChange={(t) => updateStep((steps[Math.floor(idx / stepsPerField) - 1] ?? steps[steps.length - 1]).id, t)}
-                            onRemove={() => removeStep((steps[Math.floor(idx / stepsPerField) - 1] ?? steps[steps.length - 1]).id)}
-                          />
-                        </div>
-                      )}
-                      <div className="relative">
-                        <FieldCard
-                          field={field}
-                          allFields={includedFields}
-                          onChange={(patch) => updateField(field.id, patch)}
-                          onRemove={() => updateField(field.id, { included: false })}
-                          dragging={dragId === field.id}
-                          onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragId(field.id); }}
-                          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverId(field.id); }}
-                          onDrop={(e) => { e.preventDefault(); if (dragId) reorderField(dragId, field.id); setDragId(null); setDragOverId(null); }}
-                          onDragEnd={() => { setDragId(null); setDragOverId(null); }}
-                        />
-                        <ResizeHandle label={`Resize ${field.title}`} onMouseDown={startResize} />
-                      </div>
-                    </div>
-                  );
-                })}
-                {dragId && (
-                  <div
-                    className="relative h-8"
-                    onDragOver={(e) => { e.preventDefault(); setDragOverId("__end__"); }}
-                    onDrop={(e) => { e.preventDefault(); if (dragId) reorderField(dragId, "__end__"); setDragId(null); setDragOverId(null); }}
-                  >
-                    {dragOverId === "__end__" && (
-                      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-0">
-                        <div className="h-2 w-2 rounded-full bg-[#4a9eff]" />
-                        <div className="h-px flex-1 bg-[#4a9eff]" />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div ref={canvasBottomRef} className="mt-6 flex justify-center gap-3">
-                <Button type="button" variant="outline" size="sm" onClick={addField} className="gap-1.5 bg-surface-subtle"><Plus className="h-3.5 w-3.5" />Add field</Button>
-                <Button type="button" variant="outline" size="sm" onClick={addCalculated} className="gap-1.5 bg-surface-subtle"><FunctionSquare className="h-3.5 w-3.5" />Calculated</Button>
-                <Button type="button" variant="outline" size="sm" onClick={addStep} className="gap-1.5 bg-surface-subtle"><SplitSquareVertical className="h-3.5 w-3.5" />Add step</Button>
-              </div>
-            </div>
-          </section>
-        </main>
-
-        <RightSidebar
-          fields={fields} onToggleField={toggleField} onAddField={addField} onAddCalculated={addCalculated}
-          coverStyle={coverStyle} onCoverStyleChange={setCoverStyle} showIcon={showIcon} onShowIconChange={setShowIcon}
-          branding={branding} onBrandingChange={setBranding} submitAnother={submitAnother} onSubmitAnotherChange={setSubmitAnother}
-          openDate={openDate} closeDate={closeDate} onOpenDateChange={setOpenDate} onCloseDateChange={setCloseDate}
-          steps={steps} onAddStep={addStep} onUpdateStep={updateStep} onRemoveStep={removeStep}
-          responseLimit={responseLimit} onResponseLimitChange={setResponseLimit}
-          thankYouType={thankYouType} thankYouText={thankYouText} thankYouUrl={thankYouUrl}
-          onThankYouTypeChange={setThankYouType} onThankYouTextChange={setThankYouText} onThankYouUrlChange={setThankYouUrl}
-          versions={versions} versionsLoading={versionsLoading} onRestoreVersion={restoreVersion} onOpenSaveDialog={() => setSaveDialogOpen(true)}
-          scoringEnabled={scoringEnabled} onScoringEnabledChange={setScoringEnabled}
-          highThreshold={highThreshold} onHighThresholdChange={setHighThreshold}
-          mediumThreshold={mediumThreshold} onMediumThresholdChange={setMediumThreshold}
-          branchingEnabled={branchingEnabled} onBranchingEnabledChange={setBranchingEnabled}
-          branches={branches} onAddBranch={addBranch} onUpdateBranch={updateBranch} onRemoveBranch={removeBranch}
-        />
-      </div>
-
-      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save version</DialogTitle>
-            <DialogDescription>Snapshot the current state of this form. You can restore any saved version from the History panel.</DialogDescription>
-          </DialogHeader>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Change notes <span className="text-text-tertiary">(optional)</span></label>
-            <Textarea
-              value={saveNotes}
-              onChange={(e) => setSaveNotes(e.target.value)}
-              rows={3}
-              placeholder="Describe what changed in this version..."
-              className="resize-none text-muted-foreground"
-              autoFocus
+    <TooltipProvider delayDuration={250}>
+      <div className="flex h-full min-h-[calc(100dvh-3.5rem)] flex-col overflow-hidden bg-background text-foreground">
+        <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-3 md:px-4">
+          <Button type="button" variant="ghost" size="icon-sm" asChild>
+            <Link href={backHref} aria-label="Back to forms"><ArrowLeft className="h-4 w-4" /></Link>
+          </Button>
+          <h1 className="min-w-0 truncate text-sm font-semibold text-foreground">{doc.title || "Untitled form"}</h1>
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <BuilderTopbarActions
+              slug={form.slug}
+              status={status}
+              others={others}
+              previewing={previewing}
+              onTogglePreview={() => setPreviewing((v) => !v)}
+              onStatusChange={applyStatus}
+              warnings={warnings}
+              onReviewWarning={(w) => w.fieldId && revealField(w.fieldId)}
+              canPublish={canPublish}
             />
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
-            <Button type="button" onClick={() => saveVersion(saveNotes)}>Save version</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+        <div className="flex min-h-0 flex-1">
+          <main className="scrollbar-subtle relative min-w-0 flex-1 overflow-y-auto bg-background">
+            {previewing ? (
+              <BuilderPreview doc={doc} form={form} onExit={() => setPreviewing(false)} />
+            ) : (
+              <>
+                <div className="sticky top-0 z-20 flex items-center gap-1 border-b border-border bg-background/90 px-4 py-2 backdrop-blur">
+                  <IconAction label="Undo" shortcut="Ctrl+Z" onClick={undo} disabled={!canUndo}><Undo2 className="h-4 w-4" /></IconAction>
+                  <IconAction label="Redo" shortcut="Ctrl+Shift+Z" onClick={redo} disabled={!canRedo}><Redo2 className="h-4 w-4" /></IconAction>
+                  <div className="ml-auto flex items-center gap-3">
+                    {warnings.length ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button type="button" variant="ghost" size="xs" onClick={() => warnings[0].fieldId && revealField(warnings[0].fieldId)} className="h-auto gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1 font-normal text-amber-400 hover:bg-amber-500/15 hover:text-amber-400 has-[>svg]:px-2">
+                            <AlertTriangle className="size-3.5" />{warnings.length} to check
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-72">
+                          {warnings.slice(0, 6).map((w) => <p key={w.id}>• {w.message}</p>)}
+                          {warnings.length > 6 ? <p>…and {warnings.length - 6} more</p> : null}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                    <SaveStatus status={saveStatus} />
+                  </div>
+                </div>
 
-    </div>
+                {remoteUpdate ? (
+                  <div className="sticky top-[49px] z-20 mx-4 mt-3 flex items-center gap-3 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-300 backdrop-blur">
+                    <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+                    <span className="min-w-0 flex-1">
+                      Updated by <span className="font-medium">{remoteUpdate.name}</span>.
+                      {dirty ? " Reloading replaces your unsaved edits." : " Reload to see their changes."}
+                    </span>
+                    <Button type="button" size="xs" variant="outline" onClick={reloadRemote}>Reload</Button>
+                    <Button type="button" variant="ghost" size="icon-xs" aria-label="Dismiss" onClick={() => setRemoteUpdate(null)} className="size-auto text-sky-300/70 hover:bg-transparent hover:text-sky-300"><X className="size-3.5" /></Button>
+                  </div>
+                ) : null}
+
+                <BuilderCanvas
+                  doc={doc}
+                  selectedId={selectedId}
+                  sources={sources}
+                  scoring={scoring}
+                  quiz={quiz}
+                  currency={currency}
+                  onTitleChange={setTitle}
+                  onDescriptionChange={setDescription}
+                  onSettingsChange={updateSettings}
+                  onSelect={selectField}
+                  onFieldChange={updateField}
+                  onDuplicate={duplicate}
+                  onDelete={remove}
+                  onToggleIncluded={toggleIncluded}
+                  onMove={move}
+                  onInsert={insertField}
+                />
+              </>
+            )}
+          </main>
+
+          {!previewing ? (
+            <BuilderSidebar
+              doc={doc}
+              selectedId={selectedId}
+              sources={sources}
+              onInsert={insertField}
+              onSelect={revealField}
+              onToggleIncluded={toggleIncluded}
+              onSettingsChange={updateSettings}
+              history={history}
+            />
+          ) : null}
+        </div>
+      </div>
+    </TooltipProvider>
   );
 }
 
-export function FormBuilder({ formId }) {
-  const [doc, setDoc] = useState(null);
-  const [error, setError] = useState(false);
+function CenteredState({ children }) {
+  return <div className="flex h-full min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-3 bg-background px-6 text-center">{children}</div>;
+}
+
+function NotFoundState({ slug, projectId, backHref, onCreated }) {
+  const [busy, setBusy] = useState(false);
+  const canCreate = useCan("forms.form.edit");
+  const create = async () => {
+    setBusy(true);
+    try {
+      const created = await createForm({ title: titleFromSlug(slug) || "Untitled form", slug, projectId: projectId || null });
+      toast.success("Form created");
+      onCreated(created);
+    } catch (err) {
+      console.error("[builder.create]", err);
+      toast.error("Couldn't create the form.");
+      setBusy(false);
+    }
+  };
+  return (
+    <CenteredState>
+      <span className="grid h-12 w-12 place-items-center rounded-xl border border-border bg-surface-subtle text-text-secondary"><FileQuestion className="h-6 w-6" /></span>
+      <div className="space-y-1">
+        <p className="text-base font-semibold text-foreground">Form not found</p>
+        <p className="max-w-sm text-sm text-text-secondary">
+          There&apos;s no form at <code className="rounded bg-surface-card px-1 font-mono text-xs">/forms/{slug}</code>. It may have been deleted, or the link is wrong.
+        </p>
+      </div>
+      <div className="mt-2 flex flex-wrap justify-center gap-2">
+        <Button type="button" variant="ghost" asChild>
+          <Link href={backHref}><ArrowLeft className="h-4 w-4" />Back to forms</Link>
+        </Button>
+        <Button type="button" onClick={create} disabled={busy || !canCreate}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />}Create this form
+        </Button>
+      </div>
+    </CenteredState>
+  );
+}
+
+// Loads the form by slug, then mounts the editor (or a not-found / error state).
+export function FormBuilder({ formId, projectId = null, backHref = withPrefix("/forms?view=Forms"), onLoaded }) {
+  const router = useRouter();
+  const [state, setState] = useState({ slug: formId, status: "loading", form: null });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDoc(null);
-    setError(false);
     getFormBySlug(formId)
-      .then((form) => {
-        if (active) setDoc(form || blankFormDoc(formId));
-      })
-      .catch(() => active && setError(true));
+      .then((form) => active && setState({ slug: formId, status: form ? "ready" : "missing", form }))
+      .catch((err) => {
+        console.error("[builder.load]", err);
+        if (active) setState({ slug: formId, status: "error", form: null });
+      });
     return () => {
       active = false;
     };
-  }, [formId]);
+  }, [formId, attempt]);
 
-  if (error) {
+  const loaded = state.form;
+  useEffect(() => {
+    if (loaded) onLoaded?.(loaded);
+  }, [loaded, onLoaded]);
+
+  const current = state.slug === formId ? state : { status: "loading" };
+
+  if (current.status === "error") {
     return (
-      <div className="flex h-full min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-2 bg-[#121212] text-center text-sm text-muted-foreground">
+      <CenteredState>
+        <AlertTriangle className="h-6 w-6 text-amber-400" />
         <p className="font-medium text-foreground">Couldn&apos;t load this form</p>
-        <p className="max-w-sm text-xs text-text-secondary">
-          This form couldn&apos;t be loaded right now. Refresh the page or try again shortly.
-        </p>
-      </div>
+        <p className="max-w-sm text-xs text-text-secondary">Refresh the page or try again shortly.</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setState({ slug: formId, status: "loading", form: null });
+            setAttempt((n) => n + 1);
+          }}
+        >
+          Retry
+        </Button>
+      </CenteredState>
     );
   }
 
-  if (!doc) {
+  if (current.status === "missing") {
     return (
-      <div className="flex h-full min-h-[calc(100dvh-3.5rem)] items-center justify-center bg-[#121212]">
-        <LogoLoading size={88} />
-      </div>
+      <NotFoundState
+        slug={formId}
+        projectId={projectId}
+        backHref={backHref}
+        onCreated={(created) => {
+          if (created.slug !== formId) router.replace(withPrefix(`/forms/${created.slug}`));
+          else setState({ slug: formId, status: "ready", form: created });
+        }}
+      />
     );
   }
 
-  return <FormBuilderEditor key={formId} slug={formId} initialDoc={doc} />;
+  if (current.status !== "ready") {
+    return (
+      <CenteredState>
+        <LogoLoading size={88} />
+      </CenteredState>
+    );
+  }
+
+  return <FormBuilderEditor key={current.form.id} form={current.form} backHref={backHref} />;
 }

@@ -11,6 +11,7 @@ import { Suspense } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SystemFavicon } from "@/components/system-favicon";
 import { RbacProvider } from "@/context/rbac-context";
+import { Toaster } from "@geiger/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -67,6 +68,7 @@ export default function RootLayout({ children }) {
           <Suspense>
             <RbacProvider>{children}</RbacProvider>
           </Suspense>
+          <Toaster richColors />
         </ThemeProvider>
       </body>
     </html>

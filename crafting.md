@@ -5,7 +5,7 @@ fully-interactive surface that feels native to the Geiger suite. The **events
 area** is the reference build — when in doubt, open these files and copy the
 pattern:
 
-- Shared primitives: `components/internal/shared/screen_kit.jsx`,
+- Shared primitives: `@geiger/ui/screen-kit` (`ScreenHeader`, `DataTable`, `LoadingArea`…),
   `components/internal/shared/screen_wrappers.jsx`
 - List screen: `components/internal/screens/events/all_events.jsx`
 - Overview screen: `components/internal/screens/overview/events_overview.jsx`
@@ -136,7 +136,7 @@ badges use tailwind colours at `/10` bg + `/20` border. **Never hardcode hex.**
 ### 4.2 Reuse before you build
 
 Before writing anything visual, reach for the shared kit
-(`@/components/internal/shared/screen_kit`):
+(`@geiger/ui/screen-kit`):
 
 - **Frame:** `ScreenHeader` (title + description + right-aligned actions),
   `MainScreenWrapper` / `SecondaryScreenWrapper`.

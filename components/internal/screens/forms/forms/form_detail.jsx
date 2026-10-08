@@ -1,194 +1,215 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Eye, ExternalLink } from "lucide-react";
+import { ExternalLink, Loader2, PencilRuler, RotateCcw, Save } from "lucide-react";
+import { toast } from "sonner";
 
-import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { StatusPill } from "@/components/internal/shared/screen_kit";
+import { EditorShell } from "@/components/internal/shared/editor_shell";
+import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
-import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@geiger/ui/dialog";
+import { useCan } from "@/context/rbac-context";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { withPrefix } from "@/lib/workspace/base-path";
 
 import { FORM_STATUS_MAP } from "./constants";
 import { NAV_GROUPS, SECTIONS } from "./form_sections";
-import { withPrefix } from "@/lib/workspace/base-path";
+import { DisabledHint, OUTLINE_BTN } from "./sections/kit";
 
-// Per-form editor: content on the left, a grouped topic nav on the right —
-// the same shape as the events area's event_detail.jsx. The active section
-// lives in local state; edits patch a working copy and Save lifts them to the
-// list. Mirrors that file so the two areas feel like one product.
-export function FormDetailScreen({ form: initialForm, onBack, onUpdate, onPublish, categories = [] }) {
+const DETAIL_KEYS = ["title", "description", "category", "tags"];
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+function seedDraft(form) {
+  return {
+    title: form.title || form.name || "",
+    description: form.description || "",
+    category: form.category ?? null,
+    tags: form.tags || [],
+    settings: form.settings,
+  };
+}
+
+function diff(draft, form) {
+  const details = DETAIL_KEYS.filter((k) => !same(draft[k], form[k] ?? (k === "description" ? "" : k === "tags" ? [] : null)));
+  const settings = Object.keys(draft.settings).filter((k) => !same(draft.settings[k], form.settings?.[k]));
+  return { details, settings, dirty: details.length > 0 || settings.length > 0 };
+}
+
+// Returns [message, sectionKey] for the first blocking problem in the draft.
+function validate(draft) {
+  const s = draft.settings;
+  if (!draft.title.trim()) return ["Give the form a name.", "details"];
+  if (s.access?.mode === "password" && !s.access.passwordHash) return ["Set a password, or choose a different access mode.", "access"];
+  if (s.access?.mode === "domain" && !s.access.orgDomain) return ["Enter the organisation domain allowed to respond.", "access"];
+  if (s.theme?.accent && !/^#[0-9a-f]{6}$/i.test(s.theme.accent)) return ["The accent colour must be a 6-digit hex value.", "themes"];
+  if ((s.webhooks || []).some((w) => !/^https?:\/\/\S+\.\S+/i.test(w.url || ""))) return ["Every webhook needs a valid URL.", "integrations"];
+  const codes = (s.payments?.coupons || []).map((c) => String(c.code || "").trim().toLowerCase());
+  if (codes.some((c) => !c)) return ["Every coupon needs a code.", "coupons"];
+  if (new Set(codes).size !== codes.length) return ["Coupon codes must be unique.", "coupons"];
+  if (s.approval?.enabled && !(s.approval.steps || []).length) return ["Add at least one approval step.", "approvals"];
+  if (s.thankYouType === "redirect" && !/^https?:\/\//i.test(s.thankYouUrl || "")) return ["Enter the redirect URL (https://…).", "screens"];
+  return null;
+}
+
+// Per-form editor on the shared EditorShell. Sections edit a working copy; Save persists details via
+// updateForm and each changed settings group via the shallow server merge, so groups never clobber each other.
+export function FormDetailScreen({ form, categories = [], onBack, onUpdate, onMergeSettings, onChangeStatus, onOpenResponses }) {
   const router = useRouter();
-  const [active, setActive] = useState("overview");
-  // Flips true after a save and back to false on the next edit — a quiet inline
-  // confirmation, since this project has no toast surface.
-  const [saved, setSaved] = useState(false);
+  const { setSection } = useWorkspaceUrl();
+  const canEdit = useCan("forms.form.edit");
+  const canPublish = useCan("forms.form.publish");
 
-  // Editable working copy. Sections read from and patch this; the header
-  // reflects edits live, and Save persists them through the list.
-  const [form, setForm] = useState(initialForm);
-  // Re-seed when a different form is opened (render-phase reset).
-  const [seedId, setSeedId] = useState(initialForm?.id);
-  if (initialForm && initialForm.id !== seedId) {
-    setSeedId(initialForm.id);
-    setForm(initialForm);
-    setActive("overview");
-    setSaved(false);
+  const [draft, setDraft] = useState(() => seedDraft(form));
+  const [baseForm, setBaseForm] = useState(form);
+  const [saving, setSaving] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [pending, setPending] = useState(null);
+
+  // Re-seed on a different form, or when the saved form changes underneath a clean draft.
+  if (form.id !== baseForm.id || form.updatedAt !== baseForm.updatedAt) {
+    const switched = form.id !== baseForm.id;
+    const clean = !diff(draft, baseForm).dirty;
+    setBaseForm(form);
+    if (switched || clean) setDraft(seedDraft(form));
   }
 
-  const activeItem = useMemo(
-    () =>
-      NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === active) ||
-      NAV_GROUPS[0].items[0],
-    [active],
-  );
+  const changes = useMemo(() => diff(draft, form), [draft, form]);
 
-  if (!form) return null;
+  const set = (key, value) =>
+    setDraft((d) => ({ ...d, settings: { ...d.settings, [key]: typeof value === "function" ? value(d.settings[key]) : value } }));
+  const setGroup = (key, partial) =>
+    setDraft((d) => ({ ...d, settings: { ...d.settings, [key]: { ...(d.settings[key] || {}), ...partial } } }));
+  const setDetails = (partial) => setDraft((d) => ({ ...d, ...partial }));
 
-  const patch = (partial) => {
-    setForm((f) => ({ ...f, ...partial }));
-    setSaved(false);
-  };
+  const discard = () => setDraft(seedDraft(form));
 
-  const save = () => {
-    onUpdate?.(form.id, {
-      title: form.title ?? form.name,
-      description: form.description || "",
-      category: form.category ?? null,
-      tags: form.tags || [],
-    });
-    setSaved(true);
-  };
-
-  const openBuilder = () => router.push(withPrefix(`/forms/${form.slug}`));
-
-  const preview = () => {
-    if (typeof window !== "undefined") {
-      window.open(withPrefix(`/form/${form.slug}`), "_blank", "noopener,noreferrer");
+  const save = async () => {
+    if (!changes.dirty || saving) return;
+    const problem = validate(draft);
+    if (problem) {
+      toast.error(problem[0]);
+      setSection(problem[1]);
+      return;
+    }
+    setSaving(true);
+    try {
+      let next = form;
+      if (changes.details.length) {
+        next = await onUpdate(form.id, Object.fromEntries(changes.details.map((k) => [k, k === "title" ? draft.title.trim() : draft[k]])));
+      }
+      if (changes.settings.length) {
+        next = await onMergeSettings(form.id, Object.fromEntries(changes.settings.map((k) => [k, draft.settings[k]])));
+      }
+      setBaseForm(next);
+      setDraft(seedDraft(next));
+      toast.success("Changes saved");
+    } catch (err) {
+      console.error("[forms.detail.save]", err);
+      toast.error(err?.message ? `Couldn't save: ${err.message}` : "Couldn't save your changes.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const ActiveSection = SECTIONS[active] || SECTIONS.overview;
+  const changeStatus = async (status) => {
+    setStatusBusy(true);
+    try {
+      await onChangeStatus(form.id, status);
+      toast.success(status === "Published" ? "Form published" : status === "Archived" ? "Form archived" : "Form moved to drafts");
+    } catch (err) {
+      console.error("[forms.detail.status]", err);
+      toast.error("Couldn't change the status.");
+    } finally {
+      setStatusBusy(false);
+    }
+  };
+
+  // Leaving with unsaved edits asks first.
+  const guard = (action) => (changes.dirty ? setPending(() => action) : action());
+  const openBuilder = () => guard(() => router.push(withPrefix(`/forms/${form.slug}`)));
+  const preview = () => window.open(withPrefix(`/form/${form.slug}`), "_blank", "noopener,noreferrer");
+
+  const saveButton = (
+    <DisabledHint when={!canEdit} hint="Your role can't edit forms.">
+      <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={save} disabled={!canEdit || !changes.dirty || saving}>
+        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        {changes.dirty ? "Save changes" : "Saved"}
+      </Button>
+    </DisabledHint>
+  );
 
   return (
-    <MainScreenWrapper className="lg:flex lg:h-full lg:flex-col lg:gap-6 lg:space-y-0 lg:overflow-hidden lg:py-0">
-      {/* Editor header */}
-      <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-center md:justify-between lg:shrink-0">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            All forms
-          </button>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-              {form.name}
-            </h1>
-            <StatusPill status={form.status} map={FORM_STATUS_MAP} />
-          </div>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">
-            {form.fields} fields · {form.responses} responses
-            {form.lastEdited ? ` · edited ${form.lastEdited}` : ""}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={preview}
-          >
-            <ExternalLink className="h-4 w-4" /> Preview
-          </Button>
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={openBuilder}
-          >
-            <Eye className="h-4 w-4" /> Open builder
-          </Button>
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={save}
-          >
-            {saved ? (
-              <>
-                <Check className="h-4 w-4" /> Saved
-              </>
-            ) : (
-              "Save changes"
-            )}
-          </Button>
-        </div>
-      </div>
+    <>
+      <EditorShell
+        back={{ label: "All forms", onClick: () => guard(onBack) }}
+        title={draft.title || "Untitled form"}
+        status={form.status}
+        statusMap={FORM_STATUS_MAP}
+        badges={changes.dirty ? <Badge variant="warning">Unsaved changes</Badge> : null}
+        meta={`${form.fields} fields · ${form.responses} responses${form.lastEdited ? ` · edited ${form.lastEdited}` : ""}`}
+        actions={
+          <>
+            <Button variant="outline" className={OUTLINE_BTN} onClick={preview}>
+              <ExternalLink className="h-4 w-4" /> Preview
+            </Button>
+            <Button variant="outline" className={OUTLINE_BTN} onClick={openBuilder}>
+              <PencilRuler className="h-4 w-4" /> Open builder
+            </Button>
+            {changes.dirty ? (
+              <Button variant="ghost" className="text-muted-foreground hover:bg-surface-active hover:text-foreground" onClick={discard} disabled={saving}>
+                <RotateCcw className="h-4 w-4" /> Discard
+              </Button>
+            ) : null}
+            {saveButton}
+          </>
+        }
+        nav={NAV_GROUPS}
+        sections={SECTIONS}
+        sectionProps={{
+          form,
+          draft,
+          settings: draft.settings,
+          set,
+          setGroup,
+          setDetails,
+          categories,
+          openBuilder,
+          preview,
+          navigate: setSection,
+          changeStatus,
+          statusBusy,
+          canEdit,
+          canPublish,
+          onOpenResponses,
+        }}
+      />
 
-      {/* Content (left) + section nav (right). */}
-      <div className="grid grid-cols-1 gap-8 lg:min-h-0 lg:flex-1 lg:grid-rows-1 lg:grid-cols-[1fr_260px]">
-        <div className="scrollbar-subtle order-2 min-w-0 lg:order-1 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
-          {activeItem.ownHeader ? null : (
-            <div className="mb-5 min-w-0">
-              <h2 className="text-lg font-semibold capitalize text-foreground">
-                {activeItem.label}
-              </h2>
-              <p className="mt-0.5 text-sm text-text-secondary">{activeItem.desc}</p>
-            </div>
-          )}
-          <ActiveSection
-            form={form}
-            headerItem={activeItem}
-            categories={categories}
-            onPatch={patch}
-            onNavigate={setActive}
-            onOpenBuilder={openBuilder}
-            onPreview={preview}
-            onPublish={() => onPublish?.(form)}
-          />
-        </div>
-
-        <aside className="order-1 lg:order-2 lg:min-h-0">
-          <nav className="space-y-5 lg:h-full lg:overflow-y-auto lg:pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {NAV_GROUPS.map((group, gi) => (
-              <div key={group.group || `g${gi}`}>
-                {group.group ? (
-                  <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                    {group.group}
-                  </p>
-                ) : null}
-                <div className="space-y-0.5">
-                  {group.items.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = active === item.key;
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => setActive(item.key)}
-                        className={cn(
-                          "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                          isActive
-                            ? "bg-surface-card font-medium text-foreground"
-                            : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
-                        )}
-                      >
-                        <Icon
-                          className={cn(
-                            "h-4 w-4 shrink-0",
-                            isActive ? "text-foreground" : "text-text-secondary",
-                          )}
-                        />
-                        <span className="truncate capitalize">{item.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </nav>
-        </aside>
-      </div>
-    </MainScreenWrapper>
+      <Dialog open={Boolean(pending)} onOpenChange={(open) => !open && setPending(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Discard unsaved changes?</DialogTitle>
+            <DialogDescription>You have edits in this form&apos;s settings that haven&apos;t been saved.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPending(null)}>
+              Keep editing
+            </Button>
+            <Button
+              className="bg-red-500/90 text-white hover:bg-red-500"
+              onClick={() => {
+                const action = pending;
+                setPending(null);
+                discard();
+                action?.();
+              }}
+            >
+              Discard & leave
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

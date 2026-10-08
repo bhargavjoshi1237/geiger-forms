@@ -7,8 +7,8 @@ import {
   useProject,
   pickDefaultProjectId,
 } from "@/context/project-context";
-import { LoadingState } from "@/components/internal/screens/forms/screen-shell";
 import { withPrefix } from "@/lib/workspace/base-path";
+import { LoadingScreen } from "@geiger/ui/screen-kit";
 
 function ProjectResolver() {
   const router = useRouter();
@@ -26,7 +26,7 @@ function ProjectResolver() {
     if (id) router.replace(withPrefix(`/project/${id}`));
   }, [loading, projects, router]);
 
-  return <LoadingState label="Loading workspace…" />;
+  return <LoadingScreen className="bg-background" label="Loading workspace" />;
 }
 
 export default function ProjectIndexPage() {

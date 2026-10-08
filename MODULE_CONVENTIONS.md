@@ -12,7 +12,7 @@ and the shared kit (`components/internal/shared`).
 | Workspace screen | `components/internal/screens/<area>/<name>.jsx` | snake_case file, `*Screen` export |
 | Screen ↔ nav wiring | `components/internal/screens/registry.jsx` | title → component map |
 | Sidebar nav entries | `components/internal/sidebar/sidebar_nav.jsx` | `title` must match registry key |
-| Shared screen primitives | `components/internal/shared/screen_kit.jsx` | `ScreenHeader`, `StatsBar`, `DataTable`… |
+| Shared screen primitives | `@geiger/ui/screen-kit` (suite library) | `ScreenHeader`, `StatsBar`, `DataTable`… |
 | Page-width wrappers | `components/internal/shared/screen_wrappers.jsx` | `MainScreenWrapper`, `SecondaryScreenWrapper` |
 | Lookups & formatters | `components/internal/screens/<area>/constants.js` | status/type `*_MAP`, `*_FILTER_OPTIONS`, `formatDate`/`currency` |
 | shadcn primitives | `@geiger/ui/*` (shared suite library) | `import { Button } from "@geiger/ui/button"` |
@@ -191,7 +191,7 @@ controls; it does not secure data.
 - **Components:** prefer the shared suite library (`@geiger/ui/*`, same as
   geiger-events) and **Lucide** icons. Only `components/ui/file-input.jsx` stays
   local — `@geiger/ui` has no file-input equivalent yet. Build screens out of the shared kit
-  (`@/components/internal/shared/screen_kit`) before writing bespoke layout —
+  (`@geiger/ui/screen-kit`) before writing bespoke layout —
   `ScreenHeader`, `StatsBar`/`StatGrid`, `SectionCard`, `Toolbar` + `SearchInput`,
   `DataTable`, `StatusPill`, `EmptyState`, `SettingsList`/`SettingRow`, `Field`.
 - **Screen frame:** `MainScreenWrapper` → `ScreenHeader` (title + description over

@@ -4,8 +4,8 @@ import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FormsWorkspace } from "@/components/forms/forms-workspace";
 import { useProject, pickDefaultProjectId } from "@/context/project-context";
-import { LoadingState } from "@/components/internal/screens/forms/screen-shell";
 import { withPrefix } from "@/lib/workspace/base-path";
+import { LoadingScreen } from "@geiger/ui/screen-kit";
 
 export default function ProjectWorkspacePage() {
   const router = useRouter();
@@ -22,8 +22,8 @@ export default function ProjectWorkspacePage() {
     if (fallback) router.replace(withPrefix(`/project/${fallback}`));
   }, [loading, project, projects, router]);
 
-  if (loading) return <LoadingState label="Loading workspace…" />;
-  if (projects.length === 0 || !project) return <LoadingState label="Loading workspace…" />;
+  if (loading) return <LoadingScreen className="bg-background" label="Loading workspace" />;
+  if (projects.length === 0 || !project) return <LoadingScreen className="bg-background" label="Loading workspace" />;
 
   return (
     <div key={project.id} className="h-full">

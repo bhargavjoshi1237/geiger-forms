@@ -1,464 +1,427 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowUpRight,
+  ClipboardCopy,
   Edit3,
-  Send,
-  X,
-  Zap,
-  FileSpreadsheet,
-  Link2 as LinkIcon,
+  Loader2,
+  MoreHorizontal,
+  PenLine,
+  Printer,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@geiger/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui/tabs";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@geiger/ui/select";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@geiger/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@geiger/ui/dropdown-menu";
+import { LogoLoading } from "@geiger/ui/logo-loading";
 import { cn } from "@/lib/utils";
-import { useComments } from "@/lib/hooks/use-comments";
+import { StatusPill } from "@geiger/ui/screen-kit";
+import { useCan } from "@/context/rbac-context";
+import { getFormById } from "@/lib/supabase/forms";
+import { updateResponse } from "@/lib/supabase/responses";
+import { logAccess } from "@/lib/supabase/audit";
+import { callApi } from "@/lib/forms/api";
+import { visibleFieldIds } from "@/lib/forms/logic";
+import { answerFields, canonicalFields, fieldLabel, outcomeLabel } from "@/lib/forms/response-utils";
+import { responseCsv } from "@/lib/forms/export";
+import { withPrefix } from "@/lib/workspace/base-path";
+import {
+  MENU_ITEM,
+  OUTLINE_BUTTON,
+  RESPONSE_PRIORITIES,
+  RESPONSE_PRIORITY_MAP,
+  RESPONSE_STATUSES,
+  RESPONSE_STATUS_MAP,
+  avatarColor,
+} from "@/components/internal/screens/forms/responses/constants";
+import { AnswerValue } from "./response/answer-value";
+import { TagsEditor } from "./response/tags-editor";
+import { ConfirmDeleteDialog, CountersignDialog, RequestEditDialog } from "./response/response-dialogs";
+import {
+  AccessLogSection,
+  ActivitySection,
+  ApprovalsSection,
+  CountersignBlock,
+  MetadataSection,
+  PaymentSection,
+} from "./response/response-sections";
 
-const PRIORITY_STYLE = {
-  High: { bg: "bg-[#2a0808]", text: "text-[#f87171]", border: "border-[#7f1d1d]" },
-  Medium: { bg: "bg-[#2a1a08]", text: "text-[#fb923c]", border: "border-[#7c2d12]" },
-  Low: { bg: "bg-[#1c1917]", text: "text-[#78716c]", border: "border-[#44403c]" },
-};
+const formCache = new Map();
 
-const STATUS_STYLE = {
-  Complete: { bg: "bg-[#0d2218]", text: "text-[#4ade80]", border: "border-[#166534]" },
-  "Needs review": { bg: "bg-[#2a1a08]", text: "text-[#fb923c]", border: "border-[#7c2d12]" },
-  Pending: { bg: "bg-[#1c1917]", text: "text-[#78716c]", border: "border-[#44403c]" },
-};
+// Loads the response's form (fieldDefs + full settings) unless the caller already has it.
+function useResponseForm(formId, provided) {
+  const hasProvided = Boolean(provided?.fieldDefs && provided.id === formId);
+  const [loaded, setLoaded] = useState(() => (formCache.has(formId) ? { id: formId, form: formCache.get(formId) } : null));
 
-const AVATAR_COLORS = ["bg-[#0e1e2e]", "bg-[#0d2218]", "bg-[#2a1a08]", "bg-[#1a0d2e]", "bg-surface-subtle", "bg-[#0d1e1a]"];
+  useEffect(() => {
+    if (hasProvided || !formId || formCache.has(formId)) return;
+    let live = true;
+    getFormById(formId)
+      .then((form) => {
+        formCache.set(formId, form);
+        if (live) setLoaded({ id: formId, form });
+      })
+      .catch(() => live && setLoaded({ id: formId, form: null }));
+    return () => {
+      live = false;
+    };
+  }, [formId, hasProvided]);
 
-function parseUserAgent(ua) {
-  if (!ua) return { device: "Unknown", browser: "Unknown", os: "Unknown" };
-
-  const device = /Mobi|Android|iPhone/.test(ua) ? "Mobile" : "Desktop";
-
-  let browser = "Unknown";
-  if (/Edg/.test(ua)) browser = "Edge";
-  else if (/OPR|Opera/.test(ua)) browser = "Opera";
-  else if (/Chrome/.test(ua)) browser = "Chrome";
-  else if (/Firefox/.test(ua)) browser = "Firefox";
-  else if (/Safari/.test(ua)) browser = "Safari";
-
-  let os = "Unknown";
-  if (/Windows/.test(ua)) os = "Windows";
-  else if (/Mac OS|Macintosh/.test(ua)) os = "macOS";
-  else if (/Android/.test(ua)) os = "Android";
-  else if (/iPhone|iPad|iOS/.test(ua)) os = "iOS";
-  else if (/Linux/.test(ua)) os = "Linux";
-
-  return { device, browser, os };
+  if (hasProvided) return { form: provided, loading: false };
+  if (formCache.has(formId)) return { form: formCache.get(formId), loading: false };
+  return { form: loaded?.id === formId ? loaded.form : null, loading: loaded?.id !== formId };
 }
 
-function formatCompletion(ms) {
-  if (ms == null) return "—";
-  const totalSeconds = Math.round(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+function PropertyRow({ label, children }) {
+  return (
+    <div className="flex min-h-8 items-center gap-3">
+      <span className="w-20 shrink-0 text-[11px] text-text-tertiary">{label}</span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
 }
 
-function formatSubmittedAt(iso) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
-function isNonEmpty(value) {
-  if (value == null) return false;
-  if (Array.isArray(value)) return value.length > 0;
-  return String(value) !== "";
-}
-
-function deriveFields(response) {
-  if (response.fields) {
-    return Object.entries(response.fields).map(([label, value]) => ({ label, value }));
-  }
-  if (response.answers) {
-    const derived = Object.entries(response.answers)
-      .filter(([, value]) => isNonEmpty(value))
-      .map(([key, value]) => ({ label: key, value: String(value) }));
-    if (derived.length > 0) return derived;
-  }
-  return [
-    { label: "Name", value: response.name },
-    { label: "Email", value: response.email },
-    { label: "Form", value: response.form },
-  ];
-}
-
-function AnalyticsRow({ label, value }) {
+// Uncontrolled; remounted per response via `key` so no effect is needed to resync.
+function AssigneeInput({ value, suggestions, onCommit }) {
+  const [draft, setDraft] = useState(value || "");
+  const commit = () => {
+    const next = draft.trim();
+    if (next !== (value || "")) onCommit(next);
+  };
   return (
     <>
-      <dt className="text-[11px] text-text-tertiary">{label}</dt>
-      <dd className="text-[11px] text-muted-foreground text-right">{value}</dd>
+      <Input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") setDraft(value || "");
+        }}
+        list="response-assignee-options"
+        placeholder="Unassigned — type a name or email"
+        className="h-7 border-transparent bg-transparent px-1.5 text-xs shadow-none hover:border-border focus:border-border"
+      />
+      <datalist id="response-assignee-options">
+        {suggestions.map((s) => <option key={s} value={s} />)}
+      </datalist>
     </>
   );
 }
 
-function AnalyticsSection({ title, children }) {
-  return (
-    <div className="rounded-lg border border-border bg-background p-3">
-      <p className="mb-2.5 text-[10px] font-medium uppercase tracking-wide text-text-tertiary">{title}</p>
-      {children}
-    </div>
-  );
-}
+function AnswersTab({ response, form, formLoading }) {
+  const [revealed, setRevealed] = useState({});
+  const [revealing, setRevealing] = useState(null);
+  const fields = useMemo(() => canonicalFields(form), [form]);
+  const visible = useMemo(() => visibleFieldIds(fields, response.answers || {}), [fields, response.answers]);
+  const currency = form?.settings?.payments?.currency || "usd";
 
-function AnalyticsTab({ response }) {
-  const [sheetUrl, setSheetUrl] = useState("");
-  const [showSheetInput, setShowSheetInput] = useState(false);
-  const [pendingUrl, setPendingUrl] = useState("");
-
-  const { device, browser, os } = parseUserAgent(response.userAgent);
-
-  const answeredCount = response.answers
-    ? Object.values(response.answers).filter(isNonEmpty).length
-    : 0;
-  const totalFields = response.fields ? Object.keys(response.fields).length : answeredCount;
-
-  const confirmSheet = () => {
-    const trimmed = pendingUrl.trim();
-    if (!trimmed) return;
-    setSheetUrl(trimmed);
-    setPendingUrl("");
-    setShowSheetInput(false);
+  const reveal = async (fieldId) => {
+    setRevealing(fieldId);
+    const { ok, data } = await callApi(`/api/responses/${response.id}/reveal`, { method: "POST", body: { fieldId } });
+    setRevealing(null);
+    if (!ok) return toast.error(data?.error || "Couldn't reveal this answer.");
+    setRevealed((cur) => ({ ...cur, ...(data.answers || {}) }));
   };
 
-  return (
-    <div className="scrollbar-subtle flex-1 overflow-y-auto p-4">
-      <div className="space-y-3">
-
-        <AnalyticsSection title="Submitter">
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-            <AnalyticsRow label="Device" value={device} />
-            <AnalyticsRow label="Browser" value={browser} />
-            <AnalyticsRow label="OS" value={os} />
-          </dl>
-        </AnalyticsSection>
-
-        <AnalyticsSection title="Submission">
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-            <AnalyticsRow label="Submitted at" value={formatSubmittedAt(response.submittedAt)} />
-            <AnalyticsRow label="Completion time" value={formatCompletion(response.completionMs)} />
-            <AnalyticsRow label="Fields answered" value={`${answeredCount} / ${totalFields}`} />
-            {response.score != null && (
-              <AnalyticsRow label="Score" value={response.score} />
-            )}
-          </dl>
-        </AnalyticsSection>
-
-        <AnalyticsSection title="Connected sheet">
-          {sheetUrl ? (
-            <div className="flex items-center gap-2 rounded-md border border-border bg-surface-subtle px-3 py-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#4ade80]" />
-              <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground" title={sheetUrl}>
-                {sheetUrl}
-              </span>
-              <button
-                type="button"
-                onClick={() => { setSheetUrl(""); setShowSheetInput(false); setPendingUrl(""); }}
-                className="shrink-0 text-text-tertiary transition-colors hover:text-muted-foreground"
-                aria-label="Unlink sheet"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setShowSheetInput(false); }}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-surface-subtle px-3 py-2 text-[11px] text-text-secondary transition-colors hover:border-border-strong hover:text-muted-foreground"
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" />
-                  Geiger-Office Sheet
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowSheetInput((v) => !v)}
-                  className={cn(
-                    "flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-[11px] transition-colors",
-                    showSheetInput
-                      ? "border-border-strong bg-surface-card text-muted-foreground"
-                      : "border-border bg-surface-subtle text-text-secondary hover:border-border-strong hover:text-muted-foreground",
-                  )}
-                >
-                  <LinkIcon className="h-3.5 w-3.5" />
-                  Google Sheet
-                </button>
-              </div>
-
-              {showSheetInput && (
-                <div className="flex gap-2">
-                  <Input
-                    autoFocus
-                    value={pendingUrl}
-                    onChange={(e) => setPendingUrl(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") confirmSheet(); if (e.key === "Escape") setShowSheetInput(false); }}
-                    placeholder="Paste Google Sheet URL..."
-                    className="h-8 flex-1 text-[11px] text-muted-foreground"
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={confirmSheet}
-                    className="h-8 shrink-0 px-3 text-[11px]"
-                  >
-                    Link
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </AnalyticsSection>
-
+  if (formLoading) {
+    return (
+      <div className="flex min-h-40 items-center justify-center">
+        <LogoLoading size={40} aria-label="Loading answers" />
       </div>
+    );
+  }
+
+  const known = new Set(fields.map((f) => f.id));
+  const extras = Object.entries(response.answers || {}).filter(([key, v]) => !known.has(key) && v != null && v !== "");
+  const rows = [];
+  for (const field of fields) {
+    if (!visible.has(field.id)) continue;
+    if (field.type === "heading" || field.type === "page") {
+      const title = field.type === "page" ? field.title : field.label || field.title;
+      if (title) rows.push({ kind: "section", id: field.id, title });
+      continue;
+    }
+    if (!answerFields([field], { computed: true }).length) continue;
+    rows.push({ kind: "answer", id: field.id, field });
+  }
+
+  return (
+    <div className="space-y-0.5">
+      {rows.map((row) =>
+        row.kind === "section" ? (
+          <p key={row.id} className="px-3 pb-1 pt-4 text-xs font-semibold text-foreground first:pt-1">{row.title}</p>
+        ) : (
+          <div key={row.id} className="rounded-md px-3 py-2.5 transition-colors hover:bg-surface-card">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">{fieldLabel(row.field)}</p>
+            <div className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+              <AnswerValue
+                field={row.field}
+                response={response}
+                fields={fields}
+                revealed={revealed}
+                revealing={revealing === row.field.id}
+                onReveal={reveal}
+                currency={currency}
+              />
+            </div>
+          </div>
+        ),
+      )}
+      {extras.length ? (
+        <>
+          <p className="px-3 pb-1 pt-4 text-xs font-semibold text-foreground">{fields.length ? "Other answers" : "Answers"}</p>
+          {extras.map(([key, value]) => (
+            <div key={key} className="rounded-md px-3 py-2.5 hover:bg-surface-card">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">{key === "__coupon" ? "Coupon" : key}</p>
+              <p className="mt-0.5 break-words text-sm text-muted-foreground">{typeof value === "object" ? JSON.stringify(value) : String(value)}</p>
+            </div>
+          ))}
+        </>
+      ) : null}
+      {!rows.length && !extras.length ? <p className="p-4 text-center text-xs text-text-tertiary">No answers recorded.</p> : null}
+      {response.metadata?.countersign ? (
+        <div className="mx-3 mt-4 border-t border-border pt-4">
+          <CountersignBlock response={response} />
+        </div>
+      ) : null}
     </div>
   );
 }
 
-export function ResponseDetailPanel({ response, index, onClose, score, priority }) {
-  const [status, setStatus] = useState(response.status);
-  const { comments, loading: commentsLoading, add } = useComments(response.id);
-  const [input, setInput] = useState("");
-  const [activeTab, setActiveTab] = useState("response");
+// Side panel for one response: inline triage, tabs for answers/activity/approvals/payment/details/access, and actions.
+export function ResponseDetailPanel({
+  response,
+  form: formProp,
+  onClose,
+  onPatch,
+  onReplace,
+  onDelete,
+  onOpenResponse,
+  tagSuggestions = [],
+  assigneeSuggestions = [],
+}) {
+  const [local, setLocal] = useState(null);
+  const row = local?.id === response.id && local.updatedAt === response.updatedAt ? local.row : response;
+  const { form, loading: formLoading } = useResponseForm(row.formId, formProp);
+  const [tab, setTab] = useState("answers");
+  const [dialog, setDialog] = useState(null);
+  const [escalating, setEscalating] = useState(false);
+  const canDelete = useCan("forms.response.delete");
+  const canExport = useCan("forms.response.export");
+  const logged = useRef(null);
 
-  const fields = deriveFields(response);
+  // One 'view' access line per opened response.
+  useEffect(() => {
+    if (logged.current === response.id) return;
+    logged.current = response.id;
+    logAccess({ formId: response.formId, responseId: response.id, action: "view" });
+  }, [response.id, response.formId]);
 
-  const currentStyle = STATUS_STYLE[status] ?? STATUS_STYLE.Pending;
-  const priorityStyle = priority ? PRIORITY_STYLE[priority] : null;
-
-  const addComment = async () => {
-    const text = input.trim();
-    if (!text) return;
-    await add(text);
-    setInput("");
+  const replace = (next) => {
+    if (onReplace) onReplace(next);
+    else setLocal({ id: response.id, updatedAt: response.updatedAt, row: next });
   };
 
-  const TABS = [
-    { id: "response", label: "Response" },
-    { id: "analytics", label: "Analytics" },
-    { id: "thread", label: "Thread" },
-  ];
+  const patch = async (changes, message) => {
+    try {
+      if (onPatch) await onPatch(row.id, changes);
+      else replace(await updateResponse(row.id, changes));
+      if (message) toast.success(message);
+    } catch {
+      toast.error("Couldn't save that change.");
+    }
+  };
+
+  const escalate = async () => {
+    setEscalating(true);
+    const { ok, data } = await callApi(`/api/responses/${row.id}/escalate`, { method: "POST" });
+    setEscalating(false);
+    if (!ok) return toast.error(data?.error || "Couldn't escalate to Geiger Flow.");
+    replace({ ...row, metadata: { ...row.metadata, flowIssue: data.issue } });
+    toast.success(`Created Geiger Flow issue #${data.issue?.number ?? ""}`.trim());
+  };
+
+  const print = () => {
+    window.open(withPrefix(`/print/response/${row.id}`), "_blank", "noopener");
+  };
+
+  const copyCsv = async () => {
+    try {
+      await navigator.clipboard.writeText(responseCsv(row, form));
+      toast.success("Copied as CSV — paste into any sheet");
+    } catch {
+      toast.error("Couldn't copy to the clipboard.");
+    }
+  };
+
+  const remove = async () => {
+    try {
+      await onDelete?.([row.id]);
+      toast.success("Response deleted");
+      onClose();
+    } catch {
+      toast.error("Couldn't delete the response.");
+    }
+  };
+
+  const flowIssue = row.metadata?.flowIssue;
+  const approvalPending = row.approval?.state === "pending" || (form?.settings?.approval?.enabled && !row.approval?.state);
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <button
-        type="button"
-        className="flex-1 bg-black/50"
-        onClick={onClose}
-        aria-label="Close panel"
-      />
-
-      <aside className="flex h-full w-full max-w-[460px] flex-col border-l border-border bg-surface-subtle shadow-2xl">
-
-        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-          <div
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-muted-foreground",
-              AVATAR_COLORS[index % AVATAR_COLORS.length],
-            )}
-          >
-            {response.initials}
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="right" className="w-full gap-0 border-border bg-surface-subtle p-0 sm:max-w-[560px]">
+        <div className="flex items-start gap-3 border-b border-border px-4 py-4 pr-12">
+          <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-muted-foreground", avatarColor(row.email || row.id))}>
+            {row.initials}
           </div>
-
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold leading-tight text-white">{response.name}</p>
-            <p className="text-xs text-text-tertiary">{response.email}</p>
-            <p className="mt-0.5 text-[10px] text-text-tertiary">
-              {response.form}&nbsp;·&nbsp;{response.received}
-            </p>
+            <SheetTitle className="truncate text-sm leading-tight">{row.name}</SheetTitle>
+            <SheetDescription className="truncate text-xs text-text-tertiary">{row.email || "No email"}</SheetDescription>
+            <p className="mt-0.5 truncate text-[10px] text-text-tertiary">{row.form} · {row.received} · #{String(row.id).slice(0, 8)}</p>
           </div>
+        </div>
 
-          <div className="flex shrink-0 items-center gap-1.5">
-            {priorityStyle && (
-              <span
-                className={cn(
-                  "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
-                  priorityStyle.bg,
-                  priorityStyle.text,
-                  priorityStyle.border,
-                )}
-              >
-                <Zap className="h-2.5 w-2.5" />
-                {priority}
-              </span>
-            )}
-
-            {score != null && (
-              <span
-                className="rounded bg-surface-card px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground"
-                title="Triage score"
-              >
-                {score}
-              </span>
-            )}
-
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger
-                className={cn(
-                  "h-6 w-auto gap-1 rounded-full border px-2 text-[10px] font-medium [&>svg]:h-3 [&>svg]:w-3 [&>svg]:opacity-60",
-                  currentStyle.bg,
-                  currentStyle.text,
-                  currentStyle.border,
-                )}
-              >
-                <SelectValue />
+        <div className="space-y-1 border-b border-border px-4 py-3">
+          <PropertyRow label="Status">
+            <Select value={row.status} onValueChange={(status) => patch({ status }, `Marked ${status}`)}>
+              <SelectTrigger size="sm" className="w-auto gap-1 border-0 bg-transparent px-1 shadow-none focus:ring-0" aria-label="Change status">
+                <StatusPill status={row.status} map={RESPONSE_STATUS_MAP} />
               </SelectTrigger>
               <SelectContent>
-                {Object.keys(STATUS_STYLE).map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
+                {RESPONSE_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-active hover:text-foreground"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+          </PropertyRow>
+          <PropertyRow label="Priority">
+            <Select value={row.priority} onValueChange={(priority) => patch({ priority }, `Priority set to ${priority}`)}>
+              <SelectTrigger size="sm" className="w-auto gap-1 border-0 bg-transparent px-1 shadow-none focus:ring-0" aria-label="Override priority">
+                <StatusPill status={row.priority} map={RESPONSE_PRIORITY_MAP} />
+              </SelectTrigger>
+              <SelectContent>
+                {RESPONSE_PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {row.score != null ? <span className="ml-2 rounded bg-surface-card px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground" title="Score">Score {row.score}</span> : null}
+          </PropertyRow>
+          <PropertyRow label="Assignee">
+            <AssigneeInput
+              key={`${row.id}:${row.assignee}`}
+              value={row.assignee}
+              suggestions={assigneeSuggestions}
+              onCommit={(assignee) => patch({ assignee }, assignee ? `Assigned to ${assignee}` : "Unassigned")}
+            />
+          </PropertyRow>
+          <PropertyRow label="Tags">
+            <TagsEditor tags={row.tags} suggestions={tagSuggestions} onChange={(tags) => patch({ tags })} />
+          </PropertyRow>
+          {outcomeLabel(row.outcome) ? (
+            <PropertyRow label="Outcome">
+              <span className="rounded-md border border-violet-500/20 bg-violet-500/10 px-1.5 py-0.5 text-[11px] text-violet-300">{outcomeLabel(row.outcome)}</span>
+            </PropertyRow>
+          ) : null}
         </div>
 
-        <div className="flex border-b border-border">
-          {TABS.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveTab(id)}
-              className={cn(
-                "flex-1 py-2.5 text-xs font-medium transition-colors",
-                activeTab === id
-                  ? "border-b-2 border-white text-white"
-                  : "text-text-secondary hover:text-muted-foreground",
-              )}
-            >
-              {label}
-              {id === "thread" && comments.length > 0 && (
-                <span className="ml-1.5 rounded-full bg-surface-hover px-1.5 text-[10px] text-muted-foreground">
-                  {comments.length}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
+          <Button type="button" variant="outline" size="sm" className={cn("h-8 gap-1.5 text-xs", OUTLINE_BUTTON)} onClick={print}>
+            <Printer className="h-3.5 w-3.5" /> Print / PDF
+          </Button>
+          <Button type="button" variant="outline" size="sm" className={cn("h-8 gap-1.5 text-xs", OUTLINE_BUTTON)} onClick={() => setDialog("edit")}>
+            <Edit3 className="h-3.5 w-3.5" /> Request edit
+          </Button>
+          {flowIssue ? (
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-sky-500/20 bg-sky-500/10 px-2.5 text-xs text-sky-400">
+              <ArrowUpRight className="h-3.5 w-3.5" /> Flow #{flowIssue.number ?? String(flowIssue.id).slice(0, 6)}
+            </span>
+          ) : (
+            <Button type="button" variant="outline" size="sm" className={cn("h-8 gap-1.5 text-xs", OUTLINE_BUTTON)} onClick={escalate} disabled={escalating}>
+              {escalating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUpRight className="h-3.5 w-3.5" />}
+              Escalate to Flow
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="ghost" size="icon" className="ml-auto h-8 w-8 text-text-secondary" aria-label="More actions">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 border-border bg-surface-subtle">
+              <DropdownMenuItem className={MENU_ITEM} onClick={() => setDialog("countersign")}>
+                <PenLine className="h-4 w-4" /> {row.metadata?.countersign ? "Countersign again" : "Countersign"}
+              </DropdownMenuItem>
+              {canExport ? (
+                <DropdownMenuItem className={MENU_ITEM} onClick={copyCsv}>
+                  <ClipboardCopy className="h-4 w-4" /> Copy as CSV row
+                </DropdownMenuItem>
+              ) : null}
+              {canDelete && onDelete ? (
+                <>
+                  <DropdownMenuSeparator className="bg-border" />
+                  <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-xs text-red-400 focus:bg-red-500/10" onClick={() => setDialog("delete")}>
+                    <Trash2 className="h-4 w-4" /> Delete response
+                  </DropdownMenuItem>
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        {activeTab === "response" && (
-          <div className="scrollbar-subtle flex-1 overflow-y-auto p-4">
-            <div className="space-y-0.5">
-              {fields.map(({ label, value }) => (
-                <div
-                  key={label}
-                  className="rounded-md px-3 py-2.5 transition-colors hover:bg-surface-card"
-                >
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
-                    {label}
-                  </p>
-                  <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{value}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 border-t border-surface-active pt-4">
-              <p className="text-[10px] text-text-tertiary">
-                Submitted {response.received}&nbsp;·&nbsp;Internal ID #{String(response.id).slice(0, 8)}
-              </p>
-              <button
-                type="button"
-                className="mt-2 flex items-center gap-1.5 text-xs text-text-secondary transition-colors hover:text-foreground"
-              >
-                <Edit3 className="h-3.5 w-3.5" />
-                Request edit from respondent
-              </button>
-            </div>
+        <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col gap-0">
+          <div className="scrollbar-subtle overflow-x-auto border-b border-border px-2">
+            <TabsList variant="line" className="h-10">
+              <TabsTrigger value="answers" className="text-xs">Answers</TabsTrigger>
+              <TabsTrigger value="activity" className="text-xs">Activity</TabsTrigger>
+              <TabsTrigger value="approvals" className="text-xs">
+                Approvals
+                {approvalPending ? <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> : null}
+              </TabsTrigger>
+              <TabsTrigger value="payment" className="text-xs">Payment</TabsTrigger>
+              <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
+              <TabsTrigger value="access" className="text-xs">Access</TabsTrigger>
+            </TabsList>
           </div>
-        )}
+          <TabsContent value="answers" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto p-3">
+            <AnswersTab key={row.id} response={row} form={form} formLoading={formLoading} />
+          </TabsContent>
+          <TabsContent value="activity" className="flex min-h-0 flex-1 flex-col">
+            <ActivitySection response={row} />
+          </TabsContent>
+          <TabsContent value="approvals" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto p-4">
+            <ApprovalsSection response={row} form={form} onReplace={replace} />
+          </TabsContent>
+          <TabsContent value="payment" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto p-4">
+            <PaymentSection response={row} form={form} />
+          </TabsContent>
+          <TabsContent value="details" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto p-4">
+            <MetadataSection response={row} onOpenResponse={onOpenResponse} />
+          </TabsContent>
+          <TabsContent value="access" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto p-4">
+            <AccessLogSection key={`${row.id}:${tab}`} response={row} />
+          </TabsContent>
+        </Tabs>
 
-        {activeTab === "analytics" && (
-          <AnalyticsTab response={response} />
-        )}
-
-        {activeTab === "thread" && (
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="scrollbar-subtle flex-1 overflow-y-auto p-4">
-              {commentsLoading ? (
-                <div className="flex min-h-24 items-center justify-center text-center">
-                  <p className="text-xs text-text-tertiary">Loading comments…</p>
-                </div>
-              ) : comments.length === 0 ? (
-                <div className="flex min-h-24 items-center justify-center text-center">
-                  <p className="text-xs text-text-tertiary">No comments yet. Start the review thread below.</p>
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  {comments.map((c, i) => (
-                    <div key={c.id} className="flex gap-3">
-                      <div
-                        className={cn(
-                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-muted-foreground",
-                          AVATAR_COLORS[i % AVATAR_COLORS.length],
-                        )}
-                      >
-                        {c.initials}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-foreground">{c.author}</span>
-                          <span className="text-[10px] text-text-tertiary">{c.when}</span>
-                        </div>
-                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{c.body}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-border p-3">
-              <div className="flex gap-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      addComment();
-                    }
-                  }}
-                  placeholder="Add a comment..."
-                  className="h-8 flex-1 text-xs text-muted-foreground"
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={addComment}
-                  className="h-9 w-9 shrink-0 p-0"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              <p className="mt-1.5 text-[10px] text-text-tertiary">
-                Enter to send&nbsp;·&nbsp;Visible to workspace members only
-              </p>
-            </div>
-          </div>
-        )}
-      </aside>
-    </div>
+        <RequestEditDialog open={dialog === "edit"} onOpenChange={(o) => setDialog(o ? "edit" : null)} response={row} />
+        <CountersignDialog
+          open={dialog === "countersign"}
+          onOpenChange={(o) => setDialog(o ? "countersign" : null)}
+          response={row}
+          onSigned={(countersign) => replace({ ...row, metadata: { ...row.metadata, countersign } })}
+        />
+        <ConfirmDeleteDialog open={dialog === "delete"} onOpenChange={(o) => setDialog(o ? "delete" : null)} onConfirm={remove} />
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export default ResponseDetailPanel;

@@ -12,9 +12,9 @@ export function navPermissionKey(title) {
   return `forms.${navSlug(title)}.view`;
 }
 
-// Mirrors BUILT_VIEWS in components/internal/sidebar/sidebar_nav.js.
-// Every built workspace view gets a view permission; coming-soon catalog
-// entries stay ungated until they ship a real screen.
+// Workspace views that carry their own view permission. Plain strings are legacy ids whose key is derived
+// from the id; [id, label] pairs are dedicated catalog screens. Per-feature hub pages stay ungated (they only
+// deep-link into the form editor, which is gated by forms.form.edit).
 const NAV_SECTIONS = [
   "Overview",
   "Forms",
@@ -25,13 +25,30 @@ const NAV_SECTIONS = [
   "Shared",
   "Archived",
   "Settings",
+  ["analytics.dropoff", "Funnel & Drop-off"],
+  ["analytics.attribution", "Source & Attribution"],
+  ["analytics.abtest", "A/B Testing"],
+  ["analytics.reports", "Reports"],
+  ["responses.partial", "Partial / Abandoned"],
+  ["responses.retention", "Retention & GDPR"],
+  ["collab.roles", "Roles & Permissions"],
+  ["collab.comments", "Response Comments"],
+  ["collab.activity", "Activity & Audit"],
+  ["security.spam", "Spam & Abuse"],
+  ["security.gdpr", "Data Protection & GDPR"],
+  ["security.access", "Access Control"],
+  ["security.hipaa", "HIPAA & Certifications"],
+  ["integ.api", "REST / API"],
+  ["integ.webhooks", "Webhooks"],
+  ["dev.hooks", "Hooks & Events"],
+  ["dev.headless", "Headless / API-first"],
+  ["dev.frontend", "Data Front-end"],
 ];
 
-const navPermissions = NAV_SECTIONS.map((title) => ({
-  key: navPermissionKey(title),
-  label: title,
-  group: "Workspace views",
-}));
+const navPermissions = NAV_SECTIONS.map((entry) => {
+  const [id, label] = Array.isArray(entry) ? entry : [entry, entry];
+  return { key: navPermissionKey(id), label, group: "Workspace views" };
+});
 
 const operationPermissions = [
   {
@@ -158,6 +175,13 @@ const systemRoles = [
       "forms.folders.view",
       "forms.shared.view",
       "forms.archived.view",
+      "forms.analytics_dropoff.view",
+      "forms.analytics_attribution.view",
+      "forms.analytics_abtest.view",
+      "forms.analytics_reports.view",
+      "forms.responses_partial.view",
+      "forms.collab_comments.view",
+      "forms.collab_activity.view",
       "forms.form.edit",
       "forms.response.export",
     ],
@@ -168,7 +192,14 @@ const systemRoles = [
     name: "Viewer",
     description: "Read-only access to the overview and reports.",
     color: "slate",
-    permissions: ["forms.overview.view", "forms.analytics.view"],
+    permissions: [
+      "forms.overview.view",
+      "forms.analytics.view",
+      "forms.analytics_dropoff.view",
+      "forms.analytics_attribution.view",
+      "forms.analytics_abtest.view",
+      "forms.analytics_reports.view",
+    ],
     sort: 4,
   }),
 ];

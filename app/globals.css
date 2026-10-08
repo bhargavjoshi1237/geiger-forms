@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @source "../node_modules/@geiger/ui/src";
 @import "tw-animate-css";
+@import "@geiger/ui/logo-loading.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -9,6 +10,14 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -183,8 +192,9 @@
     @apply border-border outline-ring/50;
   }
 
+  /* Font lives on body so Radix portals (menus, dialogs, toasts) get Geist too, matching geiger-events. */
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
 }
 
@@ -260,6 +270,14 @@
     transparent 100%
   );
   filter: drop-shadow(0 0 3px rgb(163 163 163 / 0.14));
+}
+
+.geiger-logo {
+  transition: filter 150ms ease;
+}
+
+.light .geiger-logo {
+  filter: invert(1);
 }
 
 .supabase-activity-line.is-saving {

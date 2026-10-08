@@ -1,317 +1,161 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import {
-  CheckCircle2,
-  ClipboardList,
-  Loader2,
-  Lock,
-  Send,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CheckCircle2, CircleSlash, CloudOff, FileQuestion, RotateCcw } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { LogoLoading } from "@geiger/ui/logo-loading";
-import { FormFieldRenderer } from "@/components/forms/form-field-renderer";
-import { getPublishedFormBySlug } from "@/lib/supabase/forms";
-import { createResponse } from "@/lib/supabase/responses";
-import { isFieldVisible, validateAnswers, scoreResponse } from "@/lib/forms/schema";
+import { callApi } from "@/lib/forms/api";
+import { normalizeSettings, toCanonicalField } from "@/lib/forms/schema";
+import { buildTheme } from "@/lib/forms/theme";
+import { isRtl, resolveLocale, translator } from "@/lib/forms/i18n";
+import { withPrefix } from "@/lib/workspace/base-path";
+import { FillerHeader, FillerShell, PoweredBy, StatusScreen } from "@/components/forms/filler/filler-shell";
+import { GateScreen } from "@/components/forms/filler/gates";
+import { FormRunner } from "@/components/forms/filler/form-runner";
+import { parseFillerParams, publicApi } from "@/components/forms/filler/session";
+import { useEmbedBridge } from "@/components/forms/filler/use-embed-bridge";
 
-function availability(form) {
-  const s = form.settings || {};
-  const now = Date.now();
-  if (s.openDate && now < new Date(s.openDate).getTime()) {
-    return { open: false, reason: "This form is not open for responses yet." };
-  }
-  if (s.closeDate && now > new Date(s.closeDate).getTime() + 86_400_000) {
-    return { open: false, reason: "This form is closed and no longer accepting responses." };
-  }
-  const limit = Number(s.responseLimit);
-  if (limit && form.responses >= limit) {
-    return { open: false, reason: "This form has reached its response limit." };
-  }
-  return { open: true };
+// Canonicalises the public payload's form (fields + settings) once.
+function prepareForm(form) {
+  if (!form) return null;
+  const fieldDefs = (Array.isArray(form.fieldDefs) ? form.fieldDefs : []).map((f) => toCanonicalField(f));
+  return { ...form, title: form.title || "Untitled form", description: form.description || "", fieldDefs, settings: normalizeSettings(form.settings) };
 }
 
-function detectRespondent(fields, answers) {
-  let email = null;
-  let name = null;
-  for (const f of fields) {
-    const v = answers[f.id];
-    if (!v) continue;
-    const label = `${f.title} ${f.label || ""}`.toLowerCase();
-    if (!email && (f.type === "email" || label.includes("email"))) email = String(v);
-    if (!name && f.type !== "email" && label.includes("name")) name = String(v);
-  }
-  return { name, email };
+function payloadUrl(slug, params) {
+  const qs = new URLSearchParams();
+  if (params.signedToken) qs.set("t", params.signedToken);
+  if (params.variant) qs.set("variant", params.variant);
+  const query = qs.toString();
+  return publicApi(slug, query ? `?${query}` : "");
 }
 
-function TopBar({ live = false }) {
-  return (
-    <header className="sticky top-0 z-10 border-b border-border bg-[#121212]/80 backdrop-blur">
-      <TopBar/>
-    </header>
-  );
-}
+// Public form filler: loads the payload (server-provided or fetched), applies theme/locale and routes to gates or the runner.
+export function FormFillerContent({ formId, slug: slugProp, initialPayload = null, initialStatus, searchParams = {} }) {
+  const slug = slugProp || formId;
+  const params = useMemo(() => parseFillerParams(searchParams), [searchParams]);
+  const [payload, setPayload] = useState(initialPayload);
+  const [status, setStatus] = useState(() => (initialPayload ? "ready" : initialStatus || "loading"));
+  const [password, setPassword] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  const notifySubmitted = useEmbedBridge(params.embed, slug);
 
-function Shell({ live = false, children }) {
-  return (
-    <main className="min-h-[100dvh] bg-[#121212] text-white">
-      <TopBar live={live} />
-      <div className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
-        {children}
-      </div>
-    </main>
-  );
-}
-
-function StatusCard({ icon: Icon, title, description, children, tone = "default" }) {
-  const ring =
-    tone === "success"
-      ? "border-[#166534] bg-[#0d2218] text-[#4ade80]"
-      : "border-border bg-surface-card text-muted-foreground";
-  return (
-    <section className="rounded-2xl border border-border bg-surface-subtle p-8 text-center">
-      <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border ${ring}`}>
-        <Icon className="h-6 w-6" />
-      </div>
-      <h1 className="mt-5 text-xl font-semibold text-foreground">{title}</h1>
-      {description && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>}
-      {children && <div className="mt-7 flex flex-wrap justify-center gap-3">{children}</div>}
-    </section>
-  );
-}
-
-export function FormFillerContent({ formId }) {
-  const [form, setForm] = useState(null);
-  const [loadState, setLoadState] = useState("loading");
-  const [answers, setAnswers] = useState({});
-  const [errors, setErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
-  const [done, setDone] = useState(false);
-  const startedAtRef = useRef(null);
+  const fetchPayload = useCallback(async () => {
+    const res = await callApi(payloadUrl(slug, params));
+    if (res.ok && res.data?.form) return { status: "ready", payload: res.data };
+    if (res.status === 404) return { status: "missing", payload: null };
+    return { status: res.status === 0 ? "offline" : "error", payload: null };
+  }, [slug, params]);
 
   useEffect(() => {
+    if ((initialPayload || initialStatus === "missing") && attempt === 0) return undefined;
     let active = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoadState("loading");
-    getPublishedFormBySlug(formId)
-      .then((f) => {
-        if (!active) return;
-        setForm(f);
-        if (f) startedAtRef.current = Date.now();
-        setLoadState(f ? "ready" : "missing");
-      })
-      .catch(() => active && setLoadState("error"));
+    fetchPayload().then((next) => {
+      if (!active) return;
+      setPayload(next.payload);
+      setStatus(next.status);
+    });
     return () => {
       active = false;
     };
-  }, [formId]);
+  }, [fetchPayload, initialPayload, initialStatus, attempt]);
 
-  useEffect(() => {
-    if (!done || !form) return;
-    const s = form.settings || {};
-    if (s.thankYouType === "redirect" && s.thankYouUrl && typeof window !== "undefined") {
-      window.location.href = s.thankYouUrl;
-    }
-  }, [done, form]);
+  const form = useMemo(() => prepareForm(payload?.form), [payload]);
+  const settings = form?.settings;
+  const theme = useMemo(() => buildTheme(settings, { embed: params.embed && !params.solid }), [settings, params.embed, params.solid]);
+  const locale = resolveLocale(settings?.locale);
+  const tr = useMemo(() => translator(locale), [locale]);
+  const title = payload?.variant?.title || form?.title || "";
 
-  const visibleFields = useMemo(() => {
-    if (!form) return [];
-    return (form.fieldDefs || []).filter((f) => f.included !== false && isFieldVisible(f, answers));
-  }, [form, answers]);
+  const unlock = useCallback(
+    async (value) => {
+      const res = await callApi(publicApi(slug, "/password"), { method: "POST", body: { password: value } });
+      if (!res.ok) return false;
+      setPassword(value);
+      const next = await fetchPayload();
+      // The unlock cookie makes the reload return the full form; the verified password also rides along on submit.
+      if (!next.payload || (next.payload.gate === "password" && !next.payload.form?.fieldDefs?.length)) return false;
+      setPayload({ ...next.payload, gate: next.payload.gate === "password" ? null : next.payload.gate });
+      return true;
+    },
+    [slug, fetchPayload],
+  );
 
-  const setAnswer = (id, value) => {
-    setAnswers((cur) => ({ ...cur, [id]: value }));
-    setErrors((cur) => (cur[id] ? { ...cur, [id]: undefined } : cur));
-  };
+  const header = form ? <FillerHeader title={title} theme={theme} user={payload?.user} tr={tr} /> : null;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const validation = validateAnswers(form.fieldDefs, answers);
-    if (Object.keys(validation).length > 0) {
-      setErrors(validation);
-      return;
-    }
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      const { name, email } = detectRespondent(form.fieldDefs, answers);
-      const { score, priority } = scoreResponse(form, answers);
-      const completionMs = startedAtRef.current ? Date.now() - startedAtRef.current : null;
-      await createResponse({
-        formId: form.id,
-        answers,
-        respondentName: name,
-        respondentEmail: email,
-        priority,
-        score,
-        completionMs,
-        status: form.settings?.scoringEnabled && priority === "High" ? "Needs review" : "Complete",
-      });
-      setDone(true);
-    } catch (err) {
-      setSubmitError(err.message || "Could not submit your response. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (loadState === "loading") {
-    return (
-      <Shell>
-        <section className="flex items-center justify-center py-24">
-          <LogoLoading size={72} />
-        </section>
-      </Shell>
+  let body;
+  if (status === "loading") {
+    body = (
+      <div className="flex min-h-[60dvh] items-center justify-center" aria-busy="true">
+        <LogoLoading size={params.embed ? 48 : 80} />
+      </div>
     );
-  }
-
-  if (loadState === "missing") {
-    return (
-      <Shell>
-        <StatusCard
-          icon={Lock}
-          title="Form not available"
-          description="This form doesn't exist or isn't published yet. Check the link or contact whoever shared it."
-        >
+  } else if (status === "missing" || (status === "ready" && !form)) {
+    body = (
+      <StatusScreen icon={FileQuestion} title={tr("notFoundTitle")} description={tr("notFoundBody")}>
+        {!params.embed && (
           <Button asChild variant="outline">
-            <Link href="/">Back to home</Link>
+            <a href={withPrefix("/")}>Geiger Forms</a>
           </Button>
-        </StatusCard>
-      </Shell>
+        )}
+      </StatusScreen>
     );
-  }
-
-  if (loadState === "error") {
-    return (
-      <Shell>
-        <StatusCard
-          icon={Lock}
-          title="Couldn't load this form"
-          description="Something went wrong reaching the server. Please try again later."
-        />
-      </Shell>
-    );
-  }
-
-  const status = availability(form);
-  if (!status.open) {
-    return (
-      <Shell>
-        <StatusCard icon={Lock} title="Closed" description={status.reason}>
-          <Button asChild variant="outline">
-            <Link href="/">Back to home</Link>
-          </Button>
-        </StatusCard>
-      </Shell>
-    );
-  }
-
-  if (done) {
-    const s = form.settings || {};
-    return (
-      <Shell>
-        <StatusCard
-          tone="success"
-          icon={CheckCircle2}
-          title="Response submitted"
-          description={s.thankYouText || "Thanks for submitting. We'll review and follow up soon."}
+  } else if (status === "error" || status === "offline") {
+    body = (
+      <StatusScreen icon={status === "offline" ? CloudOff : CircleSlash} tone="warning" title={tr("loadErrorTitle")} description={status === "offline" ? tr("errorNetwork") : tr("loadErrorBody")}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setStatus("loading");
+            setAttempt((n) => n + 1);
+          }}
         >
-          {s.submitAnother && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setAnswers({});
-                setErrors({});
-                setDone(false);
-              }}
-            >
-              Submit another
-            </Button>
-          )}
-          <Button asChild>
-            <Link href="/">Back to home</Link>
-          </Button>
-        </StatusCard>
-      </Shell>
+          <RotateCcw />
+          {tr("retry")}
+        </Button>
+      </StatusScreen>
+    );
+  } else if (params.paid === "1") {
+    body = <StatusScreen icon={CheckCircle2} tone="success" title={tr("paidTitle")} description={tr("paidBody")} />;
+  } else if (params.paid === "0") {
+    body = (
+      <StatusScreen icon={CircleSlash} tone="warning" title={tr("paidCancelTitle")} description={tr("paidCancelBody")}>
+        <Button asChild variant="outline">
+          <a href={withPrefix(`/form/${encodeURIComponent(slug)}${params.embed ? "?embed=1" : ""}`)}>
+            <RotateCcw />
+            {tr("startOver")}
+          </a>
+        </Button>
+      </StatusScreen>
+    );
+  } else if (payload?.gate) {
+    body = <GateScreen gate={payload.gate} gateMessage={payload.gateMessage} form={form} tr={tr} onPassword={unlock} />;
+  } else {
+    body = (
+      <FormRunner
+        key={`${form.id}-${payload?.variant?.id || ""}`}
+        slug={slug}
+        form={form}
+        user={payload?.user || null}
+        variant={payload?.variant || null}
+        params={params}
+        password={password}
+        tr={tr}
+        locale={locale}
+        embed={params.embed}
+        onSubmitted={notifySubmitted}
+        onGate={(gate, message) => setPayload((cur) => ({ ...cur, gate, gateMessage: message || cur?.gateMessage || "" }))}
+      />
     );
   }
-
-  const isCover = form.settings?.coverStyle === "cover";
-  const questionCount = visibleFields.length;
 
   return (
-    <Shell live>
-      {/* Hero header */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle">
-        <div
-          className={
-            isCover
-              ? "h-28 bg-[linear-gradient(106deg,#17353a_0%,#3e3a24_48%,#5a2d29_100%)] sm:h-36"
-              : "h-20 bg-gradient-to-br from-[#1f1f1f] to-background sm:h-24"
-          }
-        />
-        <div className="px-6 py-6 sm:px-8 sm:py-7">
-          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">{form.title}</h1>
-          {form.description && (
-            <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{form.description}</p>
-          )}
-          {questionCount > 0 && (
-            <p className="mt-3 text-xs text-text-secondary">
-              {questionCount} question{questionCount === 1 ? "" : "s"}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="mt-6">
-        {/* Fields card */}
-        <div className="rounded-2xl border border-border bg-surface-subtle p-6 sm:p-8">
-          {visibleFields.length === 0 ? (
-            <p className="py-10 text-center text-sm text-text-secondary">
-              This form has no questions yet.
-            </p>
-          ) : (
-            <div className="space-y-7">
-              {visibleFields.map((field) => (
-                <FormFieldRenderer
-                  key={field.id}
-                  field={field}
-                  value={answers[field.id]}
-                  onChange={(v) => setAnswer(field.id, v)}
-                  error={errors[field.id]}
-                  allFields={form.fieldDefs}
-                  answers={answers}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Submit error alert */}
-        {submitError && (
-          <p className="mt-5 rounded-xl border border-[#7c5410] bg-[#231a08] px-4 py-3 text-xs text-[#fcd34d]">
-            {submitError}
-          </p>
-        )}
-
-        {/* Submit area */}
-        <div className="mt-5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-xs text-text-secondary">
-            <CheckCircle2 className="h-4 w-4 text-text-tertiary" />
-            Secure submission
-          </div>
-          <Button type="submit" disabled={submitting || visibleFields.length === 0} className="gap-2">
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {submitting ? "Submitting…" : "Submit"}
-          </Button>
-        </div>
-
-        {form.settings?.branding !== false && (
-          <p className="mt-8 text-center text-xs text-text-tertiary">Powered by Geiger Forms</p>
-        )}
-      </form>
-    </Shell>
+    <FillerShell theme={theme} embed={params.embed} transparent={params.embed && !params.solid} dir={isRtl(locale) ? "rtl" : "ltr"} lang={locale} header={header}>
+      {body}
+      {form && theme.branding && status === "ready" && <PoweredBy tr={tr} />}
+    </FillerShell>
   );
 }
+
+export default FormFillerContent;

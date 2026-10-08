@@ -1,24 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@geiger/ui/chart";
-import { Input } from "@geiger/ui/input";
-import { ResponseDetailPanel } from "@/components/forms/response-detail-panel";
-import { ArrowLeft, CheckCircle2, Loader2, Search, Star, Timer, Zap } from "lucide-react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { useResponses, labelAnswers } from "@/lib/hooks/use-responses";
+import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, XAxis } from "recharts";
+import { ArrowLeft, BarChart3, CheckCircle2, Download, FileSignature, Inbox, PencilRuler, Star, Zap } from "lucide-react";
+import { toast } from "sonner";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@geiger/ui/chart";
+import { Button } from "@geiger/ui/button";
+import { ScreenHeader, SectionCard, StatGrid, StatusPill } from "@geiger/ui/screen-kit";
+import { Tabs, TabsList, TabsTrigger } from "@geiger/ui/tabs";
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
+import { useResponses } from "@/lib/hooks/use-responses";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { useCan } from "@/context/rbac-context";
+import { downloadResponses } from "@/lib/forms/export";
+import { withPrefix } from "@/lib/workspace/base-path";
+import { ResponseWorkspace } from "./response_workspace";
+import { AcknowledgementsReport, SurveyReport } from "./survey_report";
+import { FORM_STATUS_MAP, OUTLINE_BUTTON, RESPONSE_STATUSES, STATUS_CHART_COLORS } from "./constants";
 
-const AVATAR_COLORS = ["bg-blue-500/10", "bg-emerald-500/10", "bg-orange-500/10", "bg-violet-500/10", "bg-surface-subtle", "bg-teal-500/10"];
+const VOLUME_COLOR = "var(--color-sky-400)";
+const volumeChartConfig = { responses: { label: "Responses", color: VOLUME_COLOR } };
+const statusChartConfig = Object.fromEntries(RESPONSE_STATUSES.map((s) => [s, { label: s, color: STATUS_CHART_COLORS[s] }]));
 
 function buildVolume(responses) {
   const days = [];
@@ -26,275 +29,116 @@ function buildVolume(responses) {
   for (let i = 6; i >= 0; i -= 1) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    const label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    days.push({ key, label });
+    const key = d.toLocaleDateString("en-CA");
+    days.push({ key, label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) });
     counts[key] = 0;
   }
   for (const r of responses) {
-    const key = (r.submittedAt || "").slice(0, 10);
+    if (!r.submittedAt) continue;
+    const key = new Date(r.submittedAt).toLocaleDateString("en-CA");
     if (key in counts) counts[key] += 1;
   }
   return days.map((d) => ({ day: d.label, responses: counts[d.key] }));
 }
 
-function formatDateTime(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-const STATUS_STYLE = {
-  Complete:       { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
-  "Needs review": { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20" },
-  Pending:        { bg: "bg-surface-active", text: "text-muted-foreground", border: "border-border-strong" },
-};
-
-const PRIORITY_STYLE = {
-  High:   { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20" },
-  Medium: { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20" },
-  Low:    { bg: "bg-surface-active", text: "text-muted-foreground", border: "border-border-strong" },
-};
-
-const volumeChartConfig = {
-  responses: { label: "Responses", color: "#4a9eff" },
-};
-
-const statusChartConfig = {
-  Complete:       { label: "Complete",      color: "#4ade80" },
-  "Needs review": { label: "Needs review",  color: "#fb923c" },
-  Pending:        { label: "Pending",       color: "#525252" },
-};
-
-function StatCard({ label, value, detail, Icon }) {
-  return (
-    <div className="rounded-md border border-border bg-surface-subtle p-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">{label}</p>
-        {Icon && <Icon className="h-4 w-4 text-text-tertiary" />}
-      </div>
-      <p className="mt-3 text-2xl font-semibold text-foreground">{value}</p>
-      <p className="mt-1 text-xs text-text-secondary">{detail}</p>
-    </div>
-  );
-}
-
-function ResponseRow({ r, onClick }) {
-  const s = STATUS_STYLE[r.status] ?? STATUS_STYLE.Pending;
-  const p = PRIORITY_STYLE[r.priority] ?? PRIORITY_STYLE.Low;
-  const fieldPreview = Object.entries(r.fields).slice(0, 2).map(([k, v]) => `${k}: ${v}`).join("  ·  ");
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="grid w-full grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-4 border-b border-surface-active px-4 py-3 text-left transition-colors hover:bg-surface-card last:border-0"
-    >
-      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-muted-foreground", r.avatarColor)}>
-        {r.initials}
-      </div>
-
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground">{r.name}</span>
-          <span className="hidden truncate text-xs text-text-tertiary sm:block">{r.email}</span>
-        </div>
-        <p className="mt-0.5 truncate text-[10px] text-text-tertiary">{fieldPreview}</p>
-      </div>
-
-      <span className="hidden max-w-[200px] truncate text-xs text-text-secondary sm:block">{r.submittedAt}</span>
-
-      <span className="rounded bg-surface-card px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
-        {r.score}
-      </span>
-
-      <span className={cn(
-        "hidden rounded-full border px-2 py-0.5 text-[10px] font-medium sm:flex items-center gap-1",
-        p.bg, p.text, p.border,
-      )}>
-        <Zap className="h-2.5 w-2.5" />
-        {r.priority}
-      </span>
-
-      <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", s.bg, s.text, s.border)}>
-        {r.status}
-      </span>
-    </button>
-  );
-}
-
-const FORM_STATUS_STYLE = {
-  Published: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  Draft:     "bg-surface-active text-text-secondary border-border",
-  Archived:  "bg-surface-active text-muted-foreground border-border-strong",
-};
-
+// One form's responses: KPIs, volume/status charts, the shared inbox, a survey report and policy acknowledgements.
 export function FormResponsesScreen({ form, onBack }) {
-  const { responses: rawResponses, loading } = useResponses({ formId: form.id });
+  const store = useResponses({ formId: form.id });
+  const { responses } = store;
+  const { projectId } = useWorkspaceUrl();
+  const canExport = useCan("forms.response.export");
+  const [tab, setTab] = useState("responses");
+  const policyEnabled = Boolean(form.settings?.policy?.enabled);
 
-  const [search,          setSearch]          = useState("");
-  const [statusFilter,    setStatusFilter]    = useState("All");
-  const [priorityFilter,  setPriorityFilter]  = useState("All");
-  const [fieldFilter,     setFieldFilter]     = useState("");
-  const [selectedResponse, setSelectedResponse] = useState(null);
-  const [selectedIndex,   setSelectedIndex]   = useState(0);
+  const volumeData = useMemo(() => buildVolume(responses), [responses]);
+  const statusCounts = useMemo(
+    () =>
+      RESPONSE_STATUSES.map((name) => ({ name, value: responses.filter((r) => r.status === name).length, fill: STATUS_CHART_COLORS[name] })).filter(
+        (s) => s.value > 0 || ["Complete", "Needs review", "Pending"].includes(s.name),
+      ),
+    [responses],
+  );
+  const stats = useMemo(() => {
+    const total = responses.length;
+    const done = responses.filter((r) => r.status === "Complete" || r.status === "Approved").length;
+    const high = responses.filter((r) => r.priority === "High").length;
+    const scored = responses.filter((r) => r.score != null && Number.isFinite(Number(r.score)));
+    const avg = scored.length ? Math.round((scored.reduce((s, r) => s + Number(r.score), 0) / scored.length) * 10) / 10 : null;
+    return [
+      { label: "Total responses", value: String(total), hint: `${responses.filter((r) => r.status === "Needs review").length} need review`, icon: Inbox },
+      { label: "Resolved", value: `${total ? Math.round((done / total) * 100) : 0}%`, hint: `${done} complete or approved`, icon: CheckCircle2 },
+      { label: "Avg score", value: avg == null ? "—" : String(avg), hint: `${scored.length} scored`, icon: Star },
+      { label: "High priority", value: String(high), hint: `${total ? Math.round((high / total) * 100) : 0}% of responses`, icon: Zap },
+    ];
+  }, [responses]);
 
-  const responses = rawResponses.map((r, i) => ({
-    ...r,
-    avatarColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
-    submittedAt: formatDateTime(r.submittedAt),
-    fields: labelAnswers(r.answers, form.fieldDefs),
-  }));
-  const volumeData = buildVolume(rawResponses);
+  const exportAll = () => {
+    if (!responses.length) return toast.error("Nothing to export yet.");
+    downloadResponses(responses, "csv", `${form.slug || form.name}-responses`, { form });
+    toast.success(`Exported ${responses.length} responses as CSV`);
+  };
 
-  const filtered = responses.filter((r) => {
-    if (search && !r.name.toLowerCase().includes(search.toLowerCase()) && !r.email.toLowerCase().includes(search.toLowerCase())) return false;
-    if (statusFilter !== "All"   && r.status   !== statusFilter)   return false;
-    if (priorityFilter !== "All" && r.priority !== priorityFilter) return false;
-    if (fieldFilter) {
-      const allValues = Object.values(r.fields).join(" ").toLowerCase();
-      if (!allValues.includes(fieldFilter.toLowerCase())) return false;
-    }
-    return true;
-  });
-
-  const total          = responses.length;
-  const complete       = responses.filter((r) => r.status === "Complete").length;
-  const highPriority   = responses.filter((r) => r.priority === "High").length;
-  const scored         = responses.filter((r) => Number.isFinite(r.score));
-  const avgScore       = scored.length ? Math.round(scored.reduce((s, r) => s + r.score, 0) / scored.length) : 0;
-  const completionPct  = total ? Math.round((complete / total) * 100) : 0;
-
-  const statusCounts = [
-    { name: "Complete",      value: responses.filter((r) => r.status === "Complete").length,      fill: "#4ade80" },
-    { name: "Needs review",  value: responses.filter((r) => r.status === "Needs review").length,  fill: "#fb923c" },
-    { name: "Pending",       value: responses.filter((r) => r.status === "Pending").length,       fill: "#525252" },
+  const tabs = [
+    { label: "Responses", value: "responses", icon: Inbox },
+    { label: "Survey report", value: "report", icon: BarChart3 },
+    ...(policyEnabled ? [{ label: "Acknowledgements", value: "acks", icon: FileSignature }] : []),
   ];
 
-  const chartData = volumeData;
-
-  const STATUS_TABS    = ["All", "Complete", "Needs review", "Pending"];
-  const PRIORITY_TABS  = ["All", "High", "Medium", "Low"];
-
-  const formStatusClass = FORM_STATUS_STYLE[form.status] ?? FORM_STATUS_STYLE.Draft;
-
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 text-foreground">
+    <MainScreenWrapper>
+      <ScreenHeader
+        title={form.name}
+        description={`${responses.length} response${responses.length === 1 ? "" : "s"} · ${form.status}`}
+        actions={
+          <>
+            {onBack ? (
+              <Button variant="outline" className={OUTLINE_BUTTON} onClick={onBack}>
+                <ArrowLeft className="h-4 w-4" /> Back
+              </Button>
+            ) : null}
+            <StatusPill status={form.status} map={FORM_STATUS_MAP} />
+            {canExport ? (
+              <Button variant="outline" className={OUTLINE_BUTTON} onClick={exportAll} disabled={!responses.length}>
+                <Download className="h-4 w-4" /> Export CSV
+              </Button>
+            ) : null}
+            {form.slug ? (
+              <Button variant="outline" className={OUTLINE_BUTTON} asChild>
+                <Link href={withPrefix(`/forms/${form.slug}`)}>
+                  <PencilRuler className="h-4 w-4" /> Open builder
+                </Link>
+              </Button>
+            ) : null}
+          </>
+        }
+      />
 
-      <div className="flex items-start gap-3 border-b border-border pb-5">
-        <button
-          type="button"
-          onClick={onBack}
-          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface-subtle text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
-          aria-label="Back to forms"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold text-foreground">{form.name}</h1>
-          <p className="mt-0.5 text-xs text-text-secondary">
-            {total} response{total !== 1 ? "s" : ""}&nbsp;·&nbsp;{form.status}
-          </p>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <span className={cn("rounded-full border px-2.5 py-0.5 text-[10px] font-medium", formStatusClass)}>
-            {form.status}
-          </span>
-          <Link
-            href={`/forms/${form.slug}`}
-            className="flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface-subtle px-3 text-xs text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
-          >
-            Open builder
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard
-          label="Total responses"
-          value={total}
-          detail={`${filtered.length} matching current filters`}
-          Icon={CheckCircle2}
-        />
-        <StatCard
-          label="Completion"
-          value={`${completionPct}%`}
-          detail={`${complete} of ${total} complete`}
-          Icon={Timer}
-        />
-        <StatCard
-          label="Avg score"
-          value={avgScore}
-          detail="Based on triage scoring"
-          Icon={Star}
-        />
-        <StatCard
-          label="High priority"
-          value={highPriority}
-          detail={`${total ? Math.round((highPriority / total) * 100) : 0}% of all responses`}
-          Icon={Zap}
-        />
-      </div>
+      <StatGrid stats={stats} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-
-        <div className="rounded-md border border-border bg-surface-subtle p-5 lg:col-span-2">
-          <p className="text-sm font-medium text-foreground">Response volume</p>
-          <p className="mt-0.5 text-xs text-text-secondary">Last 7 days</p>
-          <ChartContainer config={volumeChartConfig} className="mt-4 h-[180px] w-full">
-            <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+        <SectionCard title="Response volume" description="Last 7 days" className="lg:col-span-2">
+          <ChartContainer config={volumeChartConfig} className="h-[180px] w-full">
+            <AreaChart data={volumeData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
               <defs>
                 <linearGradient id="formResponseGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#4a9eff" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#4a9eff" stopOpacity={0} />
+                  <stop offset="5%" stopColor={VOLUME_COLOR} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={VOLUME_COLOR} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="#2a2a2a" strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="day"
-                tick={{ fill: "#737373", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="day" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Area
-                type="monotone"
-                dataKey="responses"
-                stroke="#4a9eff"
-                strokeWidth={2}
-                fill="url(#formResponseGradient)"
-                dot={false}
-                activeDot={{ r: 4, fill: "#4a9eff", strokeWidth: 0 }}
-              />
+              <Area type="monotone" dataKey="responses" stroke={VOLUME_COLOR} strokeWidth={2} fill="url(#formResponseGradient)" dot={false} activeDot={{ r: 4, fill: VOLUME_COLOR, strokeWidth: 0 }} />
             </AreaChart>
           </ChartContainer>
-        </div>
+        </SectionCard>
 
-        <div className="rounded-md border border-border bg-surface-subtle p-5">
-          <p className="text-sm font-medium text-foreground">Status breakdown</p>
-          <p className="mt-0.5 text-xs text-text-secondary">All responses</p>
-          <ChartContainer config={statusChartConfig} className="mt-2 h-[180px] w-full">
+        <SectionCard title="Status breakdown" description="All responses">
+          <ChartContainer config={statusChartConfig} className="h-[160px] w-full">
             <PieChart>
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent formatter={(value, name) => [value, name]} />
-                }
-              />
-              <Pie
-                data={statusCounts}
-                cx="50%"
-                cy="50%"
-                innerRadius={45}
-                outerRadius={70}
-                dataKey="value"
-                strokeWidth={0}
-              >
-                {statusCounts.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
+              <ChartTooltip content={<ChartTooltipContent formatter={(value, name) => [value, name]} />} />
+              <Pie data={statusCounts} cx="50%" cy="50%" innerRadius={45} outerRadius={68} dataKey="value" strokeWidth={0}>
+                {statusCounts.map((entry) => <Cell key={entry.name} fill={entry.fill} />)}
               </Pie>
             </PieChart>
           </ChartContainer>
@@ -309,122 +153,28 @@ export function FormResponsesScreen({ form, onBack }) {
               </div>
             ))}
           </div>
-        </div>
+        </SectionCard>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Name or email..."
-            className="h-7 w-44 pl-8 pr-3 text-xs text-muted-foreground"
-          />
-        </div>
-
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
-          <Input
-            value={fieldFilter}
-            onChange={(e) => setFieldFilter(e.target.value)}
-            placeholder="Filter by field value..."
-            className="h-7 w-48 pl-8 pr-3 text-xs text-muted-foreground"
-          />
-        </div>
-
-        <div className="h-4 w-px bg-surface-hover" />
-
-        <div className="flex items-center gap-0.5">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setStatusFilter(tab)}
-              className={cn(
-                "h-7 rounded-md px-2.5 text-xs font-medium transition-colors",
-                statusFilter === tab
-                  ? "bg-surface-hover text-foreground"
-                  : "text-text-secondary hover:text-muted-foreground",
-              )}
-            >
-              {tab}
-            </button>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          {tabs.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>
+              {t.icon ? <t.icon /> : null}
+              {t.label}
+            </TabsTrigger>
           ))}
-        </div>
+        </TabsList>
+      </Tabs>
 
-        <div className="h-4 w-px bg-surface-hover" />
-
-        <div className="flex items-center gap-0.5">
-          {PRIORITY_TABS.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setPriorityFilter(tab)}
-              className={cn(
-                "h-7 rounded-md px-2.5 text-xs font-medium transition-colors",
-                priorityFilter === tab
-                  ? "bg-surface-hover text-foreground"
-                  : "text-text-secondary hover:text-muted-foreground",
-              )}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        <span className="ml-auto text-[11px] text-text-tertiary">
-          {filtered.length} of {total}
-        </span>
+      {/* The inbox stays mounted so its filters/selection survive tab switches. */}
+      <div className={tab === "responses" ? undefined : "hidden"}>
+        <ResponseWorkspace store={store} form={form} projectId={form.projectId ?? projectId} />
       </div>
-
-      <div className="overflow-hidden rounded-md border border-border bg-surface-subtle">
-        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 border-b border-border px-4 py-2 text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
-          <span className="w-8" />
-          <span>Respondent</span>
-          <span className="hidden sm:block">Submitted</span>
-          <span>Score</span>
-          <span className="hidden sm:block">Priority</span>
-          <span>Status</span>
-        </div>
-
-        {filtered.map((r, i) => (
-          <ResponseRow
-            key={r.id}
-            r={r}
-            index={i}
-            onClick={() => {
-              setSelectedResponse(r);
-              setSelectedIndex(i);
-            }}
-          />
-        ))}
-
-        {filtered.length === 0 && (
-          <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-text-secondary">
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading responses…
-              </>
-            ) : total === 0 ? (
-              "No responses yet for this form."
-            ) : (
-              "No responses match your filters."
-            )}
-          </div>
-        )}
-      </div>
-
-      {selectedResponse && (
-        <ResponseDetailPanel
-          response={{ ...selectedResponse, form: form.name }}
-          index={selectedIndex}
-          onClose={() => setSelectedResponse(null)}
-          score={selectedResponse.score}
-          priority={selectedResponse.priority}
-        />
-      )}
-    </div>
+      {tab === "report" ? <SurveyReport form={form} responses={responses} /> : null}
+      {tab === "acks" && policyEnabled ? <AcknowledgementsReport form={form} responses={responses} /> : null}
+    </MainScreenWrapper>
   );
 }
+
+export default FormResponsesScreen;

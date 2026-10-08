@@ -26,15 +26,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@geiger/ui/dropdown-menu";
+import { ToggleGroup, ToggleGroupItem } from "@geiger/ui/toggle-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@geiger/ui/avatar";
+import { Button } from "@geiger/ui/button";
 import { getUser, invalidateUserCache } from "@/lib/supabase/user";
 import { createClient } from "@/lib/supabase/client";
-
-const surfaceStyle = {
-  backgroundColor: "var(--surface-dialog)",
-  borderColor: "var(--border)",
-  color: "var(--foreground)",
-};
+import { useOptionalProject } from "@/context/project-context";
 
 const itemBaseStyle =
   "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm cursor-default transition-colors outline-none";
@@ -42,9 +39,14 @@ const itemBaseStyle =
 const itemHoverStyle =
   "hover:bg-surface-active focus:bg-surface-active text-muted-foreground hover:text-foreground focus:text-foreground";
 
+const themeItemStyle =
+  "data-[state=on]:bg-surface-active data-[state=on]:text-foreground text-muted-foreground rounded-md hover:bg-surface-card hover:text-foreground px-3 h-7 text-xs gap-1.5 justify-center";
+
+// Account menu mirroring geiger-events' ProfileDropdown; suite routes (profile, org, billing) live on the hub, so they're plain links.
 export function ProfileDropdown({ children }) {
   const [user, setUser] = useState(null);
   const { theme, setTheme } = useTheme();
+  const project = useOptionalProject()?.project ?? null;
 
   useEffect(() => {
     getUser().then((u) => {
@@ -52,8 +54,7 @@ export function ProfileDropdown({ children }) {
     });
   }, []);
 
-  // Suite-shared public bucket: pfp/<userId>/latest.jpg. 404s fall back to
-  // the gradient initials via AvatarFallback.
+  // Suite-shared public bucket: pfp/<userId>/latest.jpg; 404s fall back to initials.
   const pfpUrl = user?.id
     ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/pfp/${user.id}/latest.jpg`
     : null;
@@ -67,11 +68,14 @@ export function ProfileDropdown({ children }) {
     .toUpperCase()
     .slice(0, 2);
 
+  const orgBase = project?.organization_id ? `/org/${project.organization_id}` : "/org";
+  const profileHref = user?.id ? `/profile/${user.id}` : "/profile";
+
   const handleSignOut = async () => {
     try {
       await createClient().auth.signOut();
-    } catch {
-      // ignore — clearing local state below is enough to reflect signed-out
+    } catch (e) {
+      console.error("[profile] sign out", e);
     }
     invalidateUserCache();
     window.location.reload();
@@ -81,138 +85,134 @@ export function ProfileDropdown({ children }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {children || (
-          <button
-            type="button"
-            aria-label="Account"
-            className="ml-1 flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-border transition-colors hover:border-border-strong"
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Account menu"
+            className="p-0 rounded-full border border-border hover:border-border-strong overflow-hidden ml-1 transition-colors"
           >
             <Avatar className="size-full">
               {pfpUrl && <AvatarImage src={pfpUrl} alt={displayName} />}
-              <AvatarFallback className="border-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-[10px] font-semibold text-white">
+              <AvatarFallback className="bg-surface-card text-muted-foreground text-[10px] font-semibold border-0">
                 {initials}
               </AvatarFallback>
             </Avatar>
-          </button>
+          </Button>
         )}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="w-72 rounded-xl border p-0 shadow-xl"
-        style={surfaceStyle}
+        className="w-72 p-0 rounded-xl border border-border bg-background text-foreground shadow-xl"
         sideOffset={8}
         align="end"
       >
         <div className="p-4 pb-3">
           <DropdownMenuLabel className="p-0">
             <div className="flex items-center gap-3">
-              <Avatar size="lg" className="border border-border">
+              <Avatar className="size-10 border border-border">
                 {pfpUrl && <AvatarImage src={pfpUrl} alt={displayName} />}
-                <AvatarFallback className="border-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-xs font-semibold text-white">
+                <AvatarFallback className="bg-surface-card text-muted-foreground text-xs font-semibold border-0">
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-semibold text-foreground">
-                  {displayName}
-                </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {displayEmail}
-                </span>
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-sm font-semibold text-foreground truncate">{displayName}</span>
+                <span className="text-xs text-muted-foreground truncate">{displayEmail}</span>
               </div>
             </div>
           </DropdownMenuLabel>
         </div>
 
-        <DropdownMenuSeparator className="mx-0 bg-surface-hover" />
+        <DropdownMenuSeparator className="bg-surface-hover mx-0" />
 
         <div className="p-1.5">
           <DropdownMenuGroup>
-            <DropdownMenuItem className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <CircleUserRound className="size-4 text-muted-foreground" />
-              <span>Profile</span>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href={profileHref}>
+                <CircleUserRound className="size-4 text-muted-foreground" />
+                <span>Profile</span>
+              </a>
             </DropdownMenuItem>
-            <DropdownMenuItem className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <UsersRound className="size-4 text-muted-foreground" />
-              <span>Organization Settings</span>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href={`${orgBase}/`}>
+                <UsersRound className="size-4 text-muted-foreground" />
+                <span>Organization Settings</span>
+              </a>
             </DropdownMenuItem>
-            <DropdownMenuItem className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <Wallet className="size-4 text-muted-foreground" />
-              <span>Billing & Plans</span>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-
-          <DropdownMenuSeparator className="my-1 bg-surface-hover" />
-
-          <DropdownMenuGroup>
-            <DropdownMenuItem
-              onSelect={(e) => e.preventDefault()}
-              className="cursor-default p-2 hover:bg-transparent focus:bg-transparent"
-            >
-              <div className="flex w-full items-center justify-evenly rounded-lg bg-background p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setTheme("light")}
-                  data-state={theme === "light" ? "on" : "off"}
-                  className="flex h-7 flex-1 items-center justify-center rounded-md px-3 text-xs text-muted-foreground transition-colors hover:bg-surface-card hover:text-foreground data-[state=on]:bg-surface-active data-[state=on]:text-foreground"
-                  aria-label="Light theme"
-                >
-                  <Sun className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTheme("dark")}
-                  data-state={theme === "dark" ? "on" : "off"}
-                  className="flex h-7 flex-1 items-center justify-center rounded-md px-3 text-xs text-muted-foreground transition-colors hover:bg-surface-card hover:text-foreground data-[state=on]:bg-surface-active data-[state=on]:text-foreground"
-                  aria-label="Dark theme"
-                >
-                  <Moon className="size-3.5" />
-                </button>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <Settings className="size-4 text-muted-foreground" />
-              <span>Settings</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <ShieldCheck className="size-4 text-muted-foreground" />
-              <span>Security</span>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href="/billing">
+                <Wallet className="size-4 text-muted-foreground" />
+                <span>Billing &amp; Plans</span>
+              </a>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
-          <DropdownMenuSeparator className="my-1 bg-surface-hover" />
+          <DropdownMenuSeparator className="bg-surface-hover my-1" />
 
           <DropdownMenuGroup>
-            <DropdownMenuItem className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <BookMarked className="size-4 text-muted-foreground" />
-              <span>Documentation</span>
-              <ExternalLink className="ml-auto size-3 text-text-secondary" />
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href={`${orgBase}/settings`}>
+                <Settings className="size-4 text-muted-foreground" />
+                <span>Settings</span>
+              </a>
             </DropdownMenuItem>
-            <DropdownMenuItem className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <MessageCircle className="size-4 text-muted-foreground" />
-              <span>Send Feedback</span>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href={`${orgBase}/security`}>
+                <ShieldCheck className="size-4 text-muted-foreground" />
+                <span>Security</span>
+              </a>
             </DropdownMenuItem>
-            <DropdownMenuItem className={`${itemBaseStyle} ${itemHoverStyle}`}>
-              <LifeBuoy className="size-4 text-muted-foreground" />
-              <span>Help & Support</span>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator className="bg-surface-hover my-1" />
+
+          <DropdownMenuGroup>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href="mailto:feedback@geiger.studio">
+                <MessageCircle className="size-4 text-muted-foreground" />
+                <span>Send Feedback</span>
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href="mailto:help@geiger.studio">
+                <LifeBuoy className="size-4 text-muted-foreground" />
+                <span>Help &amp; Support</span>
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle} mb-1`}>
+              <a href="/doc">
+                <BookMarked className="size-4 text-muted-foreground" />
+                <span>Documentation</span>
+                <ExternalLink className="size-3 ml-auto text-text-secondary" />
+              </a>
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={handleSignOut}
-              className={`${itemBaseStyle} group text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive`}
+              className={`${itemBaseStyle} text-muted-foreground hover:bg-red-500/10 focus:bg-red-500/10 hover:text-red-400 focus:text-red-400 group`}
             >
-              <LogOut className="size-4 group-hover:text-red-400" />
+              <LogOut className="size-4 group-hover:text-red-400 group-focus:text-red-400" />
               <span>Sign out</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </div>
 
-        <div className="border-t border-border px-4 py-2.5">
-          <div className="flex items-center justify-between text-[11px] text-text-secondary">
-            <span>Forms v1.0.0</span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Online
-            </span>
-          </div>
+        <div className="px-3 py-2.5 border-t border-border flex items-center justify-between">
+          <span className="text-[13px] font-medium text-muted-foreground">Theme</span>
+          <ToggleGroup
+            type="single"
+            value={theme}
+            onValueChange={(value) => {
+              if (value) setTheme(value);
+            }}
+            className="bg-surface-subtle border border-border flex items-center rounded-lg p-0.5"
+          >
+            <ToggleGroupItem value="light" aria-label="Light theme" className={themeItemStyle}>
+              <Sun className="size-3.5" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="dark" aria-label="Dark theme" className={themeItemStyle}>
+              <Moon className="size-3.5" />
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

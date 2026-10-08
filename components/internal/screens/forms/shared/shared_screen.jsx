@@ -1,190 +1,322 @@
 "use client";
 
-import { useMemo } from "react";
-import { Copy, Link2, Link2Off, Share2, ShieldCheck, Users } from "lucide-react";
-import { FormsScreenShell, LoadingState } from "../screen-shell";
+import { useEffect, useMemo, useState } from "react";
+import { Loader2, Share2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { toast } from "sonner";
+
+import { Badge } from "@geiger/ui/badge";
+import { Button } from "@geiger/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@geiger/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
+import { Switch } from "@geiger/ui/switch";
+import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
+import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@geiger/ui/table";
+  DataTable,
+  EmptyState,
+  Field,
+  LoadingArea,
+  ScreenHeader,
+  SearchInput,
+  SectionCard,
+  StatsBar,
+  Toolbar,
+} from "@geiger/ui/screen-kit";
+import { useCan } from "@/context/rbac-context";
+import { callApi } from "@/lib/forms/api";
 import { useForms } from "@/lib/hooks/use-forms";
-import { withPrefix } from "@/lib/workspace/base-path";
+import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { listGrants, listRoles } from "@/lib/supabase/rbac";
+import { cn } from "@/lib/utils";
+import { SHARE_ROLES } from "../forms/constants";
+import { ChipsInput, FIELD_CLS } from "../forms/sections/kit";
+import { ErrorState } from "../screen-shell";
 
-const roleStyle = {
-  viewer: { label: "Viewer", bg: "bg-surface-card", text: "text-text-secondary", border: "border-border" },
-  editor: { label: "Editor", bg: "bg-blue-500/10", text: "text-blue-300", border: "border-blue-500/20" },
-  admin: { label: "Admin", bg: "bg-violet-500/10", text: "text-violet-300", border: "border-violet-500/20" },
-};
+const ROLE_LABEL = Object.fromEntries(SHARE_ROLES.map((r) => [r.value, r.label]));
 
-const avatarColors = ["bg-blue-500/10", "bg-emerald-500/10", "bg-orange-500/10", "bg-violet-500/10"];
-
-function shareInitials(email) {
+function initials(email) {
   const handle = (email.split("@")[0] || email).replace(/[^a-z0-9]/gi, "");
   return (handle.slice(0, 2) || "?").toUpperCase();
 }
 
-function buildSharedRows(forms) {
-  return forms
-    .filter((f) => Array.isArray(f.settings?.sharing) && f.settings.sharing.length > 0)
-    .map((f) => {
-      const sharing = f.settings.sharing;
-      const roles = [];
-      for (const entry of sharing) {
-        if (entry.role && !roles.includes(entry.role)) roles.push(entry.role);
-      }
-      return {
-        id: f.id,
-        name: f.name,
-        slug: f.slug,
-        published: f.status === "Published",
-        members: sharing.length,
-        roles,
-        emails: sharing.map((s) => s.email),
-      };
-    });
+function RoleSelect({ value, onChange, className }) {
+  return (
+    <Select value={value || "viewer"} onValueChange={onChange}>
+      <SelectTrigger className={cn("h-8 w-[120px] text-xs", FIELD_CLS, className)}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {SHARE_ROLES.map((r) => (
+          <SelectItem key={r.value} value={r.value}>
+            {r.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
-function buildStats(rows, forms) {
-  const people = new Set();
-  for (const f of forms) {
-    if (Array.isArray(f.settings?.sharing)) {
-      for (const s of f.settings.sharing) {
-        if (s.email) people.add(s.email.toLowerCase());
-      }
+function ShareDialog({ open, forms, onClose, onShare }) {
+  const [formId, setFormId] = useState("");
+  const [emails, setEmails] = useState([]);
+  const [role, setRole] = useState("viewer");
+  const [notify, setNotify] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    if (!formId) return toast.error("Choose a form.");
+    if (!emails.length) return toast.error("Add at least one email.");
+    setBusy(true);
+    const ok = await onShare({ formId, emails, role, notify });
+    setBusy(false);
+    if (ok) {
+      setEmails([]);
+      onClose();
     }
-  }
-  return {
-    sharedForms: rows.length,
-    people: people.size,
-    publicLinks: rows.filter((r) => r.published).length,
-    protected: forms.filter(
-      (f) => Array.isArray(f.settings?.sharing) && f.settings.sharing.length > 0 && f.settings?.accessRestricted,
-    ).length,
   };
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && !busy && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Share a form</DialogTitle>
+          <DialogDescription>Add teammates to a form&apos;s access list.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">
+          <Field label="Form">
+            <Select value={formId || undefined} onValueChange={setFormId}>
+              <SelectTrigger className={cn("h-9", FIELD_CLS)}>
+                <SelectValue placeholder="Choose a form…" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                {forms.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="People">
+            <ChipsInput value={emails} onChange={setEmails} placeholder="teammate@company.com" />
+          </Field>
+          <Field label="Role">
+            <RoleSelect value={role} onChange={setRole} className="h-9 w-full" />
+          </Field>
+          <label className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+            Email them a link to the form
+            <Switch checked={notify} onCheckedChange={setNotify} />
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={busy} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} Share
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Workspace roles and member counts (null when the workspace has no project / RBAC).
+function useWorkspaceRoles(projectId) {
+  const [state, setState] = useState({ projectId: null, roles: null });
+  useEffect(() => {
+    if (!projectId) return undefined;
+    let alive = true;
+    Promise.all([listRoles(projectId), listGrants(projectId)]).then(([roles, grants]) => {
+      if (!alive) return;
+      const counts = {};
+      for (const g of grants || []) counts[g.roleId] = (counts[g.roleId] || 0) + 1;
+      setState({ projectId, roles: (roles || []).map((r) => ({ ...r, members: counts[r.id] || 0 })) });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [projectId]);
+  return projectId && state.projectId === projectId ? state.roles : null;
 }
 
 export function SharedScreen() {
-  const { forms, loading } = useForms();
+  const { forms, loading, error, refresh, mergeSettings } = useForms();
+  const { projectId, openForm } = useWorkspaceUrl();
+  const canInvite = useCan("forms.team.invite");
+  const roles = useWorkspaceRoles(projectId);
 
-  const rows = useMemo(() => buildSharedRows(forms), [forms]);
-  const stats = useMemo(() => buildStats(rows, forms), [rows, forms]);
+  const [search, setSearch] = useState("");
+  const [sharing, setSharing] = useState(false);
 
-  const copyLink = (slug) => {
-    if (typeof window === "undefined") return;
-    navigator.clipboard?.writeText(`${window.location.origin}${withPrefix(`/form/${slug}`)}`);
+  const rows = useMemo(
+    () =>
+      forms.flatMap((f) =>
+        (f.settings?.sharing || []).filter((s) => s?.email).map((s) => ({ key: `${f.id}:${s.email}`, form: f, email: s.email, role: s.role || "viewer" })),
+      ),
+    [forms],
+  );
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q ? rows.filter((r) => `${r.email} ${r.form.name}`.toLowerCase().includes(q)) : rows;
+  }, [rows, search]);
+  const pager = usePagination(filtered, { resetKey: search });
+
+  const stats = useMemo(() => {
+    const people = new Set(rows.map((r) => r.email.toLowerCase()));
+    return [
+      { label: "Shared forms", value: String(new Set(rows.map((r) => r.form.id)).size), footer: `of ${forms.length} forms` },
+      { label: "People", value: String(people.size), footer: "On access lists" },
+      { label: "Editors & admins", value: String(rows.filter((r) => r.role !== "viewer").length), footer: "Can change forms" },
+      { label: "Workspace roles", value: roles ? String(roles.length) : "—", footer: projectId ? "Enforced access" : "No project" },
+    ];
+  }, [rows, forms.length, roles, projectId]);
+
+  const writeSharing = async (form, next, success) => {
+    try {
+      await mergeSettings(form.id, { sharing: next });
+      if (success) toast.success(success);
+      return true;
+    } catch (err) {
+      console.error("[shared.write]", err);
+      toast.error("Couldn't update access.");
+      return false;
+    }
   };
 
+  const share = async ({ formId, emails, role, notify }) => {
+    const form = forms.find((f) => f.id === formId);
+    if (!form) return false;
+    const current = form.settings?.sharing || [];
+    const lower = emails.map((e) => e.toLowerCase());
+    const next = [...current.filter((s) => !lower.includes(s.email?.toLowerCase())), ...lower.map((email) => ({ email, role }))];
+    const ok = await writeSharing(form, next, `Shared with ${emails.length} ${emails.length === 1 ? "person" : "people"}`);
+    if (ok && notify) {
+      const res = await callApi(`/api/forms/${form.id}/invite`, { method: "POST", body: { emails: lower, message: `You've been given access to “${form.name}”.`, signed: false } });
+      if (res.status === 409) toast.message("Access saved. No email sent — the form isn't published yet.");
+      else if (!res.ok) toast.error(res.data?.error || "Access saved, but the email couldn't be sent.");
+      else if (res.data?.configured === false) toast.message("Access saved. Email isn't configured (RESEND_API_KEY), so no link was sent.");
+    }
+    return ok;
+  };
+
+  const changeRole = (row, role) =>
+    writeSharing(row.form, (row.form.settings.sharing || []).map((s) => (s.email === row.email ? { ...s, role } : s)), "Role updated");
+  const removeRow = (row) =>
+    writeSharing(row.form, (row.form.settings.sharing || []).filter((s) => s.email !== row.email), `Removed ${row.email}`);
+
+  const columns = [
+    {
+      key: "person",
+      header: "Person",
+      render: (r) => (
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[10px] font-semibold text-muted-foreground">{initials(r.email)}</div>
+          <span className="truncate text-sm text-foreground">{r.email}</span>
+        </div>
+      ),
+    },
+    {
+      key: "form",
+      header: "Form",
+      render: (r) => (
+        <Button type="button" variant="link" onClick={() => openForm(r.form.id, "access")} className="h-auto p-0 text-left text-sm font-normal text-muted-foreground hover:text-foreground">
+          {r.form.name}
+        </Button>
+      ),
+    },
+    {
+      key: "role",
+      header: "Role",
+      render: (r) => (canInvite ? <RoleSelect value={r.role} onChange={(v) => changeRole(r, v)} /> : <Badge variant="neutral">{ROLE_LABEL[r.role] || r.role}</Badge>),
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      className: "text-right",
+      render: (r) =>
+        canInvite ? (
+          <Button size="icon" variant="ghost" aria-label={`Remove ${r.email}`} onClick={() => removeRow(r)} className="h-8 w-8 text-text-secondary hover:bg-red-500/10 hover:text-red-400">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        ) : null,
+    },
+  ];
+
   return (
-    <FormsScreenShell
-      eyebrow="Collaboration"
-      title="Shared"
-      description="See forms shared with teammates, guests, and public links."
-      stats={[
-        { label: "Shared forms", value: String(stats.sharedForms), detail: "With collaborators", Icon: Share2 },
-        { label: "Members", value: String(stats.people), detail: "Have access", Icon: Users },
-        { label: "Public links", value: String(stats.publicLinks), detail: "Currently enabled", Icon: Link2 },
-        { label: "Protected", value: String(stats.protected), detail: "Restricted access", Icon: ShieldCheck },
-      ]}
-    >
+    <MainScreenWrapper>
+      <ScreenHeader
+        title="Shared"
+        description="Who has been given access to which forms, and the workspace roles that govern what they can do."
+        actions={
+          canInvite ? (
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setSharing(true)} disabled={!forms.length}>
+              <UserPlus className="h-4 w-4" /> Share a form
+            </Button>
+          ) : null
+        }
+      />
+
+      <StatsBar stats={stats} />
+
+      <Toolbar>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search people or forms…" className="w-full sm:max-w-xs" />
+      </Toolbar>
+
       {loading ? (
-        <LoadingState label="Loading shared forms…" />
+        <LoadingArea panel size={40} label="Loading shared forms" />
+      ) : error ? (
+        <ErrorState title="Couldn't load shared forms" onRetry={refresh} />
       ) : (
-        <section className="overflow-hidden rounded-md border border-border bg-surface-subtle">
-          {rows.length === 0 ? (
-            <div className="flex min-h-56 flex-col items-center justify-center p-8 text-center">
-              <Share2 className="mb-3 h-6 w-6 text-text-tertiary" />
-              <p className="text-sm font-medium text-foreground">No forms shared yet</p>
-              <p className="mt-1 max-w-md text-xs leading-5 text-text-secondary">
-                Share a form with teammates by email to start collaborating.
-              </p>
-            </div>
-          ) : (
-            <Table className="min-w-[720px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Form</TableHead>
-                  <TableHead>Access</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Public link</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((item, idx) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <p className="text-sm font-medium text-foreground">{item.name}</p>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {item.roles.map((role) => {
-                          const style = roleStyle[role] ?? roleStyle.viewer;
-                          return (
-                            <span
-                              key={role}
-                              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${style.bg} ${style.text} ${style.border}`}
-                            >
-                              {style.label}
-                            </span>
-                          );
-                        })}
-                        <span className="whitespace-nowrap text-xs text-text-tertiary">
-                          {item.members} {item.members === 1 ? "member" : "members"}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex -space-x-2">
-                        {item.emails.slice(0, 3).map((email, i) => (
-                          <div
-                            key={email}
-                            className={`flex h-6 w-6 items-center justify-center rounded-full border border-surface-subtle text-[9px] font-semibold text-muted-foreground ${avatarColors[(idx + i) % avatarColors.length]}`}
-                          >
-                            {shareInitials(email)}
-                          </div>
-                        ))}
-                        {item.emails.length > 3 && (
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full border border-surface-subtle bg-surface-active text-[9px] font-semibold text-text-secondary">
-                            +{item.emails.length - 3}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        {item.published ? (
-                          <Link2 className="h-3.5 w-3.5 text-emerald-400" />
-                        ) : (
-                          <Link2Off className="h-3.5 w-3.5 text-text-tertiary" />
-                        )}
-                        <span className={`whitespace-nowrap text-xs ${item.published ? "text-emerald-400" : "text-text-tertiary"}`}>
-                          {item.published ? "Link on" : "Link off"}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => copyLink(item.slug)}
-                          className="flex h-7 items-center gap-1.5 rounded-md border border-border bg-surface-card px-2.5 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
-                        >
-                          <Copy className="h-3 w-3" />
-                          Copy link
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </section>
+        <div className="space-y-5">
+          <DataTable
+            columns={columns}
+            data={pager.pageItems}
+            getRowKey={(r) => r.key}
+            empty={
+              <div className="rounded-xl border border-border bg-surface-subtle">
+                <EmptyState
+                  icon={Share2}
+                  title={rows.length ? "No one matches" : "No forms shared yet"}
+                  description={rows.length ? "Try a different search." : "Share a form with teammates to collaborate on it."}
+                  action={
+                    rows.length ? (
+                      <Button variant="outline" onClick={() => setSearch("")}>
+                        Clear search
+                      </Button>
+                    ) : canInvite && forms.length ? (
+                      <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setSharing(true)}>
+                        <UserPlus className="h-4 w-4" /> Share a form
+                      </Button>
+                    ) : null
+                  }
+                />
+              </div>
+            }
+          />
+          <ListPagination {...pager} itemLabel="people" />
+        </div>
       )}
-    </FormsScreenShell>
+
+      {roles?.length ? (
+        <SectionCard title="Workspace roles" description="Manage roles and members from the workspace Roles & Team screens.">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {roles.map((r) => (
+              <div key={r.id} className="flex items-center gap-3 rounded-lg border border-border bg-surface-card px-3 py-2.5">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-text-secondary" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-foreground">{r.name}</p>
+                  <p className="truncate text-[11px] text-text-tertiary">{r.description || `${(r.permissions || []).length} permissions`}</p>
+                </div>
+                <span className="text-sm tabular-nums text-muted-foreground">{r.members}</span>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      ) : null}
+
+      <ShareDialog open={sharing} forms={forms.filter((f) => f.status !== "Archived")} onClose={() => setSharing(false)} onShare={share} />
+    </MainScreenWrapper>
   );
 }
+
+export default SharedScreen;
