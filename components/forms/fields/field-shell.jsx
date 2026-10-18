@@ -1,6 +1,7 @@
 "use client";
 
 import { Info, Lock } from "lucide-react";
+import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@geiger/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -109,10 +110,10 @@ export function FieldShell({
           </LabelTag>
           <div className="flex shrink-0 items-center gap-1.5">
             {readOnly && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-card px-2 py-0.5 text-[11px] text-text-secondary">
-                <Lock className="size-3" />
+              <Badge variant="neutral">
+                <Lock />
                 {readOnlyLabel}
-              </span>
+              </Badge>
             )}
             <InfoTip text={field?.info} label={infoLabel} />
           </div>

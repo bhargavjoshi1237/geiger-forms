@@ -106,7 +106,7 @@ function Deliveries({ formId }) {
                 <Badge variant={ok ? "success" : "danger"}>{status || (ok ? "OK" : "Failed")}</Badge>
                 <span className="min-w-0 flex-1 truncate text-muted-foreground" title={d.error || undefined}>
                   {d.event || "delivery"} → {d.url}
-                  {d.error ? <span className="text-red-400"> · {d.error}</span> : null}
+                  {d.error ? <span className="text-red-600 dark:text-red-400"> · {d.error}</span> : null}
                 </span>
                 <span className="shrink-0 text-xs text-text-tertiary">{relativeTime(d.created_at || d.createdAt)}</span>
               </div>

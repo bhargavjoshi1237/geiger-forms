@@ -3,21 +3,21 @@ import { RESPONSE_PRIORITIES, RESPONSE_STATUSES } from "@/lib/forms/schema";
 
 export { RESPONSE_PRIORITIES, RESPONSE_STATUSES };
 
-// status → StatusPill meta (Badge variants from @geiger/ui).
+// status → StatusPill meta: neutral palette badge, state carried by the dot colour.
 export const RESPONSE_STATUS_MAP = {
-  Complete: { label: "Complete", variant: "success", dotClass: "bg-emerald-400" },
-  "Needs review": { label: "Needs review", variant: "warning", dotClass: "bg-amber-400" },
+  Complete: { label: "Complete", variant: "neutral", dotClass: "bg-emerald-400" },
+  "Needs review": { label: "Needs review", variant: "neutral", dotClass: "bg-amber-400" },
   Pending: { label: "Pending", variant: "neutral", dotClass: "bg-muted-foreground" },
-  "In progress": { label: "In progress", variant: "info", dotClass: "bg-sky-400" },
-  Approved: { label: "Approved", variant: "success", dotClass: "bg-emerald-400" },
-  Rejected: { label: "Rejected", variant: "danger", dotClass: "bg-red-400" },
-  "Awaiting payment": { label: "Awaiting payment", variant: "purple", dotClass: "bg-violet-400" },
-  Spam: { label: "Spam", variant: "outline", dotClass: "bg-text-tertiary" },
+  "In progress": { label: "In progress", variant: "neutral", dotClass: "bg-sky-400" },
+  Approved: { label: "Approved", variant: "neutral", dotClass: "bg-emerald-400" },
+  Rejected: { label: "Rejected", variant: "neutral", dotClass: "bg-red-400" },
+  "Awaiting payment": { label: "Awaiting payment", variant: "neutral", dotClass: "bg-violet-400" },
+  Spam: { label: "Spam", variant: "neutral", dotClass: "bg-text-tertiary" },
 };
 
 export const RESPONSE_PRIORITY_MAP = {
-  High: { label: "High", variant: "danger", dotClass: "bg-red-400" },
-  Medium: { label: "Medium", variant: "warning", dotClass: "bg-amber-400" },
+  High: { label: "High", variant: "neutral", dotClass: "bg-red-400" },
+  Medium: { label: "Medium", variant: "neutral", dotClass: "bg-amber-400" },
   Low: { label: "Low", variant: "neutral", dotClass: "bg-muted-foreground" },
 };
 
@@ -74,11 +74,6 @@ export const STATUS_FILTER_OPTIONS = [
   ...RESPONSE_STATUSES.map((s) => ({ value: s, label: s })),
 ];
 
-export const PRIORITY_FILTER_OPTIONS = [
-  { value: "all", label: "All priorities" },
-  ...RESPONSE_PRIORITIES.map((p) => ({ value: p, label: p })),
-];
-
 export const DEFAULT_FILTERS = {
   search: "",
   formId: "all",
@@ -90,8 +85,6 @@ export const DEFAULT_FILTERS = {
   from: "",
   to: "",
 };
-
-export const AVATAR_COLORS = ["bg-blue-500/10", "bg-emerald-500/10", "bg-orange-500/10", "bg-violet-500/10", "bg-surface-card", "bg-teal-500/10"];
 
 // Events outline-button idiom.
 export const OUTLINE_BUTTON = "border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground";
@@ -113,11 +106,4 @@ export function formatDuration(ms) {
   const s = total % 60;
   if (h) return `${h}h ${m}m`;
   return m ? `${m}m ${s}s` : `${s}s`;
-}
-
-export function avatarColor(seed) {
-  const str = String(seed || "");
-  let hash = 0;
-  for (let i = 0; i < str.length; i += 1) hash = (hash * 31 + str.charCodeAt(i)) | 0;
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }

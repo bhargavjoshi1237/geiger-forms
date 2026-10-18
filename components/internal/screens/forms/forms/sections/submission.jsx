@@ -26,10 +26,10 @@ export function SubmissionSection({ form, settings, set, setGroup }) {
       <SectionCard title="Schedule" description="Accept responses only between these dates (inclusive).">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Opens on">
-            <TextInput type="date" value={settings.openDate} onChange={(v) => set("openDate", v)} className="[color-scheme:dark]" />
+            <TextInput type="date" value={settings.openDate} onChange={(v) => set("openDate", v)} className="dark:[color-scheme:dark]" />
           </Field>
           <Field label="Closes after">
-            <TextInput type="date" value={settings.closeDate} onChange={(v) => set("closeDate", v)} className="[color-scheme:dark]" />
+            <TextInput type="date" value={settings.closeDate} onChange={(v) => set("closeDate", v)} className="dark:[color-scheme:dark]" />
           </Field>
           <Field label="Closed message" className="sm:col-span-2" hint="Shown outside the schedule, or once the limit is reached.">
             <TextArea value={settings.closedMessage} onChange={(v) => set("closedMessage", v)} rows={2} placeholder="This form is no longer accepting responses." />

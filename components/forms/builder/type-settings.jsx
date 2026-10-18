@@ -37,7 +37,7 @@ function BookingSettings({ config, setConfig, fieldId }) {
             <ToggleGroupItem
               key={label}
               value={String(d)}
-              className="h-7 min-w-0 rounded-md border border-border bg-background px-2 text-xs font-normal text-text-tertiary transition-colors hover:bg-background hover:text-foreground data-[state=on]:border-border-strong data-[state=on]:bg-surface-hover data-[state=on]:text-foreground"
+              className="h-7 min-w-0 rounded-md border border-border bg-surface-card px-2 text-xs font-normal text-text-tertiary transition-colors hover:bg-surface-hover hover:text-foreground data-[state=on]:border-border-strong data-[state=on]:bg-surface-hover data-[state=on]:text-foreground"
             >
               {label}
             </ToggleGroupItem>
@@ -45,15 +45,15 @@ function BookingSettings({ config, setConfig, fieldId }) {
         </ToggleGroup>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <FieldRow label="Day starts"><Input type="time" value={config.start || "09:00"} onChange={(e) => setConfig({ start: e.target.value })} className="h-8 bg-background text-sm" /></FieldRow>
-        <FieldRow label="Day ends"><Input type="time" value={config.end || "17:00"} onChange={(e) => setConfig({ end: e.target.value })} className="h-8 bg-background text-sm" /></FieldRow>
+        <FieldRow label="Day starts"><Input type="time" value={config.start || "09:00"} onChange={(e) => setConfig({ start: e.target.value })} className="h-8 bg-surface-card text-sm" /></FieldRow>
+        <FieldRow label="Day ends"><Input type="time" value={config.end || "17:00"} onChange={(e) => setConfig({ end: e.target.value })} className="h-8 bg-surface-card text-sm" /></FieldRow>
         <FieldRow label="Slot length (min)"><NumberInput min={5} step={5} value={config.slotMinutes ?? 30} onChange={(v) => setConfig({ slotMinutes: v })} /></FieldRow>
         <FieldRow label="Bookings per slot"><NumberInput min={1} value={config.capacity ?? 1} onChange={(v) => setConfig({ capacity: v })} /></FieldRow>
         <FieldRow label="Bookable days ahead"><NumberInput min={1} value={config.horizonDays ?? 30} onChange={(v) => setConfig({ horizonDays: v })} /></FieldRow>
         <FieldRow label="Minimum notice (h)"><NumberInput min={0} value={config.leadHours ?? 2} onChange={(v) => setConfig({ leadHours: v })} /></FieldRow>
       </div>
       <FieldRow label="Timezone" hint="Slots are generated in this timezone and shown in the respondent's local time.">
-        <Input list={`tz-${fieldId}`} value={config.timezone || ""} onChange={(e) => setConfig({ timezone: e.target.value })} placeholder="UTC" className="h-8 bg-background text-sm" />
+        <Input list={`tz-${fieldId}`} value={config.timezone || ""} onChange={(e) => setConfig({ timezone: e.target.value })} placeholder="UTC" className="h-8 bg-surface-card text-sm" />
         <datalist id={`tz-${fieldId}`}>
           {timezones().map((tz) => <option key={tz} value={tz} />)}
         </datalist>
@@ -87,7 +87,7 @@ function RepeaterSettings({ config, setConfig }) {
               </Select>
               <Button type="button" variant="ghost" size="icon-xs" aria-label="Move up" disabled={i === 0} onClick={() => moveSub(i, -1)}><ArrowUp /></Button>
               <Button type="button" variant="ghost" size="icon-xs" aria-label="Move down" disabled={i === subs.length - 1} onClick={() => moveSub(i, 1)}><ArrowDown /></Button>
-              <Button type="button" variant="ghost" size="icon-xs" aria-label="Remove sub-field" className="hover:text-red-400" onClick={() => setSubs(subs.filter((s) => s.id !== sub.id))}><X /></Button>
+              <Button type="button" variant="ghost" size="icon-xs" aria-label="Remove sub-field" className="hover:text-red-600 dark:hover:text-red-400" onClick={() => setSubs(subs.filter((s) => s.id !== sub.id))}><X /></Button>
             </div>
             {sub.type === "dropdown" ? (
               <StringListEditor items={sub.options || []} onChange={(options) => updateSub(sub.id, { options })} placeholder="Choice" addLabel="Add choice" />
@@ -142,7 +142,7 @@ export function renderTypeSettings({ field, onChange, scoring, quiz, currency })
       return (
         <FieldRow label="Number of stars" className="max-w-40">
           <Select value={String(config.max ?? 5)} onValueChange={(v) => setConfig({ max: Number(v) })}>
-            <SelectTrigger className="h-8 w-full bg-background text-sm"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>{[3, 4, 5, 6, 7, 8, 9, 10].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
           </Select>
         </FieldRow>
@@ -180,7 +180,7 @@ export function renderTypeSettings({ field, onChange, scoring, quiz, currency })
             <FieldRow label={`Price (${(currency || "usd").toUpperCase()})`}><NumberInput min={0} step="0.01" value={config.price} onChange={(v) => setConfig({ price: v })} /></FieldRow>
             <FieldRow label="Quantity">
               <Select value={config.quantityMode || "input"} onValueChange={(quantityMode) => setConfig({ quantityMode })}>
-                <SelectTrigger className="h-8 w-full bg-background text-sm"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="input">Respondent picks a quantity</SelectItem>
                   <SelectItem value="fixed">Single item (add / skip)</SelectItem>
@@ -192,7 +192,7 @@ export function renderTypeSettings({ field, onChange, scoring, quiz, currency })
             ) : null}
           </div>
           <FieldRow label="Description">
-            <Textarea value={config.description || ""} onChange={(e) => setConfig({ description: e.target.value })} rows={2} className="min-h-14 resize-y bg-background text-sm" placeholder="What the respondent is buying" />
+            <Textarea value={config.description || ""} onChange={(e) => setConfig({ description: e.target.value })} rows={2} className="min-h-14 resize-y bg-surface-card text-sm placeholder:text-text-tertiary" placeholder="What the respondent is buying" />
           </FieldRow>
           <SubtleNote>Checkout runs when payments are enabled in the form&apos;s settings.</SubtleNote>
         </div>

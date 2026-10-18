@@ -1,13 +1,12 @@
 "use client";
 
-import { memo, useCallback, useMemo, useState } from "react";
-import { FileText, FunctionSquare, ImageIcon, MousePointerClick, Plus, SplitSquareVertical } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { FunctionSquare, ImageIcon, MousePointerClick, Plus, SplitSquareVertical } from "lucide-react";
 import { Button } from "@geiger/ui/button";
-import { Input } from "@geiger/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@geiger/ui/popover";
-import { Textarea } from "@geiger/ui/textarea";
 import { cn } from "@/lib/utils";
-import { isInputField } from "@/lib/forms/field-types";
+import { getFieldType, isInputField } from "@/lib/forms/field-types";
+import { FieldTypeIcon } from "./builder-controls";
 import { coverBackground } from "./cover-presets";
 import { CoverPicker } from "./cover-picker";
 import { FieldCard } from "./field-card";
@@ -16,6 +15,7 @@ import { PageBreakCard } from "./page-break-card";
 
 const MIN_WIDTH = 480;
 const MAX_WIDTH = 820;
+const QUICK_TYPES = ["text", "email", "select", "textarea", "date", "rating"];
 
 function DropLine() {
   return (
@@ -45,37 +45,44 @@ function ResizeHandle({ onMouseDown }) {
   );
 }
 
-const IntroCard = memo(function IntroCard({ title, description, showIcon, logoUrl, onTitleChange, onDescriptionChange, onResize }) {
+// Empty canvas: a drop target with one-click starters for the most common field types.
+function EmptyCanvas({ active, onDragOver, onDrop, onPick }) {
   return (
-    <div className="relative rounded-xl border border-border bg-card p-6 shadow-sm">
-      {showIcon ? (
-        logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- user-supplied external logo URL
-          <img src={logoUrl} alt="" className="mb-4 h-12 w-12 rounded-lg border border-border object-cover" />
-        ) : (
-          <span className="mb-4 grid h-12 w-12 place-items-center rounded-lg border border-border bg-surface-subtle text-text-secondary"><FileText className="h-5 w-5" /></span>
-        )
-      ) : null}
-      <Input
-        value={title}
-        onChange={(e) => onTitleChange(e.target.value)}
-        aria-label="Form title"
-        placeholder="Untitled form"
-        className="h-11 border-transparent bg-transparent px-0 text-[26px] font-semibold leading-tight text-foreground shadow-none focus-visible:ring-0"
-      />
-      <Textarea
-        value={description}
-        onChange={(e) => onDescriptionChange(e.target.value)}
-        aria-label="Form description"
-        placeholder="Add a description respondents will see above the questions…"
-        className="mt-3 min-h-20 resize-none border-border bg-surface-card text-[13px] leading-5 text-muted-foreground"
-      />
-      <ResizeHandle onMouseDown={onResize} />
+    <div
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      className={cn(
+        "flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-12 text-center transition-colors",
+        active ? "border-sky-400 bg-sky-500/5" : "border-border bg-surface-subtle",
+      )}
+    >
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface-card text-text-secondary">
+        <MousePointerClick className="h-5 w-5" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground">Start building your form</p>
+        <p className="mx-auto max-w-sm text-sm text-text-secondary">Pick a field to begin, or drag any field type from the sidebar onto the canvas.</p>
+      </div>
+      <div className="flex max-w-md flex-wrap justify-center gap-2">
+        {QUICK_TYPES.map((type) => (
+          <Button
+            key={type}
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPick(type)}
+            className="gap-1.5 bg-surface-card text-xs font-normal text-muted-foreground hover:border-border-strong hover:bg-surface-hover hover:text-foreground"
+          >
+            <FieldTypeIcon type={type} className="h-3.5 w-3.5 text-text-secondary" />
+            {getFieldType(type)?.label}
+          </Button>
+        ))}
+      </div>
     </div>
   );
-});
+}
 
-// The editable form canvas: cover, intro, field/page cards with drag-and-drop, and insert actions.
+// The editable form canvas: cover, field/page cards with drag-and-drop, and insert actions.
 export function BuilderCanvas({
   doc,
   selectedId,
@@ -83,8 +90,6 @@ export function BuilderCanvas({
   scoring,
   quiz,
   currency,
-  onTitleChange,
-  onDescriptionChange,
   onSettingsChange,
   onSelect,
   onFieldChange,
@@ -169,7 +174,7 @@ export function BuilderCanvas({
   };
 
   return (
-    <section className="relative min-h-full pb-16">
+    <section className={cn("relative flex flex-1 flex-col", visible.length && "pb-16")}>
       {settings.coverStyle === "cover" ? (
         <div className="relative h-[164px] border-b border-border" style={{ background: coverBackground(settings) }}>
           <Popover open={coverOpen} onOpenChange={setCoverOpen}>
@@ -185,18 +190,9 @@ export function BuilderCanvas({
         </div>
       ) : null}
 
-      <div className={cn("mx-auto w-full px-10", settings.coverStyle === "cover" ? "-mt-[66px]" : "mt-6")} style={{ maxWidth: `${canvasWidth + 80}px` }}>
-        <IntroCard
-          title={doc.title}
-          description={doc.description}
-          showIcon={settings.showIcon}
-          logoUrl={settings.logoUrl}
-          onTitleChange={onTitleChange}
-          onDescriptionChange={onDescriptionChange}
-          onResize={startResize}
-        />
-
-        <div className="mt-5 space-y-4" onDragLeave={handleLeave}>
+      {/* An empty canvas centres its starter block vertically; once fields exist they flow from the top. */}
+      <div className={cn("mx-auto w-full px-10", visible.length ? "mt-6" : "my-auto py-6")} style={{ maxWidth: `${canvasWidth + 80}px` }}>
+        <div className="relative space-y-4" onDragLeave={handleLeave}>
           {hasPages ? (
             <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
               <SplitSquareVertical className="h-3.5 w-3.5" />Page 1
@@ -204,18 +200,12 @@ export function BuilderCanvas({
           ) : null}
 
           {visible.length === 0 ? (
-            <div
+            <EmptyCanvas
+              active={overId === "__end__"}
               onDragOver={(e) => handleDragOver(e, "__end__")}
               onDrop={(e) => handleDrop(e, null)}
-              className={cn(
-                "flex flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-12 text-center transition-colors",
-                overId === "__end__" ? "border-sky-400 bg-sky-500/5" : "border-border bg-surface-subtle",
-              )}
-            >
-              <MousePointerClick className="h-6 w-6 text-text-tertiary" />
-              <p className="text-sm font-medium text-foreground">Start building your form</p>
-              <p className="max-w-xs text-xs text-text-secondary">Drag a field type from the sidebar, or use “Add field” below.</p>
-            </div>
+              onPick={(type) => onInsert(type, { afterId: selectedId })}
+            />
           ) : null}
 
           {visible.map((field) => (
@@ -267,9 +257,11 @@ export function BuilderCanvas({
               {overId === "__end__" ? <DropLine /> : null}
             </div>
           ) : null}
+
+          <ResizeHandle onMouseDown={startResize} />
         </div>
 
-        <div className="mt-2 flex flex-wrap justify-center gap-2">
+        <div className={cn("flex flex-wrap justify-center gap-2", visible.length ? "mt-2" : "mt-6")}>
           <Popover open={paletteOpen} onOpenChange={setPaletteOpen}>
             <PopoverTrigger asChild>
               <Button type="button" variant="outline" size="sm" className="gap-1.5 bg-surface-subtle"><Plus className="h-3.5 w-3.5" />Add field</Button>

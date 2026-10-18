@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { Clock, Eye, EyeOff, FolderOpen, GitBranch, History, LayoutGrid, Plus, SlidersHorizontal, SplitSquareVertical, Target, Wand2 } from "lucide-react";
+import { Clock, Eye, EyeOff, FolderOpen, GitBranch, History, LayoutGrid, Palette, Plus, SlidersHorizontal, SplitSquareVertical, Target } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@geiger/ui/accordion";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
@@ -10,7 +10,8 @@ import { splitPages } from "@/lib/forms/logic";
 import { FieldTypeIcon, SubtleNote } from "./builder-controls";
 import { FieldPalette } from "./field-palette";
 import { HistorySection } from "./history-section";
-import { BranchesSection, ScheduleSection, StyleSection, SubmissionSection, TriageSection } from "./sidebar-sections";
+import { DesignSection } from "./design-section";
+import { BranchesSection, ScheduleSection, SubmissionSection, TriageSection } from "./sidebar-sections";
 
 function SectionTitle({ icon: Icon, children, count, dot }) {
   return (
@@ -151,9 +152,9 @@ export function BuilderSidebar({
             <AccordionContent className="pb-4"><TriageSection settings={settings} fields={fields} onChange={onSettingsChange} onSelectField={onSelect} /></AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="style" className="border-border">
-            <AccordionTrigger className={trigger}><SectionTitle icon={Wand2}>Form style</SectionTitle></AccordionTrigger>
-            <AccordionContent className="pb-4"><StyleSection settings={settings} onChange={onSettingsChange} /></AccordionContent>
+          <AccordionItem value="design" className="border-border">
+            <AccordionTrigger className={trigger}><SectionTitle icon={Palette}>Design</SectionTitle></AccordionTrigger>
+            <AccordionContent className="pb-4"><DesignSection settings={settings} title={doc.title} onChange={onSettingsChange} /></AccordionContent>
           </AccordionItem>
 
           <AccordionItem value="schedule" className="border-border">

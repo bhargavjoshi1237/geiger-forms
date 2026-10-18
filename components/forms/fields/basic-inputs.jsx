@@ -41,7 +41,12 @@ function coerce(type, raw) {
   return raw;
 }
 
-export const controlSize = (large) => (large ? "!py-3 text-base md:text-lg" : "");
+// Shared field geometry: the suite Input pads from the --input-box-* tokens, so select triggers and textareas
+// read the same tokens to stay the same height; `large` (conversational view) only grows padding and text.
+export const controlSize = (large) => (large ? "py-3 text-base md:text-lg" : "");
+const BOX_PADDING = "px-[var(--input-box-padding-x,0.75rem)] py-[var(--input-box-padding-y,0.5rem)] leading-5";
+export const selectBox = (large) => cn("w-full bg-surface-card data-[size=default]:h-auto", BOX_PADDING, large && "py-3 text-base md:text-lg");
+const textareaBox = (large) => cn("min-h-28 resize-y", BOX_PADDING, large && "text-base md:text-lg");
 
 // Single-line input for text-like, numeric and date/time types.
 export function TextLikeInput({ field, value, onChange, disabled, aria, large, autoFocus, currency, id, onEnter, placeholder }) {
@@ -79,7 +84,7 @@ export function TextLikeInput({ field, value, onChange, disabled, aria, large, a
   if (!symbol) return input;
   return (
     <div className="relative">
-      <span suppressHydrationWarning className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-text-secondary" aria-hidden="true">
+      <span suppressHydrationWarning className="pointer-events-none absolute inset-y-0 left-[var(--input-box-padding-x,0.75rem)] flex items-center text-sm text-text-secondary" aria-hidden="true">
         {symbol}
       </span>
       {input}
@@ -102,7 +107,7 @@ export function LongTextInput({ field, value, onChange, disabled, aria, large, a
         autoFocus={autoFocus}
         rows={4}
         onChange={(e) => onChange(e.target.value)}
-        className={cn("min-h-28 resize-y", large && "text-base md:text-lg")}
+        className={textareaBox(large)}
         {...aria}
       />
       {max > 0 && (
@@ -118,7 +123,7 @@ export function DropdownInput({ field, value, onChange, disabled, aria, large, p
   const options = field.options || [];
   return (
     <Select value={value ?? ""} onValueChange={onChange} disabled={disabled || field.readOnly}>
-      <SelectTrigger id={id || fieldIds(field).control} className={cn("w-full", large && "!h-12 text-base")} {...aria}>
+      <SelectTrigger id={id || fieldIds(field).control} className={selectBox(large)} {...aria}>
         <SelectValue placeholder={field.placeholder || placeholder} />
       </SelectTrigger>
       <SelectContent className="max-h-72">

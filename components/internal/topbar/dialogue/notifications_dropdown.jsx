@@ -167,7 +167,7 @@ export function NotificationsDropdown({ children }) {
           {loading ? (
             <SkeletonRows />
           ) : error ? (
-            <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] font-medium text-red-200">
+            <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] font-medium text-red-800 dark:text-red-200">
               {error}
             </div>
           ) : filteredNotifications.length === 0 ? (
@@ -257,7 +257,7 @@ export function NotificationsDropdown({ children }) {
                             <div className="bg-surface-subtle border border-border rounded-lg p-3 text-[12px] text-muted-foreground leading-relaxed">
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <span className="inline-flex items-center gap-1.5 text-foreground font-medium">
-                                  <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
+                                  <MessageSquare className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
                                   {extraContent.channel}
                                 </span>
                                 <span className="text-[11px] text-text-secondary">

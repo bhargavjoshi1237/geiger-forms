@@ -126,7 +126,7 @@ function EraseCard() {
         </Field>
         <Button
           variant="outline"
-          className="text-red-400 hover:bg-red-500/10 hover:text-red-400"
+          className="text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
           disabled={!valid || !canDelete}
           onClick={() => setConfirming(true)}
         >

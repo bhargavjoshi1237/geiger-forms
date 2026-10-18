@@ -11,47 +11,9 @@ import { Textarea } from "@geiger/ui/textarea";
 import { hasOptions } from "@/lib/forms/field-types";
 import { RESPONSE_PRIORITIES, RESPONSE_STATUSES, makeFieldId } from "@/lib/forms/schema";
 import { ConditionsEditor } from "./conditions-editor";
-import { CoverPicker } from "./cover-picker";
-import { ControlLabel, FieldRow, NumberInput, SubtleNote, ToggleRow } from "./builder-controls";
+import { ControlLabel, FieldRow, NumberInput, Segmented, SubtleNote, ToggleRow } from "./builder-controls";
 
-const dateInput = "h-8 bg-background pl-8 pr-2 text-xs text-muted-foreground dark:[color-scheme:dark]";
-
-function Segmented({ value, options, onChange }) {
-  return (
-    <ToggleGroup type="single" value={value} onValueChange={(v) => v && onChange(v)} spacing={1} className="w-full rounded-md border border-border bg-background p-1">
-      {options.map((o) => (
-        <ToggleGroupItem
-          key={o.value}
-          value={o.value}
-          className="h-auto min-w-0 flex-1 rounded py-1 text-xs font-medium text-text-secondary transition-colors hover:bg-transparent hover:text-foreground data-[state=on]:bg-surface-hover data-[state=on]:text-foreground"
-        >
-          {o.label}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
-  );
-}
-
-export const StyleSection = memo(function StyleSection({ settings, onChange }) {
-  return (
-    <div className="space-y-3">
-      <CoverPicker settings={settings} onChange={(patch) => onChange(patch, "style:cover")} />
-      <div className="space-y-1 border-t border-border pt-3">
-        <ToggleRow label="Show logo" hint="Displayed above the form title." checked={settings.showIcon} onCheckedChange={(showIcon) => onChange({ showIcon })} />
-        {settings.showIcon ? (
-          <FieldRow label="Logo URL">
-            <div className="relative">
-              <Link2 className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
-              <Input type="url" value={settings.logoUrl || ""} onChange={(e) => onChange({ logoUrl: e.target.value.trim() }, "style:logo")} placeholder="https://…/logo.png" className="h-8 bg-background pl-8 text-xs" />
-            </div>
-          </FieldRow>
-        ) : null}
-        <ToggleRow label="Geiger branding" hint="“Made with Geiger Forms” footer." checked={settings.branding} onCheckedChange={(branding) => onChange({ branding })} />
-      </div>
-      <SubtleNote>Themes, fonts and layout live in the form&apos;s settings in the workspace.</SubtleNote>
-    </div>
-  );
-});
+const dateInput = "h-8 bg-surface-card pl-8 pr-2 text-xs text-muted-foreground dark:[color-scheme:dark]";
 
 export const ScheduleSection = memo(function ScheduleSection({ settings, onChange }) {
   const invalidRange = settings.openDate && settings.closeDate && settings.closeDate < settings.openDate;
@@ -71,12 +33,12 @@ export const ScheduleSection = memo(function ScheduleSection({ settings, onChang
           </label>
         ))}
       </div>
-      {invalidRange ? <p className="text-[11px] text-red-400">The close date is before the open date.</p> : null}
+      {invalidRange ? <p className="text-[11px] text-red-600 dark:text-red-400">The close date is before the open date.</p> : null}
       {settings.openDate || settings.closeDate ? (
         <Button type="button" variant="ghost" size="xs" onClick={() => onChange({ openDate: "", closeDate: "" })} className="h-auto gap-1 px-0 font-normal hover:bg-transparent has-[>svg]:px-0 text-[11px] text-text-tertiary hover:text-foreground">Clear dates</Button>
       ) : null}
       <FieldRow label="Closed message" hint="Shown when the form is closed, scheduled or full.">
-        <Textarea value={settings.closedMessage || ""} onChange={(e) => onChange({ closedMessage: e.target.value }, "schedule:closed")} rows={2} placeholder="This form is no longer accepting responses." className="min-h-14 resize-none bg-background text-xs" />
+        <Textarea value={settings.closedMessage || ""} onChange={(e) => onChange({ closedMessage: e.target.value }, "schedule:closed")} rows={2} placeholder="This form is no longer accepting responses." className="min-h-14 resize-none bg-surface-card text-xs" />
       </FieldRow>
       <div className="space-y-1 border-t border-border pt-3">
         <FieldRow label="Response limit">
@@ -103,16 +65,16 @@ export const SubmissionSection = memo(function SubmissionSection({ settings, onC
         <FieldRow label="Redirect URL" hint="Merge tags work in the URL too, e.g. ?score={score}.">
           <div className="relative">
             <Link2 className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
-            <Input type="url" value={settings.thankYouUrl || ""} onChange={(e) => onChange({ thankYouUrl: e.target.value }, "submit:url")} placeholder="https://…" className="h-8 bg-background pl-8 text-xs" />
+            <Input type="url" value={settings.thankYouUrl || ""} onChange={(e) => onChange({ thankYouUrl: e.target.value }, "submit:url")} placeholder="https://…" className="h-8 bg-surface-card pl-8 text-xs" />
           </div>
         </FieldRow>
       ) : (
         <>
           <FieldRow label="Title">
-            <Input value={settings.thankYouTitle || ""} onChange={(e) => onChange({ thankYouTitle: e.target.value }, "submit:title")} placeholder="Response submitted" className="h-8 bg-background text-xs" />
+            <Input value={settings.thankYouTitle || ""} onChange={(e) => onChange({ thankYouTitle: e.target.value }, "submit:title")} placeholder="Response submitted" className="h-8 bg-surface-card text-xs" />
           </FieldRow>
           <FieldRow label="Message">
-            <Textarea value={settings.thankYouText || ""} onChange={(e) => onChange({ thankYouText: e.target.value }, "submit:text")} rows={3} placeholder="Thanks, {Name}!" className="min-h-20 resize-none bg-background text-xs" />
+            <Textarea value={settings.thankYouText || ""} onChange={(e) => onChange({ thankYouText: e.target.value }, "submit:text")} rows={3} placeholder="Thanks, {Name}!" className="min-h-20 resize-none bg-surface-card text-xs" />
           </FieldRow>
           <SubtleNote>
             Merge tags: <code className="font-mono">{"{Field Title}"}</code>, <code className="font-mono">{"{score}"}</code>, <code className="font-mono">{"{outcome}"}</code>, <code className="font-mono">{"{total}"}</code>.
@@ -234,7 +196,7 @@ export const BranchesSection = memo(function BranchesSection({ settings, sources
                 <Input value={b.name || ""} onChange={(e) => update(b.id, { name: e.target.value }, `branch:${b.id}:name`)} placeholder="Branch name" aria-label="Branch name" className="h-7 min-w-0 flex-1 border-transparent bg-transparent px-1 text-xs font-medium shadow-none hover:border-border" />
                 <Button type="button" variant="ghost" size="icon-xs" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}><ArrowUp /></Button>
                 <Button type="button" variant="ghost" size="icon-xs" aria-label="Move down" disabled={i === branches.length - 1} onClick={() => move(i, 1)}><ArrowDown /></Button>
-                <Button type="button" variant="ghost" size="icon-xs" aria-label="Delete branch" className="hover:text-red-400" onClick={() => setBranches(branches.filter((x) => x.id !== b.id))}><Trash2 /></Button>
+                <Button type="button" variant="ghost" size="icon-xs" aria-label="Delete branch" className="hover:text-red-600 dark:hover:text-red-400" onClick={() => setBranches(branches.filter((x) => x.id !== b.id))}><Trash2 /></Button>
               </div>
               <ConditionsEditor
                 compact

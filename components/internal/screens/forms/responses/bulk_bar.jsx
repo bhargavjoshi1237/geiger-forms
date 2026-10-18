@@ -117,7 +117,7 @@ export function BulkBar({
         {count} selected
       </span>
       {count < totalFiltered ? (
-        <Button type="button" variant="link" onClick={onSelectAll} className="h-auto p-0 text-xs font-normal text-sky-400">
+        <Button type="button" variant="link" onClick={onSelectAll} className="h-auto p-0 text-xs font-normal text-sky-600 dark:text-sky-400">
           Select all {totalFiltered}
         </Button>
       ) : null}
@@ -177,7 +177,7 @@ export function BulkBar({
       ) : null}
 
       {canDelete ? (
-        <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 border-red-500/20 bg-red-500/10 px-2.5 text-xs text-red-400 hover:bg-red-500/20 hover:text-red-300" onClick={onDelete}>
+        <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 border-red-500/20 bg-red-500/10 px-2.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300" onClick={onDelete}>
           <Trash2 className="h-3.5 w-3.5" /> Delete
         </Button>
       ) : null}

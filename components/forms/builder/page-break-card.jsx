@@ -36,13 +36,13 @@ export const PageBreakCard = memo(function PageBreakCard({ field, pageNumber, se
             onChange={(e) => onChange(field.id, { title: e.target.value })}
             aria-label={`Page ${pageNumber} title`}
             placeholder="Page title"
-            className="h-6 w-40 border-transparent bg-transparent px-1 text-xs font-medium text-foreground shadow-none hover:border-border focus-visible:border-border"
+            className="w-40 border-transparent bg-transparent px-1 py-0.5 text-xs font-medium leading-5 text-foreground shadow-none hover:border-border focus-visible:border-border focus-visible:ring-0 md:text-xs"
           />
           {conditions ? <Badge variant="outline"><GitBranch />{conditions}</Badge> : null}
           <Button type="button" variant="ghost" size="icon-xs" aria-label="Page logic" aria-expanded={selected} onClick={() => onSelect(selected ? null : field.id)} className={cn("text-text-secondary", selected && "bg-surface-active text-foreground")}>
             <ChevronDown className={cn("transition-transform", selected && "rotate-180")} />
           </Button>
-          <Button type="button" variant="ghost" size="icon-xs" aria-label="Remove page break" onClick={() => onDelete(field.id)} className="text-text-secondary hover:bg-red-500/10 hover:text-red-400">
+          <Button type="button" variant="ghost" size="icon-xs" aria-label="Remove page break" onClick={() => onDelete(field.id)} className="text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400">
             <Trash2 />
           </Button>
         </div>

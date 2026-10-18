@@ -32,7 +32,7 @@ function ValueInput({ source, value, onChange }) {
   if (source?.type === "checkbox") {
     return (
       <Select value={value || undefined} onValueChange={onChange}>
-        <SelectTrigger className="h-8 w-full bg-background text-sm"><SelectValue placeholder="Choose…" /></SelectTrigger>
+        <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue placeholder="Choose…" /></SelectTrigger>
         <SelectContent>
           <SelectItem value="true">Checked</SelectItem>
           <SelectItem value="false">Not checked</SelectItem>
@@ -45,7 +45,7 @@ function ValueInput({ source, value, onChange }) {
     const known = options.includes(value);
     return (
       <Select value={known ? value : undefined} onValueChange={onChange}>
-        <SelectTrigger className="h-8 w-full bg-background text-sm"><SelectValue placeholder={value && !known ? `${value} (removed)` : "Choose an option…"} /></SelectTrigger>
+        <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue placeholder={value && !known ? `${value} (removed)` : "Choose an option…"} /></SelectTrigger>
         <SelectContent>
           {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
         </SelectContent>
@@ -60,7 +60,7 @@ function ValueInput({ source, value, onChange }) {
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       placeholder={numeric ? "0" : "Value…"}
-      className="h-8 bg-background text-sm"
+      className="h-8 bg-surface-card text-sm"
     />
   );
 }
@@ -125,7 +125,7 @@ export const ConditionsEditor = memo(function ConditionsEditor({
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex items-center gap-1.5">
                       <Select value={source ? cond.fieldId : undefined} onValueChange={(fieldId) => update(cond.id, { fieldId, value: "" })}>
-                        <SelectTrigger className={cn("h-8 min-w-0 flex-1 bg-background text-sm", missing && "border-red-500/40 text-red-400")}>
+                        <SelectTrigger className={cn("h-8 min-w-0 flex-1 bg-surface-card text-sm", missing && "border-red-500/40 text-red-600 dark:text-red-400")}>
                           <SelectValue placeholder={missing ? "Deleted field" : "Select a field…"} />
                         </SelectTrigger>
                         <SelectContent>
@@ -133,16 +133,16 @@ export const ConditionsEditor = memo(function ConditionsEditor({
                           {sources.map((f) => <SelectItem key={f.id} value={f.id}>{f.title}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      <Button type="button" variant="ghost" size="icon-sm" aria-label="Remove condition" onClick={() => remove(cond.id)} className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-400">
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label="Remove condition" onClick={() => remove(cond.id)} className="shrink-0 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400">
                         <X />
                       </Button>
                     </div>
                     {missing ? (
-                      <p className="flex items-center gap-1 text-[11px] text-red-400"><AlertTriangle className="h-3 w-3" />The field this condition used was deleted.</p>
+                      <p className="flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400"><AlertTriangle className="h-3 w-3" />The field this condition used was deleted.</p>
                     ) : null}
                     <div className={cn("grid gap-2", operatorNeedsValue(op) && "sm:grid-cols-2")}>
                       <Select value={op} onValueChange={(operator) => update(cond.id, { operator })}>
-                        <SelectTrigger className="h-8 w-full bg-background text-sm"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {opList.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                         </SelectContent>

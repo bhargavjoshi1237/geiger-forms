@@ -84,7 +84,7 @@ function FieldReport({ agg, currency }) {
       return (
         <div className="space-y-3">
           <div className="flex items-end gap-3">
-            <span className={cn("text-3xl font-bold tabular-nums", agg.nps == null ? "text-text-tertiary" : agg.nps >= 30 ? "text-emerald-400" : agg.nps >= 0 ? "text-amber-400" : "text-red-400")}>
+            <span className={cn("text-3xl font-bold tabular-nums", agg.nps == null ? "text-text-tertiary" : agg.nps >= 30 ? "text-emerald-600 dark:text-emerald-400" : agg.nps >= 0 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400")}>
               {agg.nps == null ? "—" : agg.nps > 0 ? `+${agg.nps}` : agg.nps}
             </span>
             <span className="pb-1 text-xs text-text-tertiary">NPS · avg {agg.avg ?? "—"}</span>
@@ -95,9 +95,9 @@ function FieldReport({ agg, currency }) {
             <div className="bg-emerald-400" style={{ width: `${pct(agg.promoters, n)}%` }} />
           </div>
           <div className="grid grid-cols-3 gap-2 text-xs">
-            <span className="text-red-400">Detractors {agg.detractors} ({pct(agg.detractors, n)}%)</span>
-            <span className="text-center text-amber-400">Passives {agg.passives} ({pct(agg.passives, n)}%)</span>
-            <span className="text-right text-emerald-400">Promoters {agg.promoters} ({pct(agg.promoters, n)}%)</span>
+            <span className="text-red-600 dark:text-red-400">Detractors {agg.detractors} ({pct(agg.detractors, n)}%)</span>
+            <span className="text-center text-amber-600 dark:text-amber-400">Passives {agg.passives} ({pct(agg.passives, n)}%)</span>
+            <span className="text-right text-emerald-600 dark:text-emerald-400">Promoters {agg.promoters} ({pct(agg.promoters, n)}%)</span>
           </div>
           <Columns counts={agg.counts} />
         </div>

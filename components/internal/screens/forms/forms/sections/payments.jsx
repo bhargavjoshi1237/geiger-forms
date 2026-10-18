@@ -140,7 +140,7 @@ export function OrderSection({ form, settings, openBuilder }) {
               </div>
             ))}
             {sample.discount ? (
-              <div className="flex justify-between text-emerald-400">
+              <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                 <dt>Discount ({sample.coupon?.code})</dt>
                 <dd className="tabular-nums">−{formatMoney(sample.discount, sample.currency)}</dd>
               </div>
@@ -198,8 +198,8 @@ export function CouponsSection({ settings, setGroup }) {
                       <Badge variant={c.active !== false ? "success" : "neutral"}>{c.active !== false ? "Active" : "Paused"}</Badge>
                     </div>
                   </div>
-                  {dupe ? <p className="mt-2 text-xs text-red-400">This code is already used above.</p> : null}
-                  {!c.code ? <p className="mt-2 text-xs text-amber-400">Give this coupon a code.</p> : null}
+                  {dupe ? <p className="mt-2 text-xs text-red-600 dark:text-red-400">This code is already used above.</p> : null}
+                  {!c.code ? <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">Give this coupon a code.</p> : null}
                 </ItemCard>
               );
             })}

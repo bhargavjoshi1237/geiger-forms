@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { LogoLoading } from "@geiger/ui/logo-loading";
+import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
@@ -31,16 +32,15 @@ import { computeOrder, formatMoney } from "@/lib/forms/logic";
 import { outcomeLabel, responseFileUrl } from "@/lib/forms/response-utils";
 import {
   PAYMENT_STATUS_MAP,
-  avatarColor,
   formatDateTime,
   formatDuration,
 } from "@/components/internal/screens/forms/responses/constants";
 
 function SectionBlock({ title, children, action }) {
   return (
-    <div className="rounded-lg border border-border bg-surface-card p-3">
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">{title}</p>
+    <div className="rounded-lg border border-border bg-surface-card p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">{title}</p>
         {action}
       </div>
       {children}
@@ -50,13 +50,13 @@ function SectionBlock({ title, children, action }) {
 
 function Rows({ items }) {
   const shown = items.filter((i) => i && i.value != null && i.value !== "");
-  if (!shown.length) return <p className="text-xs text-text-tertiary">Nothing recorded.</p>;
+  if (!shown.length) return <p className="text-sm text-text-tertiary">Nothing recorded.</p>;
   return (
-    <dl className="grid grid-cols-[minmax(0,40%)_1fr] gap-x-4 gap-y-2">
+    <dl className="grid grid-cols-[minmax(0,40%)_1fr] gap-x-4 gap-y-2.5">
       {shown.map((i) => (
         <div key={i.label} className="contents">
-          <dt className="text-[11px] text-text-tertiary">{i.label}</dt>
-          <dd className="min-w-0 break-words text-right text-[11px] text-muted-foreground">{i.value}</dd>
+          <dt className="text-sm text-text-secondary">{i.label}</dt>
+          <dd className="min-w-0 break-words text-right text-sm text-foreground">{i.value}</dd>
         </div>
       ))}
     </dl>
@@ -106,7 +106,7 @@ export function ApprovalsSection({ response, form, onReplace }) {
 
   if (!config.enabled && !history.length) {
     return (
-      <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-text-tertiary">
+      <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-text-tertiary">
         Approvals are off for this form. Enable an approval chain under the form&apos;s Workflow settings.
       </p>
     );
@@ -140,29 +140,29 @@ export function ApprovalsSection({ response, form, onReplace }) {
               const Icon = rejected ? XCircle : done ? CheckCircle2 : current ? CircleDot : Circle;
               return (
                 <li key={step.id || i} className="flex items-start gap-2.5">
-                  <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", rejected ? "text-red-400" : done ? "text-emerald-400" : current ? "text-amber-400" : "text-text-tertiary")} />
+                  <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", rejected ? "text-red-600 dark:text-red-400" : done ? "text-emerald-600 dark:text-emerald-400" : current ? "text-amber-600 dark:text-amber-400" : "text-text-tertiary")} />
                   <div className="min-w-0">
-                    <p className="text-xs font-medium text-foreground">{step.name || `Step ${i + 1}`}</p>
-                    <p className="truncate text-[11px] text-text-tertiary">{(step.approvers || []).join(", ") || "Any workspace member"}</p>
+                    <p className="text-sm font-medium text-foreground">{step.name || `Step ${i + 1}`}</p>
+                    <p className="truncate text-xs text-text-tertiary">{(step.approvers || []).join(", ") || "Any workspace member"}</p>
                   </div>
                 </li>
               );
             })}
           </ol>
         ) : (
-          <p className="text-xs text-text-tertiary">No steps configured.</p>
+          <p className="text-sm text-text-tertiary">No steps configured.</p>
         )}
       </SectionBlock>
 
       {config.enabled && !decided ? (
         <SectionBlock title={`Decision · ${steps[stepIndex]?.name || `Step ${stepIndex + 1}`}`}>
-          <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add a note (optional)" className="text-xs" />
-          <div className="mt-2 flex gap-2">
+          <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add a note (optional)" className="text-sm" />
+          <div className="mt-3 flex gap-2">
             <Button type="button" size="sm" className="flex-1 bg-emerald-500/90 text-white hover:bg-emerald-500" onClick={() => decide("approve")} disabled={Boolean(busy)}>
               {busy === "approve" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
               Approve
             </Button>
-            <Button type="button" size="sm" variant="outline" className="flex-1 border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300" onClick={() => decide("reject")} disabled={Boolean(busy)}>
+            <Button type="button" size="sm" variant="outline" className="flex-1 border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300" onClick={() => decide("reject")} disabled={Boolean(busy)}>
               {busy === "reject" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
               Reject
             </Button>
@@ -177,21 +177,21 @@ export function ApprovalsSection({ response, form, onReplace }) {
               const Icon = DECISION_ICON[h.decision] || History;
               return (
                 <li key={`${h.at}-${i}`} className="flex gap-2.5">
-                  <Icon className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", /reject/.test(h.decision) ? "text-red-400" : "text-emerald-400")} />
+                  <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", /reject/.test(h.decision) ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400")} />
                   <div className="min-w-0">
-                    <p className="text-xs text-foreground">
+                    <p className="text-sm text-foreground">
                       <span className="font-medium">{h.by || h.byEmail || "Someone"}</span>{" "}
                       <span className="text-text-secondary">{/reject/.test(h.decision) ? "rejected" : "approved"} {h.stepName || `step ${Number(h.stepIndex) + 1}`}</span>
                     </p>
-                    {h.note ? <p className="mt-0.5 text-[11px] text-muted-foreground">“{h.note}”</p> : null}
-                    <p className="text-[10px] text-text-tertiary">{formatDateTime(h.at)}</p>
+                    {h.note ? <p className="mt-0.5 text-sm text-muted-foreground">“{h.note}”</p> : null}
+                    <p className="mt-0.5 text-xs text-text-tertiary">{formatDateTime(h.at)}</p>
                   </div>
                 </li>
               );
             })}
           </ul>
         ) : (
-          <p className="text-xs text-text-tertiary">No decisions yet.</p>
+          <p className="text-sm text-text-tertiary">No decisions yet.</p>
         )}
       </SectionBlock>
     </div>
@@ -210,7 +210,7 @@ export function PaymentSection({ response, form }) {
   const payment = response.payment;
   const order = useMemo(() => (form ? computeOrder(form, response.answers || {}) : null), [form, response.answers]);
   if (!payment && !order?.items?.length) {
-    return <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-text-tertiary">No payment was collected with this response.</p>;
+    return <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-text-tertiary">No payment was collected with this response.</p>;
   }
   const currency = payment?.currency || order?.currency || "usd";
   return (
@@ -228,7 +228,7 @@ export function PaymentSection({ response, form }) {
       ) : null}
       {order?.items?.length ? (
         <SectionBlock title="Order">
-          <ul className="space-y-1.5 text-xs">
+          <ul className="space-y-2 text-sm">
             {order.items.map((item) => (
               <li key={item.fieldId} className="flex justify-between gap-2">
                 <span className="text-muted-foreground">{item.quantity} × {item.name}</span>
@@ -236,12 +236,12 @@ export function PaymentSection({ response, form }) {
               </li>
             ))}
             {order.discount ? (
-              <li className="flex justify-between gap-2 text-emerald-400">
+              <li className="flex justify-between gap-2 text-emerald-600 dark:text-emerald-400">
                 <span>Coupon {order.coupon?.code}</span>
                 <span className="tabular-nums">−{formatMoney(order.discount, currency)}</span>
               </li>
             ) : null}
-            <li className="flex justify-between gap-2 border-t border-border pt-1.5 font-medium text-foreground">
+            <li className="flex justify-between gap-2 border-t border-border pt-2 font-medium text-foreground">
               <span>Total{order.mode === "subscription" ? ` / ${order.interval}` : ""}</span>
               <span className="tabular-nums">{formatMoney(order.total, currency)}</span>
             </li>
@@ -277,7 +277,7 @@ export function MetadataSection({ response, onOpenResponse }) {
             {
               label: "Possible duplicate of",
               value: m.duplicateOf ? (
-                <Button type="button" variant="link" className="h-auto p-0 font-normal text-sky-400" onClick={() => onOpenResponse?.(m.duplicateOf)}>
+                <Button type="button" variant="link" className="h-auto p-0 font-normal text-sky-600 dark:text-sky-400" onClick={() => onOpenResponse?.(m.duplicateOf)}>
                   #{String(m.duplicateOf).slice(0, 8)}
                 </Button>
               ) : "",
@@ -338,8 +338,8 @@ export function CountersignBlock({ response }) {
         <img src={src} alt={`Countersignature by ${c.name}`} className="h-14 w-32 rounded-md border border-border bg-white object-contain p-1" />
       ) : null}
       <div className="min-w-0">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-foreground"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />{c.name}</p>
-        <p className="text-[10px] text-text-tertiary">Countersigned {formatDateTime(c.at)}</p>
+        <p className="flex items-center gap-1.5 text-sm font-medium text-foreground"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />{c.name}</p>
+        <p className="mt-0.5 text-xs text-text-tertiary">Countersigned {formatDateTime(c.at)}</p>
       </div>
     </div>
   );
@@ -362,19 +362,19 @@ export function AccessLogSection({ response }) {
   }, [response.id]);
 
   if (!rows) return <Loading />;
-  if (!rows.length) return <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-text-tertiary">No access recorded yet.</p>;
+  if (!rows.length) return <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-text-tertiary">No access recorded yet.</p>;
   return (
     <ul className="divide-y divide-border rounded-lg border border-border bg-surface-card">
       {rows.map((row) => {
         const Icon = ACCESS_ICON[row.action] || History;
         return (
-          <li key={row.id} className="flex items-center gap-2.5 px-3 py-2">
-            <Icon className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+          <li key={row.id} className="flex items-center gap-3 px-4 py-2.5">
+            <Icon className="h-4 w-4 shrink-0 text-text-tertiary" />
+            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{row.actorName || "Unknown"}</span> {ACCESS_VERB[row.action] || row.action}
               {row.fieldId ? <span className="text-text-tertiary"> · {row.fieldId}</span> : null}
             </span>
-            <span className="shrink-0 text-[10px] text-text-tertiary" title={formatDateTime(row.createdAt)}>{row.when}</span>
+            <span className="shrink-0 text-xs text-text-tertiary" title={formatDateTime(row.createdAt)}>{row.when}</span>
           </li>
         );
       })}
@@ -448,7 +448,7 @@ export function ActivitySection({ response }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="scrollbar-subtle flex-1 overflow-y-auto p-4">
+      <div className="scrollbar-subtle flex-1 overflow-y-auto px-5 py-4">
         {loading || activity === null ? (
           <Loading />
         ) : (
@@ -456,13 +456,13 @@ export function ActivitySection({ response }) {
             {timeline.map((item) =>
               item.kind === "comment" ? (
                 <li key={item.id} className="flex gap-3">
-                  <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-muted-foreground", avatarColor(item.actor))}>
-                    {item.initials}
-                  </div>
+                  <Avatar className="border border-border">
+                    <AvatarFallback className="border-0 bg-surface-card text-[11px] font-semibold text-muted-foreground">{item.initials}</AvatarFallback>
+                  </Avatar>
                   <div className="min-w-0 flex-1 rounded-lg border border-border bg-surface-card px-3 py-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-foreground">{item.actor}</span>
-                      <span className="text-[10px] text-text-tertiary">{item.when}</span>
+                      <span className="text-sm font-medium text-foreground">{item.actor}</span>
+                      <span className="text-xs text-text-tertiary">{item.when}</span>
                     </div>
                     <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{item.text}</p>
                   </div>
@@ -470,18 +470,18 @@ export function ActivitySection({ response }) {
               ) : (
                 <li key={item.id} className="flex items-center gap-3 pl-2">
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-border-strong" />
-                  <p className="min-w-0 flex-1 text-[11px] text-text-secondary">
+                  <p className="min-w-0 flex-1 text-sm text-text-secondary">
                     <span className="font-medium text-muted-foreground">{item.actor || "System"}</span> {item.text}
                   </p>
-                  <span className="shrink-0 text-[10px] text-text-tertiary">{formatDateTime(item.at)}</span>
+                  <span className="shrink-0 text-xs text-text-tertiary">{formatDateTime(item.at)}</span>
                 </li>
               ),
             )}
           </ol>
         )}
       </div>
-      <div className="border-t border-border p-3">
-        <div className="flex items-center gap-2">
+      <div className="border-t border-border px-5 py-3">
+        <div className="flex items-stretch gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -493,13 +493,13 @@ export function ActivitySection({ response }) {
             }}
             placeholder="Add a comment for your team…"
             aria-label="Comment"
-            className="h-8 flex-1 text-xs"
+            className="flex-1"
           />
-          <Button type="button" size="sm" onClick={send} disabled={sending || !input.trim()} aria-label="Send comment" className="h-8 w-9 shrink-0 bg-primary p-0 text-primary-foreground hover:bg-primary/90">
-            {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+          <Button type="button" size="sm" onClick={send} disabled={sending || !input.trim()} aria-label="Send comment" className="h-auto w-10 shrink-0 self-stretch bg-primary p-0 text-primary-foreground hover:bg-primary/90">
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
-        <p className="mt-1.5 text-[10px] text-text-tertiary">Enter to send · Visible to workspace members only</p>
+        <p className="mt-2 text-xs text-text-tertiary">Enter to send · Visible to workspace members only</p>
       </div>
     </div>
   );

@@ -89,9 +89,9 @@ const TOP_FORMS_SORT_OPTIONS = [
 ];
 
 const MOMENTUM_META = {
-  rising: { label: "Rising", icon: Flame, className: "text-emerald-300" },
-  steady: { label: "Steady", icon: TrendingUp, className: "text-sky-300" },
-  quiet: { label: "Quiet", icon: TrendingDown, className: "text-amber-300" },
+  rising: { label: "Rising", icon: Flame, className: "text-emerald-700 dark:text-emerald-300" },
+  steady: { label: "Steady", icon: TrendingUp, className: "text-sky-700 dark:text-sky-300" },
+  quiet: { label: "Quiet", icon: TrendingDown, className: "text-amber-700 dark:text-amber-300" },
   offline: { label: "Not live", icon: Clock, className: "text-text-secondary" },
 };
 

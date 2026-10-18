@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Equal, Minus, Plus, Receipt, Tag, X } from "lucide-react";
+import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Checkbox } from "@geiger/ui/checkbox";
@@ -45,16 +46,20 @@ export function ProductField({ field, label, value, onChange, disabled, aria, cu
   const qty = fixed ? (value ? 1 : 0) : Math.max(0, Math.floor(Number(value) || 0));
   const setQty = (n) => onChange(Math.max(0, Math.min(maxQty, n)) || undefined);
 
+  const priceTag = (
+    <span suppressHydrationWarning className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+      {formatMoney(price, currency)}
+    </span>
+  );
+  // Title + description; the fixed (checkbox) variant keeps its price on the title row.
   const header = (
     <div className="min-w-0 flex-1">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-        <span id={ids.label} className="font-medium text-foreground">
+      <div className="flex items-start justify-between gap-3">
+        <span id={ids.label} className="text-sm font-medium leading-5 text-foreground">
           {label}
           {field.required && <span className="ml-1 text-red-500 dark:text-red-400" aria-hidden="true">*</span>}
         </span>
-        <span suppressHydrationWarning className="text-sm font-semibold tabular-nums text-foreground">
-          {formatMoney(price, currency)}
-        </span>
+        {fixed ? priceTag : null}
       </div>
       {cfg.description && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{cfg.description}</p>}
     </div>
@@ -70,29 +75,33 @@ export function ProductField({ field, label, value, onChange, disabled, aria, cu
   }
 
   return (
-    <div className={cn("flex flex-col gap-3 rounded-lg border bg-surface-card p-3.5 sm:flex-row sm:items-center", qty > 0 ? "border-primary" : "border-border")}>
+    <div className={cn("flex flex-col gap-3 rounded-lg border bg-surface-card px-3.5 py-2.5 sm:flex-row sm:items-center", qty > 0 ? "border-primary" : "border-border")}>
       {header}
-      <div className="flex items-center gap-1.5 self-end sm:self-auto">
-        <Button type="button" size="icon-sm" variant="outline" disabled={locked || qty <= 0} aria-label={`${tr("quantity")} −`} onClick={() => setQty(qty - 1)}>
-          <Minus />
-        </Button>
-        <Input
-          id={ids.control}
-          type="number"
-          inputMode="numeric"
-          min={0}
-          max={maxQty}
-          value={qty || ""}
-          placeholder="0"
-          disabled={locked}
-          aria-label={`${tr("quantity")}: ${label}`}
-          onChange={(e) => setQty(Number(e.target.value))}
-          className="w-16 bg-background text-center tabular-nums"
-          {...aria}
-        />
-        <Button type="button" size="icon-sm" variant="outline" disabled={locked || qty >= maxQty} aria-label={`${tr("quantity")} +`} onClick={() => setQty(qty + 1)}>
-          <Plus />
-        </Button>
+      {/* Price and stepper share one centred row; the stepper is a single bordered control. */}
+      <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
+        {priceTag}
+        <div className="flex h-10 items-center overflow-hidden rounded-md border border-border bg-surface-card">
+          <Button type="button" size="icon" variant="ghost" disabled={locked || qty <= 0} aria-label={`${tr("quantity")} −`} onClick={() => setQty(qty - 1)} className="h-full rounded-none">
+            <Minus />
+          </Button>
+          <Input
+            id={ids.control}
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={maxQty}
+            value={qty || ""}
+            placeholder="0"
+            disabled={locked}
+            aria-label={`${tr("quantity")}: ${label}`}
+            onChange={(e) => setQty(Number(e.target.value))}
+            className="w-12 self-stretch !rounded-none border-0 border-x border-border bg-transparent px-1 py-0 text-center tabular-nums shadow-none focus-visible:bg-surface-hover focus-visible:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            {...aria}
+          />
+          <Button type="button" size="icon" variant="ghost" disabled={locked || qty >= maxQty} aria-label={`${tr("quantity")} +`} onClick={() => setQty(qty + 1)} className="h-full rounded-none">
+            <Plus />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -160,10 +169,10 @@ export function OrderTotal({ field, label, form, allFields, answers, onSetAnswer
         <div className="border-t border-border px-4 py-3">
           {appliedCode ? (
             <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                <Tag className="size-3" />
+              <Badge variant="success">
+                <Tag />
                 {appliedCode.toUpperCase()}
-              </span>
+              </Badge>
               <Button type="button" size="xs" variant="ghost" disabled={disabled || !onSetAnswer} onClick={() => onSetAnswer?.("__coupon", undefined)}>
                 <X />
                 {tr("couponRemove")}
@@ -183,9 +192,9 @@ export function OrderTotal({ field, label, form, allFields, answers, onSetAnswer
                 placeholder={tr("coupon")}
                 aria-label={tr("coupon")}
                 disabled={disabled || !onSetAnswer}
-                className="h-9 bg-background uppercase placeholder:normal-case"
+                className="bg-surface-card uppercase placeholder:normal-case"
               />
-              <Button type="button" variant="outline" disabled={disabled || !onSetAnswer || !draft.trim()} onClick={applyCoupon}>
+              <Button type="button" variant="outline" className="h-auto" disabled={disabled || !onSetAnswer || !draft.trim()} onClick={applyCoupon}>
                 {tr("apply")}
               </Button>
             </div>

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Logo from "@geiger/ui/logo";
+import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
 import { cn } from "@/lib/utils";
 import { backgroundStyle, cssVariables } from "@/lib/forms/theme";
 import { withPrefix } from "@/lib/workspace/base-path";
@@ -57,30 +58,30 @@ function initials(name) {
     .join("");
 }
 
-// Minimal header: form logo (or the Geiger mark) + form title, optional "signed in as".
+// Full-width app bar in the suite Topbar style: brand mark | form title on the left, signed-in account on the right.
 export function FillerHeader({ title, theme, user, tr }) {
   const logo = theme?.showIcon && theme?.logoUrl ? theme.logoUrl : "";
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
-      <div className="mx-auto flex h-14 w-full max-w-3xl items-center gap-3 px-4 sm:px-6">
-        {logo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={logo} alt="" className="size-7 shrink-0 rounded-md object-cover" />
-        ) : (
-          <span className="flex size-7 shrink-0 items-center justify-center text-foreground" aria-hidden="true">
-            <Logo size={22} />
-          </span>
-        )}
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{title}</span>
-        {user && (
-          <span className="flex shrink-0 items-center gap-2 text-xs text-text-secondary" title={user.email || user.name}>
-            <span className="hidden sm:inline">{tr("signedInAs", { name: user.name || user.email })}</span>
-            <span className="flex size-7 items-center justify-center rounded-full border border-border bg-surface-card text-[11px] font-semibold text-foreground" aria-hidden="true">
-              {initials(user.name || user.email)}
-            </span>
-          </span>
-        )}
+    <header className="sticky top-0 z-20 flex h-14 w-full items-center justify-between gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="flex size-8 shrink-0 items-center justify-center" aria-hidden="true">
+          {logo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- user-supplied external logo URL
+            <img src={logo} alt="" className="size-6 rounded-md object-cover" />
+          ) : (
+            <Logo size={20} />
+          )}
+        </span>
+        <span className="min-w-0 truncate border-l border-border pl-3 text-sm font-semibold text-foreground">{title}</span>
       </div>
+      {user && (
+        <div className="flex shrink-0 items-center gap-2.5" title={user.email || user.name}>
+          <span className="hidden text-xs text-text-secondary sm:inline">{tr("signedInAs", { name: user.name || user.email })}</span>
+          <Avatar className="size-8 border border-border">
+            <AvatarFallback className="border-0 bg-surface-card text-[11px] font-semibold text-foreground">{initials(user.name || user.email)}</AvatarFallback>
+          </Avatar>
+        </div>
+      )}
     </header>
   );
 }

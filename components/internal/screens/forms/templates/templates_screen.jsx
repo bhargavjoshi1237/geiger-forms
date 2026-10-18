@@ -114,8 +114,8 @@ function PreviewDialog({ template, onClose, onUse, busy }) {
                 <li key={f.id} className={cn("flex items-center gap-2.5 px-3 py-2", LAYOUT.includes(f.type) && "bg-surface-subtle")}>
                   <TypeIcon type={f.type} className="h-3.5 w-3.5 shrink-0 text-text-secondary" />
                   <span className="min-w-0 flex-1 truncate text-sm text-foreground">{f.type === "page" ? `Page: ${f.title}` : f.label || f.title}</span>
-                  {f.sensitive ? <Lock className="h-3 w-3 text-amber-400" aria-label="Sensitive" /> : null}
-                  {f.required ? <span className="text-[11px] text-red-400">Required</span> : null}
+                  {f.sensitive ? <Lock className="h-3 w-3 text-amber-600 dark:text-amber-400" aria-label="Sensitive" /> : null}
+                  {f.required ? <span className="text-[11px] text-red-600 dark:text-red-400">Required</span> : null}
                   <span className="shrink-0 text-[11px] text-text-tertiary">{fieldTypeLabel(f.type)}</span>
                 </li>
               ))}
@@ -360,7 +360,7 @@ export function TemplatesScreen() {
                       <PencilRuler className="h-3.5 w-3.5" />
                     </Button>
                     {canDelete ? (
-                      <Button size="icon" variant="ghost" aria-label={`Delete ${t.title}`} onClick={() => setDeleteTarget(t)} className="h-8 w-8 text-text-secondary hover:bg-red-500/10 hover:text-red-400">
+                      <Button size="icon" variant="ghost" aria-label={`Delete ${t.title}`} onClick={() => setDeleteTarget(t)} className="h-8 w-8 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400">
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     ) : null}

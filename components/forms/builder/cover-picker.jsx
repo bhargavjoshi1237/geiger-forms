@@ -63,7 +63,7 @@ export function CoverPicker({ settings, onChange }) {
                 value={url}
                 onChange={(e) => onChange({ coverUrl: e.target.value.trim() })}
                 placeholder="https://images.example.com/cover.jpg"
-                className={cn("h-8 bg-background pl-8 text-xs", !looksLikeUrl(url) && "border-red-500/40")}
+                className={cn("h-8 bg-surface-card pl-8 text-xs", !looksLikeUrl(url) && "border-red-500/40")}
               />
             </div>
           </label>

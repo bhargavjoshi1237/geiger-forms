@@ -1,8 +1,7 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
-import { Search } from "lucide-react";
-import { Input } from "@geiger/ui/input";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { SearchInput } from "@geiger/ui/screen-kit";
 import { cn } from "@/lib/utils";
 import { Button } from "@geiger/ui/button";
 import { FIELD_GROUPS, FIELD_TYPE_LIST } from "@/lib/forms/field-types";
@@ -13,6 +12,7 @@ export const PALETTE_MIME = "application/x-geiger-field-type";
 // Searchable, grouped field-type palette; click inserts, drag drops onto the canvas.
 export const FieldPalette = memo(function FieldPalette({ onPick, autoFocus = false, className, columns = 2 }) {
   const [query, setQuery] = useState("");
+  const searchRef = useRef(null);
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
     return FIELD_GROUPS.map((group) => ({
@@ -21,24 +21,24 @@ export const FieldPalette = memo(function FieldPalette({ onPick, autoFocus = fal
     })).filter((g) => g.items.length > 0);
   }, [query]);
 
+  // The shared SearchInput doesn't autofocus when always expanded, so focus its input here.
+  useEffect(() => {
+    if (autoFocus) searchRef.current?.querySelector("input")?.focus();
+  }, [autoFocus]);
+
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search field types…"
-          aria-label="Search field types"
-          autoFocus={autoFocus}
-          className="h-8 bg-surface-card pl-8 text-sm"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && groups[0]?.items[0]) {
-              e.preventDefault();
-              onPick(groups[0].items[0].type);
-            }
-          }}
-        />
+      {/* Enter picks the first match; the key event bubbles up from the shared input. */}
+      <div
+        ref={searchRef}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && groups[0]?.items[0]) {
+            e.preventDefault();
+            onPick(groups[0].items[0].type);
+          }
+        }}
+      >
+        <SearchInput value={query} onChange={setQuery} placeholder="Search field types…" aria-label="Search field types" expanded />
       </div>
       {groups.length === 0 ? <p className="py-4 text-center text-xs text-text-tertiary">No field types match “{query}”.</p> : null}
       {groups.map(({ group, items }) => (

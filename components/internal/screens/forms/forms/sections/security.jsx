@@ -17,7 +17,7 @@ function CheckItem({ state, title, hint }) {
   const Icon = state === "on" ? CheckCircle2 : state === "manual" ? CircleDashed : MinusCircle;
   return (
     <li className="flex items-start gap-3 py-2.5">
-      <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", state === "on" ? "text-emerald-400" : state === "manual" ? "text-amber-400" : "text-text-tertiary")} />
+      <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", state === "on" ? "text-emerald-600 dark:text-emerald-400" : state === "manual" ? "text-amber-600 dark:text-amber-400" : "text-text-tertiary")} />
       <div className="min-w-0">
         <p className="text-sm text-foreground">{title}</p>
         <p className="text-xs text-text-secondary">{hint}</p>

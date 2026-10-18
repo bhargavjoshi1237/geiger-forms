@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@geiger/ui/button";
+import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
+import { Badge } from "@geiger/ui/badge";
 import { StatusPill } from "@geiger/ui/screen-kit";
 import {
   RESPONSE_PRIORITY_MAP,
   RESPONSE_STATUSES,
   STATUS_BAR_CLASS,
-  avatarColor,
 } from "./constants";
 
 const DRAG_TYPE = "application/x-geiger-response";
@@ -28,21 +29,19 @@ function KanbanCard({ r, showForm, onOpen, onDragStart, onDragEnd, dragging }) {
       )}
     >
       <div className="flex items-center gap-2">
-        <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold text-muted-foreground", avatarColor(r.email || r.id))}>
-          {r.initials}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{r.name}</span>
-        {r.score != null ? <span className="rounded bg-surface-subtle px-1 text-[10px] tabular-nums text-muted-foreground">{r.score}</span> : null}
+        <Avatar size="sm" className="border border-border">
+          <AvatarFallback className="border-0 bg-surface-subtle text-[10px] font-semibold text-muted-foreground">{r.initials}</AvatarFallback>
+        </Avatar>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{r.name}</span>
+        {r.score != null ? <Badge variant="neutral" className="tabular-nums" title="Score">{r.score}</Badge> : null}
       </div>
-      {showForm ? <p className="mt-1.5 truncate text-[11px] text-text-tertiary">{r.form}</p> : null}
+      {showForm ? <p className="mt-1.5 truncate text-xs text-text-tertiary">{r.form}</p> : null}
       <div className="mt-2 flex flex-wrap items-center gap-1">
         <StatusPill status={r.priority} map={RESPONSE_PRIORITY_MAP} />
-        {(r.tags || []).slice(0, 2).map((t) => (
-          <span key={t} className="rounded-md border border-border px-1.5 py-0.5 text-[10px] text-text-secondary">{t}</span>
-        ))}
-        {(r.tags || []).length > 2 ? <span className="text-[10px] text-text-tertiary">+{r.tags.length - 2}</span> : null}
+        {(r.tags || []).slice(0, 2).map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
+        {(r.tags || []).length > 2 ? <Badge variant="outline" className="text-text-tertiary">+{r.tags.length - 2}</Badge> : null}
       </div>
-      <div className="mt-2 flex items-center justify-between text-[10px] text-text-tertiary">
+      <div className="mt-2 flex items-center justify-between text-xs text-text-tertiary">
         <span className="truncate">{r.assignee || "Unassigned"}</span>
         <span className="shrink-0">{r.received}</span>
       </div>

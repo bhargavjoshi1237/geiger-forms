@@ -63,9 +63,9 @@ export function Stack({ children, className }) {
 export function Note({ children, tone = "info", icon: Icon = Info, className }) {
   const toneCls =
     tone === "warning"
-      ? "border-amber-500/20 bg-amber-500/10 text-amber-300"
+      ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
       : tone === "success"
-        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
         : "border-border bg-surface-card text-text-secondary";
   return (
     <div className={cn("flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-xs leading-5", toneCls, className)}>
@@ -188,7 +188,7 @@ export function ItemCard({ children, onRemove, removeLabel = "Remove", className
   return (
     <div className={cn("relative rounded-lg border border-border bg-surface-card p-4", className)}>
       {onRemove ? (
-        <Button type="button" size="icon" variant="ghost" aria-label={removeLabel} onClick={onRemove} className="absolute right-2 top-2 h-7 w-7 text-text-secondary hover:bg-red-500/10 hover:text-red-400">
+        <Button type="button" size="icon" variant="ghost" aria-label={removeLabel} onClick={onRemove} className="absolute right-2 top-2 h-7 w-7 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400">
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       ) : null}

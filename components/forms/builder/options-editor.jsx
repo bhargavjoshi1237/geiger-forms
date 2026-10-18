@@ -96,7 +96,7 @@ export function OptionsEditor({ field, onChange, scoring, quiz, label = "Choices
                       onChange={(e) => setPoints(opt, e.target.value)}
                       placeholder="0"
                       aria-label={`Points for ${opt}`}
-                      className="h-8 w-16 shrink-0 bg-background text-sm"
+                      className="h-8 w-16 shrink-0 bg-surface-card text-sm"
                     />
                   ) : null}
                   {showQuiz ? (
@@ -104,7 +104,7 @@ export function OptionsEditor({ field, onChange, scoring, quiz, label = "Choices
                       pressed={isCorrect(opt)}
                       onPressedChange={() => toggleCorrect(opt)}
                       aria-label={`Mark ${opt} as correct`}
-                      className="h-8 w-8 min-w-8 shrink-0 rounded-md border border-border bg-background px-0 text-text-tertiary transition-colors hover:bg-background hover:text-foreground data-[state=on]:border-emerald-500/30 data-[state=on]:bg-emerald-500/10 data-[state=on]:text-emerald-400"
+                      className="h-8 w-8 min-w-8 shrink-0 rounded-md border border-border bg-surface-card px-0 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-foreground data-[state=on]:border-emerald-500/30 data-[state=on]:bg-emerald-500/10 data-[state=on]:text-emerald-400"
                     >
                       <Check className="size-3.5" />
                     </Toggle>

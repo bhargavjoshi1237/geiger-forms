@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { FileText, Loader2, Paperclip, UploadCloud, X } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { FileInput } from "@geiger/ui/file-input";
+import { Progress } from "@geiger/ui/progress";
 import { cn } from "@/lib/utils";
 import { fieldIds } from "./field-shell";
 import { formatBytes, matchesAccept, uploadToForm } from "./upload";
@@ -103,10 +105,9 @@ export function FileField({ field, value, onChange, disabled, aria, slug, tr }) 
             {[accept && accept.replace(/,/g, ", "), `≤ ${maxSizeMb} MB`, maxFiles > 1 && tr("maxFiles", { count: maxFiles })].filter(Boolean).join(" · ")}
           </p>
           {preview && <p className="text-[11px] text-text-tertiary">{tr("previewOnly")}</p>}
-          <input
+          <FileInput
             ref={inputRef}
             id={ids.control}
-            type="file"
             className="sr-only"
             multiple={maxFiles > 1}
             accept={accept || undefined}
@@ -141,9 +142,7 @@ export function FileField({ field, value, onChange, disabled, aria, slug, tr }) 
                 <span className="min-w-0 flex-1 truncate text-foreground">{job.name}</span>
                 <span className="shrink-0 text-xs tabular-nums text-text-tertiary">{Math.round(job.progress * 100)}%</span>
               </div>
-              <div className="h-1 overflow-hidden rounded-full bg-surface-active" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(job.progress * 100)} aria-label={tr("uploading")}>
-                <div className="h-full bg-primary transition-[width] duration-200" style={{ width: `${Math.max(4, job.progress * 100)}%` }} />
-              </div>
+              <Progress value={Math.max(4, Math.round(job.progress * 100))} aria-label={tr("uploading")} className="h-1 bg-surface-active" />
             </li>
           ))}
         </ul>

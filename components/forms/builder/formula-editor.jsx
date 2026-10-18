@@ -48,7 +48,7 @@ function SampleInput({ field, value, onChange }) {
   if (hasOptions(field.type) && field.type !== "multiselect" && field.type !== "ranking" && field.type !== "matrix") {
     return (
       <Select value={value || undefined} onValueChange={onChange}>
-        <SelectTrigger className="h-7 w-full bg-background text-xs"><SelectValue placeholder="Choose…" /></SelectTrigger>
+        <SelectTrigger className="h-7 w-full bg-surface-card text-xs"><SelectValue placeholder="Choose…" /></SelectTrigger>
         <SelectContent>{(field.options || []).filter(Boolean).map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
       </Select>
     );
@@ -73,7 +73,7 @@ function SampleInput({ field, value, onChange }) {
     return <Switch checked={Boolean(value)} onCheckedChange={onChange} aria-label={`${field.title} sample`} />;
   }
   const type = field.type === "date" ? "date" : field.type === "datetime" ? "datetime-local" : ["text", "textarea", "email", "url", "phone"].includes(field.type) ? "text" : "number";
-  return <Input type={type} value={value ?? ""} onChange={(e) => onChange(type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value)} className="h-7 bg-background text-xs" />;
+  return <Input type={type} value={value ?? ""} onChange={(e) => onChange(type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value)} className="h-7 bg-surface-card text-xs" />;
 }
 
 export function formatComputed(value, format, currency = "usd") {
@@ -154,7 +154,7 @@ export function FormulaEditor({ field, fields, currency, scoring, onChange }) {
             spellCheck={false}
             placeholder="{Quantity} * {Unit price}"
             aria-label="Formula"
-            className={cn("min-h-16 resize-y bg-background pl-8 font-mono text-sm text-sky-400", (syntaxError || unknown.length || selfRef) && "border-red-500/40")}
+            className={cn("min-h-16 resize-y bg-surface-card pl-8 font-mono text-sm text-sky-600 dark:text-sky-400", (syntaxError || unknown.length || selfRef) && "border-red-500/40")}
           />
         </div>
         <div className="flex flex-wrap gap-1">
@@ -176,13 +176,13 @@ export function FormulaEditor({ field, fields, currency, scoring, onChange }) {
           ))}
         </div>
         {syntaxError ? (
-          <p className="flex items-center gap-1 text-[11px] text-red-400"><AlertTriangle className="h-3 w-3" />{syntaxError}</p>
+          <p className="flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400"><AlertTriangle className="h-3 w-3" />{syntaxError}</p>
         ) : unknown.length ? (
-          <p className="flex items-center gap-1 text-[11px] text-red-400"><AlertTriangle className="h-3 w-3" />Unknown field{unknown.length > 1 ? "s" : ""}: {unknown.map((u) => `{${u}}`).join(", ")}</p>
+          <p className="flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400"><AlertTriangle className="h-3 w-3" />Unknown field{unknown.length > 1 ? "s" : ""}: {unknown.map((u) => `{${u}}`).join(", ")}</p>
         ) : selfRef ? (
-          <p className="flex items-center gap-1 text-[11px] text-red-400"><AlertTriangle className="h-3 w-3" />A formula can&apos;t reference its own field.</p>
+          <p className="flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400"><AlertTriangle className="h-3 w-3" />A formula can&apos;t reference its own field.</p>
         ) : formula.trim() ? (
-          <p className="flex items-center gap-1 text-[11px] text-emerald-400"><CheckCircle2 className="h-3 w-3" />Formula looks good.</p>
+          <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="h-3 w-3" />Formula looks good.</p>
         ) : (
           <SubtleNote>Use {"{Field name}"} references with + − * / %, comparisons (&gt; &lt; ==), &amp;&amp; || and the functions above. Choice fields count their option points.</SubtleNote>
         )}
@@ -195,7 +195,7 @@ export function FormulaEditor({ field, fields, currency, scoring, onChange }) {
             <Button type="button" variant="ghost" size="xs" onClick={() => setSamples({})} className="h-auto gap-1 px-0 font-normal hover:bg-transparent has-[>svg]:px-0 text-[10px] text-text-tertiary hover:text-foreground">Reset samples</Button>
           ) : null}
         </div>
-        <p className="mt-1 font-mono text-base text-sky-400">= {formatComputed(preview, config.format, currency)}</p>
+        <p className="mt-1 font-mono text-base text-sky-600 dark:text-sky-400">= {formatComputed(preview, config.format, currency)}</p>
         {sampleFields.length > 0 ? (
           <div className="mt-2.5 space-y-1.5 border-t border-sky-500/10 pt-2.5">
             <p className="text-[10px] text-text-tertiary">Sample answers</p>
@@ -215,7 +215,7 @@ export function FormulaEditor({ field, fields, currency, scoring, onChange }) {
         <label className="block space-y-1.5">
           <ControlLabel>Display format</ControlLabel>
           <Select value={config.format || "number"} onValueChange={(format) => onChange({ config: { ...config, format } })}>
-            <SelectTrigger className="h-8 w-full bg-background text-sm"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="number">Number</SelectItem>
               <SelectItem value="currency">Currency</SelectItem>

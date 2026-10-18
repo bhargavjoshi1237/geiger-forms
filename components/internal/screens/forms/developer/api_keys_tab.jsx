@@ -203,7 +203,7 @@ export function ApiKeysTab({ projectId }) {
       align: "right",
       render: (k) =>
         canManage ? (
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:bg-red-500/10" aria-label={`Revoke ${k.name}`} onClick={() => setRevoking(k)}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 dark:text-red-400 hover:bg-red-500/10" aria-label={`Revoke ${k.name}`} onClick={() => setRevoking(k)}>
             <Trash2 className="h-4 w-4" />
           </Button>
         ) : null,

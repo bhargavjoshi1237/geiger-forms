@@ -77,7 +77,7 @@ export function DeliveriesTab({ forms }) {
       header: "Status",
       render: (d) => <Badge variant={d.ok ? "success" : "danger"}>{d.statusCode ? `${d.statusCode}` : d.ok ? "OK" : "Failed"}</Badge>,
     },
-    { key: "error", header: "Error", render: (d) => <span className="block max-w-64 truncate text-xs text-red-400">{d.error}</span> },
+    { key: "error", header: "Error", render: (d) => <span className="block max-w-64 truncate text-xs text-red-600 dark:text-red-400">{d.error}</span> },
   ];
 
   return (

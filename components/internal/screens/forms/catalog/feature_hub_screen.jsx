@@ -128,7 +128,7 @@ export function FeatureHubScreen({ view }) {
 
       {feature.setup ? (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
-          <p className="flex items-center gap-2 text-sm font-medium text-amber-400">
+          <p className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400">
             <Wrench className="h-4 w-4" /> Setup required
           </p>
           <p className="mt-1.5 text-xs leading-5 text-text-secondary">{feature.setup}</p>

@@ -381,7 +381,7 @@ export function RolesScreen({ focus = "roles" }) {
       align: "right",
       render: (g) =>
         canAssign && g.userId !== myId ? (
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:bg-red-500/10" aria-label="Revoke access" onClick={() => removeMember(g)}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 dark:text-red-400 hover:bg-red-500/10" aria-label="Revoke access" onClick={() => removeMember(g)}>
             <Trash2 className="h-4 w-4" />
           </Button>
         ) : null,
@@ -505,7 +505,7 @@ export function RolesScreen({ focus = "roles" }) {
                     </Button>
                   )
                 ) : (
-                  <Button variant="ghost" size="sm" className="text-red-400 hover:bg-red-500/10" onClick={() => deleteRole(selectedRole)}>
+                  <Button variant="ghost" size="sm" className="text-red-600 dark:text-red-400 hover:bg-red-500/10" onClick={() => deleteRole(selectedRole)}>
                     <Trash2 className="h-3.5 w-3.5" /> Delete
                   </Button>
                 )

@@ -4,6 +4,7 @@ import { createElement, useState } from "react";
 import { ArrowDown, ArrowUp, ClipboardPaste, Plus, X } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
+import { SegmentedTabs } from "@geiger/ui/segmented-tabs";
 import { Switch } from "@geiger/ui/switch";
 import { Textarea } from "@geiger/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -36,9 +37,9 @@ export function FieldRow({ label, hint, children, className }) {
 
 export function ToggleRow({ label, hint, checked, onCheckedChange, disabled, className }) {
   return (
-    <div className={cn("flex items-start justify-between gap-3 py-1.5", className)}>
+    <div className={cn("flex items-center justify-between gap-3 py-1.5", className)}>
       <ControlLabel hint={hint}>{label}</ControlLabel>
-      <Switch checked={Boolean(checked)} onCheckedChange={onCheckedChange} disabled={disabled} aria-label={typeof label === "string" ? label : undefined} className="mt-0.5 shrink-0" />
+      <Switch checked={Boolean(checked)} onCheckedChange={onCheckedChange} disabled={disabled} aria-label={typeof label === "string" ? label : undefined} className="shrink-0" />
     </div>
   );
 }
@@ -51,14 +52,19 @@ export function NumberInput({ value, onChange, className, ...props }) {
       inputMode="decimal"
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
-      className={cn("h-8 bg-background text-sm", className)}
+      className={cn("h-8 bg-surface-card text-sm placeholder:text-text-tertiary", className)}
       {...props}
     />
   );
 }
 
 export function TextInput({ value, onChange, className, ...props }) {
-  return <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} className={cn("h-8 bg-background text-sm", className)} {...props} />;
+  return <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} className={cn("h-8 bg-surface-card text-sm placeholder:text-text-tertiary", className)} {...props} />;
+}
+
+// Compact single-choice switcher for the narrow builder sidebar, on the suite's SegmentedTabs.
+export function Segmented({ value, options, onChange, className }) {
+  return <SegmentedTabs tabs={options} value={value} onChange={onChange} fullWidth className={cn("p-0.5", className)} buttonClassName="h-7 min-w-0 px-1.5 text-xs" />;
 }
 
 export function SubtleNote({ children, className }) {
@@ -96,7 +102,7 @@ export function StringListEditor({ items, onChange, onRename, placeholder = "Opt
   if (bulkOpen) {
     return (
       <div className="space-y-2">
-        <Textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={6} autoFocus className="min-h-28 resize-y bg-background text-sm" placeholder="One per line" />
+        <Textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={6} autoFocus className="min-h-28 resize-y bg-surface-card text-sm" placeholder="One per line" />
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={() => setBulkOpen(false)}>Cancel</Button>
           <Button type="button" size="sm" onClick={applyBulk}>Apply</Button>
@@ -114,7 +120,7 @@ export function StringListEditor({ items, onChange, onRename, placeholder = "Opt
             value={item}
             onChange={(e) => update(i, e.target.value)}
             placeholder={`${placeholder} ${i + 1}`}
-            className="h-8 min-w-0 flex-1 bg-background text-sm"
+            className="h-8 min-w-0 flex-1 bg-surface-card text-sm placeholder:text-text-tertiary"
             aria-label={`${placeholder} ${i + 1}`}
           />
           {renderExtra ? renderExtra(item, i) : null}
@@ -125,7 +131,7 @@ export function StringListEditor({ items, onChange, onRename, placeholder = "Opt
             <Button type="button" variant="ghost" size="icon-xs" aria-label="Move down" disabled={i === list.length - 1} onClick={() => onChange(move(list, i, i + 1))}>
               <ArrowDown />
             </Button>
-            <Button type="button" variant="ghost" size="icon-xs" aria-label="Remove" className="hover:text-red-400" onClick={() => onChange(list.filter((_, idx) => idx !== i))}>
+            <Button type="button" variant="ghost" size="icon-xs" aria-label="Remove" className="hover:text-red-600 dark:hover:text-red-400" onClick={() => onChange(list.filter((_, idx) => idx !== i))}>
               <X />
             </Button>
           </div>

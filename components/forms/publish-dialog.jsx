@@ -63,7 +63,7 @@ export function PublishDialog({ open, onOpenChange, slug, status, onChange, warn
         <div className="space-y-4">
           {blocking ? (
             <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3.5">
-              <p className="flex items-center gap-2 text-sm font-medium text-amber-400">
+              <p className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="h-4 w-4" />
                 {warnings.length} thing{warnings.length === 1 ? "" : "s"} to check before publishing
               </p>
@@ -109,7 +109,7 @@ export function PublishDialog({ open, onOpenChange, slug, status, onChange, warn
                 size="icon-xs"
                 onClick={copy}
                 aria-label={copied ? "Copied" : "Copy link"}
-                className={cn("shrink-0 rounded", copied ? "text-emerald-400 hover:text-emerald-400" : "text-text-secondary hover:text-foreground")}
+                className={cn("shrink-0 rounded", copied ? "text-emerald-600 dark:text-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400" : "text-text-secondary hover:text-foreground")}
               >
                 {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
               </Button>

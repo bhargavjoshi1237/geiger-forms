@@ -9,7 +9,7 @@ export const COMPLIANCE_SECTION = "security";
 
 export function OnOff({ on, label }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 text-xs", on ? "text-emerald-400" : "text-text-tertiary")}>
+    <span className={cn("inline-flex items-center gap-1 text-xs", on ? "text-emerald-600 dark:text-emerald-400" : "text-text-tertiary")}>
       {on ? <Check className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
       {label ?? (on ? "On" : "Off")}
     </span>
@@ -23,7 +23,7 @@ export function ChecklistItem({ done, title, children }) {
       <span
         className={cn(
           "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
-          done ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400" : "border-border bg-surface-card text-text-tertiary",
+          done ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-border bg-surface-card text-text-tertiary",
         )}
       >
         {done ? <Check className="h-3 w-3" /> : <Minus className="h-3 w-3" />}

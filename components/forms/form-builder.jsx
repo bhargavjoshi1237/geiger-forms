@@ -62,12 +62,18 @@ function insertAt(fields, field, { afterId, beforeId } = {}) {
   return next;
 }
 
+// Icon-only autosave indicator; the label lives in the tooltip and for screen readers.
 function SaveStatus({ status }) {
+  const label = status === "saving" ? "Saving…" : status === "error" ? "Save failed — retrying" : "All changes saved";
   return (
-    <span className={cn("flex items-center gap-1.5 text-xs", status === "error" ? "text-red-400" : "text-muted-foreground")}>
-      {status === "saving" ? <Loader2 className="h-3.5 w-3.5 animate-spin text-text-secondary" /> : status === "error" ? <CloudOff className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5 text-text-secondary" />}
-      {status === "saving" ? "Saving…" : status === "error" ? "Save failed — retrying" : "Saved"}
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span role="status" aria-label={label} tabIndex={0} className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring", status === "error" ? "text-red-600 dark:text-red-400" : "text-text-secondary")}>
+          {status === "saving" ? <Loader2 className="h-4 w-4 animate-spin" /> : status === "error" ? <CloudOff className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -118,8 +124,6 @@ function FormBuilderEditor({ form, backHref }) {
   const { status: saveStatus, dirty, markSaved } = useAutosave({ formId: form.id, signature, initialSignature, onSaved });
 
   // --- Doc edits (all undoable) ---
-  const setTitle = useCallback((title) => set((d) => ({ ...d, title }), "title"), [set]);
-  const setDescription = useCallback((description) => set((d) => ({ ...d, description }), "description"), [set]);
   const updateSettings = useCallback((patch, key) => set((d) => ({ ...d, settings: { ...d.settings, ...patch } }), key), [set]);
   const updateField = useCallback(
     (id, patch) => set((d) => ({ ...d, fields: d.fields.map((f) => (f.id === id ? { ...f, ...patch } : f)) }), `field:${id}:${Object.keys(patch).sort().join()}`),
@@ -300,7 +304,28 @@ function FormBuilderEditor({ form, backHref }) {
             <Link href={backHref} aria-label="Back to forms"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
           <h1 className="min-w-0 truncate text-sm font-semibold text-foreground">{doc.title || "Untitled form"}</h1>
+          <SaveStatus status={saveStatus} />
           <div className="ml-auto flex shrink-0 items-center gap-1">
+            {!previewing ? (
+              <>
+                {warnings.length ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button type="button" variant="ghost" size="xs" onClick={() => warnings[0].fieldId && revealField(warnings[0].fieldId)} className="mr-1 h-auto gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1 font-normal text-amber-600 dark:text-amber-400 hover:bg-amber-500/15 hover:text-amber-600 dark:hover:text-amber-400 has-[>svg]:px-2">
+                        <AlertTriangle className="size-3.5" />{warnings.length} to check
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-72">
+                      {warnings.slice(0, 6).map((w) => <p key={w.id}>• {w.message}</p>)}
+                      {warnings.length > 6 ? <p>…and {warnings.length - 6} more</p> : null}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : null}
+                <IconAction label="Undo" shortcut="Ctrl+Z" onClick={undo} disabled={!canUndo}><Undo2 className="h-4 w-4" /></IconAction>
+                <IconAction label="Redo" shortcut="Ctrl+Shift+Z" onClick={redo} disabled={!canRedo}><Redo2 className="h-4 w-4" /></IconAction>
+                <div aria-hidden="true" className="pointer-events-none mx-1 h-5 w-px bg-border" />
+              </>
+            ) : null}
             <BuilderTopbarActions
               slug={form.slug}
               status={status}
@@ -315,41 +340,20 @@ function FormBuilderEditor({ form, backHref }) {
           </div>
         </div>
         <div className="flex min-h-0 flex-1">
-          <main className="scrollbar-subtle relative min-w-0 flex-1 overflow-y-auto bg-background">
+          <main className={cn("scrollbar-subtle relative min-w-0 flex-1 overflow-y-auto bg-background", !previewing && "flex flex-col")}>
             {previewing ? (
               <BuilderPreview doc={doc} form={form} onExit={() => setPreviewing(false)} />
             ) : (
               <>
-                <div className="sticky top-0 z-20 flex items-center gap-1 border-b border-border bg-background/90 px-4 py-2 backdrop-blur">
-                  <IconAction label="Undo" shortcut="Ctrl+Z" onClick={undo} disabled={!canUndo}><Undo2 className="h-4 w-4" /></IconAction>
-                  <IconAction label="Redo" shortcut="Ctrl+Shift+Z" onClick={redo} disabled={!canRedo}><Redo2 className="h-4 w-4" /></IconAction>
-                  <div className="ml-auto flex items-center gap-3">
-                    {warnings.length ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button type="button" variant="ghost" size="xs" onClick={() => warnings[0].fieldId && revealField(warnings[0].fieldId)} className="h-auto gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1 font-normal text-amber-400 hover:bg-amber-500/15 hover:text-amber-400 has-[>svg]:px-2">
-                            <AlertTriangle className="size-3.5" />{warnings.length} to check
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-72">
-                          {warnings.slice(0, 6).map((w) => <p key={w.id}>• {w.message}</p>)}
-                          {warnings.length > 6 ? <p>…and {warnings.length - 6} more</p> : null}
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : null}
-                    <SaveStatus status={saveStatus} />
-                  </div>
-                </div>
-
                 {remoteUpdate ? (
-                  <div className="sticky top-[49px] z-20 mx-4 mt-3 flex items-center gap-3 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-300 backdrop-blur">
+                  <div className="sticky top-3 z-20 mx-4 mt-3 flex items-center gap-3 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300 backdrop-blur">
                     <RefreshCw className="h-3.5 w-3.5 shrink-0" />
                     <span className="min-w-0 flex-1">
                       Updated by <span className="font-medium">{remoteUpdate.name}</span>.
                       {dirty ? " Reloading replaces your unsaved edits." : " Reload to see their changes."}
                     </span>
                     <Button type="button" size="xs" variant="outline" onClick={reloadRemote}>Reload</Button>
-                    <Button type="button" variant="ghost" size="icon-xs" aria-label="Dismiss" onClick={() => setRemoteUpdate(null)} className="size-auto text-sky-300/70 hover:bg-transparent hover:text-sky-300"><X className="size-3.5" /></Button>
+                    <Button type="button" variant="ghost" size="icon-xs" aria-label="Dismiss" onClick={() => setRemoteUpdate(null)} className="size-auto text-sky-700/70 dark:text-sky-300/70 hover:bg-transparent hover:text-sky-700 dark:hover:text-sky-300"><X className="size-3.5" /></Button>
                   </div>
                 ) : null}
 
@@ -360,8 +364,6 @@ function FormBuilderEditor({ form, backHref }) {
                   scoring={scoring}
                   quiz={quiz}
                   currency={currency}
-                  onTitleChange={setTitle}
-                  onDescriptionChange={setDescription}
                   onSettingsChange={updateSettings}
                   onSelect={selectField}
                   onFieldChange={updateField}
@@ -462,7 +464,7 @@ export function FormBuilder({ formId, projectId = null, backHref = withPrefix("/
   if (current.status === "error") {
     return (
       <CenteredState>
-        <AlertTriangle className="h-6 w-6 text-amber-400" />
+        <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
         <p className="font-medium text-foreground">Couldn&apos;t load this form</p>
         <p className="max-w-sm text-xs text-text-secondary">Refresh the page or try again shortly.</p>
         <Button

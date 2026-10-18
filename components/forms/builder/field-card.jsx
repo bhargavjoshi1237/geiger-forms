@@ -13,13 +13,13 @@ import { FieldSettings } from "./field-settings";
 
 function Summary({ field }) {
   const meta = getFieldType(field.type);
-  if (field.type === "heading") return <p className="truncate text-sm font-medium text-muted-foreground">{field.label || "Section heading"}</p>;
-  if (field.type === "content") return <p className="line-clamp-2 text-sm text-text-secondary">{field.hint || "Empty text block"}</p>;
-  if (field.type === "calculated") return <p className="truncate font-mono text-xs text-sky-400">= {field.formula || "no formula yet"}</p>;
+  if (field.type === "heading") return <p className="truncate text-xs text-text-secondary">{field.label || "Section heading"}</p>;
+  if (field.type === "content") return <p className="line-clamp-2 text-xs text-text-secondary">{field.hint || "Empty text block"}</p>;
+  if (field.type === "calculated") return <p className="truncate font-mono text-xs text-sky-600 dark:text-sky-400">= {field.formula || "no formula yet"}</p>;
   const options = (field.options || []).filter(Boolean);
   return (
-    <div className="min-w-0 space-y-1">
-      {field.label && field.label !== field.title ? <p className="truncate text-sm text-muted-foreground">{field.label}</p> : null}
+    <div className="min-w-0 space-y-0.5 pl-px">
+      {field.label && field.label !== field.title ? <p className="truncate text-xs text-text-secondary">{field.label}</p> : null}
       <p className="truncate text-xs text-text-tertiary">
         {meta.label}
         {options.length ? ` · ${options.slice(0, 4).join(", ")}${options.length > 4 ? ` +${options.length - 4}` : ""}` : ""}
@@ -60,7 +60,7 @@ export const FieldCard = memo(function FieldCard({
       data-field-id={field.id}
       onClick={() => !selected && onSelect(field.id)}
       className={cn(
-        "group relative rounded-xl border bg-card p-4 shadow-sm transition-[border-color,box-shadow,opacity] duration-150",
+        "group relative rounded-xl border bg-surface-subtle px-4 py-3 shadow-sm transition-[border-color,box-shadow,opacity] duration-150",
         selected ? "border-border-strong ring-1 ring-border-strong" : "cursor-pointer border-border hover:border-border-strong",
         dragging && "opacity-30",
       )}
@@ -77,24 +77,25 @@ export const FieldCard = memo(function FieldCard({
         }}
         onDragEnd={onDragEnd}
         onClick={(e) => e.stopPropagation()}
-        className="absolute -left-8 top-4 h-auto w-auto cursor-grab rounded p-1 text-text-tertiary opacity-0 transition-opacity hover:bg-transparent hover:text-muted-foreground focus-visible:opacity-100 group-hover:opacity-100 active:cursor-grabbing"
+        className="absolute -left-8 top-[18px] h-auto w-auto cursor-grab rounded p-1 text-text-tertiary opacity-0 transition-opacity hover:bg-transparent hover:text-muted-foreground focus-visible:opacity-100 group-hover:opacity-100 active:cursor-grabbing"
       >
         <GripVertical className="h-4 w-4" />
       </Button>
 
-      <div className="flex items-start gap-3">
-        <span className="mt-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-surface-subtle text-text-secondary">
-          <FieldTypeIcon type={field.type} className="h-3.5 w-3.5" />
+      <div className="flex items-center gap-3">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-surface-card text-text-secondary">
+          <FieldTypeIcon type={field.type} className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            {number ? <span className="shrink-0 text-xs tabular-nums text-text-tertiary">{number}.</span> : null}
+          <div className="flex items-center">
+            {number ? <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">{number}.</span> : null}
+            {/* Inline title: the shared Input with its box padding trimmed so it sits on the text baseline. */}
             <Input
               value={field.title}
               onChange={(e) => changeTitle(e.target.value)}
               onFocus={() => onSelect(field.id)}
               aria-label="Field name"
-              className="h-8 min-w-0 flex-1 border-transparent bg-transparent px-1 text-base font-semibold text-foreground shadow-none hover:border-border focus-visible:border-border"
+              className="min-w-0 flex-1 border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold leading-5 text-foreground shadow-none hover:border-border focus-visible:border-border focus-visible:ring-0 md:text-sm"
             />
             <div className="flex shrink-0 items-center gap-1">
               {field.type === "calculated" ? <Badge variant="info"><FunctionSquare />Calc</Badge> : null}
@@ -105,7 +106,7 @@ export const FieldCard = memo(function FieldCard({
               {field.width && field.width !== "full" ? <Badge variant="outline" className="capitalize">{field.width}</Badge> : null}
             </div>
           </div>
-          {!selected ? <div className="mt-1 px-1"><Summary field={field} /></div> : null}
+          {!selected ? <div className="mt-0.5"><Summary field={field} /></div> : null}
         </div>
         <div className="flex shrink-0 items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
           <Button type="button" variant="ghost" size="icon-sm" aria-label="Duplicate field" title="Duplicate" onClick={() => onDuplicate(field.id)} className="text-text-secondary opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100">
@@ -121,7 +122,7 @@ export const FieldCard = memo(function FieldCard({
               <DropdownMenuItem onSelect={() => onDuplicate(field.id)}><Copy />Duplicate</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => onToggleIncluded(field.id)}><EyeOff />Exclude from form</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" className="text-red-400 focus:bg-red-500/10" onSelect={() => onDelete(field.id)}><Trash2 />Delete</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" className="text-red-600 dark:text-red-400 focus:bg-red-500/10" onSelect={() => onDelete(field.id)}><Trash2 />Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button
@@ -139,7 +140,7 @@ export const FieldCard = memo(function FieldCard({
       </div>
 
       {selected ? (
-        <div className="mt-4 border-t border-border pt-4" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-3 border-t border-border pt-4" onClick={(e) => e.stopPropagation()}>
           <FieldSettings
             field={field}
             onChange={change}

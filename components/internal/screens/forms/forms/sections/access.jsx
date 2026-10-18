@@ -36,7 +36,7 @@ function PasswordControl({ access, setGroup }) {
         <KeyRound className="h-4 w-4 text-text-secondary" />
         {hasPassword ? <Badge variant="success">Password set</Badge> : <Badge variant="warning">No password yet</Badge>}
         {hasPassword ? (
-          <Button type="button" variant="ghost" size="sm" onClick={() => setGroup("access", { passwordHash: "", passwordSalt: "" })} className="h-7 text-text-secondary hover:text-red-400">
+          <Button type="button" variant="ghost" size="sm" onClick={() => setGroup("access", { passwordHash: "", passwordSalt: "" })} className="h-7 text-text-secondary hover:text-red-600 dark:hover:text-red-400">
             <X className="h-3.5 w-3.5" /> Remove
           </Button>
         ) : null}
@@ -99,7 +99,7 @@ function SharingList({ sharing, onChange }) {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button type="button" size="icon" variant="ghost" aria-label={`Remove ${s.email}`} onClick={() => onChange(sharing.filter((x) => x.email !== s.email))} className="h-7 w-7 text-text-secondary hover:bg-red-500/10 hover:text-red-400">
+                <Button type="button" size="icon" variant="ghost" aria-label={`Remove ${s.email}`} onClick={() => onChange(sharing.filter((x) => x.email !== s.email))} className="h-7 w-7 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400">
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>

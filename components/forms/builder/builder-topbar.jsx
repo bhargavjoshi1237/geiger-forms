@@ -31,7 +31,7 @@ export function BuilderTopbarActions({ slug, status, others, previewing, onToggl
       <Button type="button" variant="ghost" size="icon-sm" aria-label={favourite ? "Remove from favourites" : "Add to favourites"} aria-pressed={favourite} onClick={() => setFavourite((v) => !v)}>
         <Star className={cn("h-4 w-4", favourite && "fill-current text-amber-400")} />
       </Button>
-      <Button type="button" variant="ghost" size="icon-sm" onClick={copyLink} aria-label={copied ? "Link copied" : "Copy link"} title="Copy public link" className={copied ? "text-emerald-400" : undefined}>
+      <Button type="button" variant="ghost" size="icon-sm" onClick={copyLink} aria-label={copied ? "Link copied" : "Copy link"} title="Copy public link" className={copied ? "text-emerald-600 dark:text-emerald-400" : undefined}>
         {copied ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
       </Button>
       {isPublished ? (
@@ -56,7 +56,7 @@ export function BuilderTopbarActions({ slug, status, others, previewing, onToggl
         type="button"
         size="sm"
         onClick={() => setPublishOpen(true)}
-        className={cn("ml-1 h-8 gap-1.5", isPublished && "border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20")}
+        className={cn("ml-1 h-8 gap-1.5", isPublished && "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20")}
       >
         {isPublished ? (
           <span className="relative flex h-2 w-2 shrink-0">

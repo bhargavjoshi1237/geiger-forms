@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import { Button } from "@geiger/ui/button";
 import { Checkbox } from "@geiger/ui/checkbox";
 import { Input } from "@geiger/ui/input";
+import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
+import { Badge } from "@geiger/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@geiger/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import {
@@ -40,7 +42,6 @@ import {
   Field,
   LoadingArea,
   SearchInput,
-  SectionCard,
   StatusPill,
   Toolbar,
 } from "@geiger/ui/screen-kit";
@@ -67,18 +68,17 @@ import {
 import { ErrorState } from "../screen-shell";
 import { KanbanBoard } from "./kanban_board";
 import { BulkBar } from "./bulk_bar";
-import { SavedViewsBar } from "./saved_views_bar";
+import { SaveViewButton, SavedViewsDropdown, useSavedViews } from "./saved_views_bar";
 import {
   DEFAULT_FILTERS,
   MENU_ITEM,
   OUTLINE_BUTTON,
-  PRIORITY_FILTER_OPTIONS,
+  RESPONSE_PRIORITIES,
   RESPONSE_PRIORITY_MAP,
   RESPONSE_STATUSES,
   RESPONSE_STATUS_MAP,
   SORT_OPTIONS,
   STATUS_FILTER_OPTIONS,
-  avatarColor,
 } from "./constants";
 
 const PRINT_LIMIT = 100;
@@ -91,10 +91,10 @@ function pickFilters(source) {
 }
 
 function MoreFilters({ filters, facets, onChange }) {
-  const count = ["tag", "assignee", "outcome"].filter((k) => filters[k] !== "all").length + (filters.from ? 1 : 0) + (filters.to ? 1 : 0);
+  const count = ["priority", "tag", "assignee", "outcome"].filter((k) => filters[k] !== "all").length + (filters.from ? 1 : 0) + (filters.to ? 1 : 0);
   const select = (key, options, placeholder) => (
     <Select value={filters[key]} onValueChange={(v) => onChange({ [key]: v })}>
-      <SelectTrigger size="sm" className="text-xs"><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectTrigger size="sm"><SelectValue placeholder={placeholder} /></SelectTrigger>
       <SelectContent>
         <SelectItem value="all">{placeholder}</SelectItem>
         {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
@@ -104,13 +104,14 @@ function MoreFilters({ filters, facets, onChange }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="h-8 gap-1.5 rounded-md border-border bg-surface-card px-3 text-xs font-medium text-foreground hover:bg-surface-subtle">
+        <Button variant="outline" className="h-9 gap-1.5 rounded-md border-border bg-surface-card px-3 text-xs font-medium text-foreground hover:bg-surface-subtle">
           <ListFilter className="h-3.5 w-3.5 text-text-secondary" />
           More filters
-          {count ? <span className="rounded-full bg-surface-hover px-1.5 text-[10px] tabular-nums text-muted-foreground">{count}</span> : null}
+          {count ? <Badge variant="neutral" className="px-1.5 py-0 tabular-nums">{count}</Badge> : null}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="grid w-72 gap-3 border-border bg-surface-subtle p-3">
+        <Field label="Priority">{select("priority", RESPONSE_PRIORITIES.map((p) => ({ value: p, label: p })), "Any priority")}</Field>
         <Field label="Tag">{select("tag", facets.tags.map((t) => ({ value: t, label: t })), "Any tag")}</Field>
         <Field label="Assignee">
           {select("assignee", [{ value: "__none", label: "Unassigned" }, ...facets.assignees.map((a) => ({ value: a, label: a }))], "Anyone")}
@@ -118,10 +119,10 @@ function MoreFilters({ filters, facets, onChange }) {
         <Field label="Outcome">{select("outcome", facets.outcomes.map((o) => ({ value: o, label: o })), "Any outcome")}</Field>
         <div className="grid grid-cols-2 gap-2">
           <Field label="From">
-            <Input type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => onChange({ from: e.target.value })} className="h-8 text-xs" />
+            <Input type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => onChange({ from: e.target.value })} />
           </Field>
           <Field label="To">
-            <Input type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => onChange({ to: e.target.value })} className="h-8 text-xs" />
+            <Input type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => onChange({ to: e.target.value })} />
           </Field>
         </div>
       </PopoverContent>
@@ -129,37 +130,21 @@ function MoreFilters({ filters, facets, onChange }) {
   );
 }
 
-function ExportCard({ count, onExport, onPrint, disabled }) {
-  return (
-    <SectionCard title="Export & sync" description={`Download the ${count} responses in the current view. Columns follow each form's questions.`}>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          { icon: FileText, title: "CSV", body: "Excel & Sheets ready, UTF-8", run: () => onExport("csv") },
-          { icon: FileJson, title: "JSON", body: "Raw + labelled answers", run: () => onExport("json") },
-          { icon: Printer, title: "Print / PDF", body: `Up to ${PRINT_LIMIT} documents`, run: onPrint },
-        ].map(({ icon: Icon, title, body, run }) => (
-          <Button
-            key={title}
-            type="button"
-            variant="outline"
-            disabled={disabled}
-            onClick={run}
-            className="h-auto justify-start gap-3 whitespace-normal rounded-lg bg-surface-card p-3 text-left font-normal shadow-none hover:border-border-strong hover:bg-surface-hover"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-subtle text-muted-foreground"><Icon className="h-4 w-4" /></span>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-foreground">{title}</span>
-              <span className="block text-xs text-text-secondary">{body}</span>
-            </span>
-          </Button>
-        ))}
-      </div>
-      <p className="mt-3 text-xs text-text-tertiary">For continuous sync, pull from the REST API (<code className="text-text-secondary">/api/v1/forms/:id/responses</code>) with a workspace API key, or add a webhook in the form&apos;s integrations.</p>
-    </SectionCard>
-  );
+// Header actions for the Export & Sync screen; they act on the current filtered view.
+function ExportActions({ onExport, onPrint, disabled }) {
+  return [
+    { icon: FileText, title: "CSV", body: "Excel & Sheets ready, UTF-8", run: () => onExport("csv") },
+    { icon: FileJson, title: "JSON", body: "Raw + labelled answers", run: () => onExport("json") },
+    { icon: Printer, title: "Print / PDF", body: `Up to ${PRINT_LIMIT} documents`, run: onPrint },
+  ].map(({ icon: Icon, title, body, run }) => (
+    <Button key={title} type="button" variant="outline" title={body} disabled={disabled} onClick={run} className={cn("h-9 gap-1.5 px-3 text-xs", OUTLINE_BUTTON)}>
+      <Icon className="h-3.5 w-3.5" /> {title}
+    </Button>
+  ));
 }
 
 // Shared inbox body: saved views, toolbar, bulk actions, table/kanban and the detail panel.
+// `renderHeader(actions)` lets the host screen place the export actions in its own header.
 export function ResponseWorkspace({
   store,
   formsById = NO_FORMS,
@@ -169,6 +154,7 @@ export function ResponseWorkspace({
   initialFilters,
   focus = "all",
   questionColumns = 3,
+  renderHeader,
 }) {
   const { responses, loading, error, refresh } = store;
   const [filters, setFilters] = useState(() => pickFilters(initialFilters));
@@ -221,6 +207,11 @@ export function ResponseWorkspace({
     setLayout(view.layout === "kanban" ? "kanban" : "table");
     setViewId(view.id);
   };
+  const resetView = () => {
+    clearFilters();
+    setSort("newest");
+  };
+  const savedViews = useSavedViews({ projectId, formId: form?.id || null, activeId: viewId, onApply: applyView, onReset: resetView });
 
   const toggle = (id, on) =>
     setSelected((cur) => {
@@ -344,7 +335,9 @@ export function ResponseWorkspace({
         className: "py-3",
         render: (r) => (
           <div className="flex min-w-0 items-center gap-3">
-            <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-muted-foreground", avatarColor(r.email || r.id))}>{r.initials}</span>
+            <Avatar className="border border-border">
+              <AvatarFallback className="border-0 bg-surface-card text-[11px] font-semibold text-muted-foreground">{r.initials}</AvatarFallback>
+            </Avatar>
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-foreground">{r.name}</p>
               <p className="truncate text-xs text-text-tertiary">{form ? r.email || "—" : r.form}</p>
@@ -370,7 +363,7 @@ export function ResponseWorkspace({
         render: (r) => (
           <div className="flex items-center gap-1.5">
             <StatusPill status={r.priority} map={RESPONSE_PRIORITY_MAP} />
-            {r.score != null ? <span className="rounded bg-surface-card px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">{r.score}</span> : null}
+            {r.score != null ? <Badge variant="neutral" className="tabular-nums" title="Score">{r.score}</Badge> : null}
           </div>
         ),
       },
@@ -381,9 +374,9 @@ export function ResponseWorkspace({
         headClassName: "hidden lg:table-cell",
         render: (r) => (
           <div className="flex max-w-44 flex-wrap gap-1">
-            {(r.tags || []).slice(0, 2).map((t) => <span key={t} className="rounded-md border border-border px-1.5 py-0.5 text-[10px] text-text-secondary">{t}</span>)}
-            {(r.tags || []).length > 2 ? <span className="text-[10px] text-text-tertiary">+{r.tags.length - 2}</span> : null}
-            {outcomeLabel(r.outcome) ? <span className="rounded-md border border-violet-500/20 bg-violet-500/10 px-1.5 py-0.5 text-[10px] text-violet-300">{outcomeLabel(r.outcome)}</span> : null}
+            {(r.tags || []).slice(0, 2).map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
+            {(r.tags || []).length > 2 ? <Badge variant="outline" className="text-text-tertiary">+{r.tags.length - 2}</Badge> : null}
+            {outcomeLabel(r.outcome) ? <Badge variant="neutral">{outcomeLabel(r.outcome)}</Badge> : null}
           </div>
         ),
       },
@@ -421,7 +414,8 @@ export function ResponseWorkspace({
                   <DropdownMenuSubContent className="border-border bg-surface-subtle">
                     {RESPONSE_STATUSES.map((s) => (
                       <DropdownMenuItem key={s} className={MENU_ITEM} onClick={() => patchOne(r, { status: s }, `Marked ${s}`)}>
-                        <StatusPill status={s} map={RESPONSE_STATUS_MAP} />
+                        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", RESPONSE_STATUS_MAP[s]?.dotClass)} />
+                        {RESPONSE_STATUS_MAP[s]?.label || s}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuSubContent>
@@ -430,7 +424,7 @@ export function ResponseWorkspace({
                 {canDelete ? (
                   <>
                     <DropdownMenuSeparator className="bg-border" />
-                    <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-xs text-red-400 focus:bg-red-500/10" onClick={() => setDeleteIds([r.id])}>
+                    <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-xs text-red-600 dark:text-red-400 focus:bg-red-500/10" onClick={() => setDeleteIds([r.id])}>
                       <Trash2 className="h-4 w-4" /> Delete
                     </DropdownMenuItem>
                   </>
@@ -482,110 +476,102 @@ export function ResponseWorkspace({
     );
   };
 
+  const showExport = focus === "export" && canExport;
+
   return (
-    <div className="flex flex-col gap-4">
-      <SavedViewsBar
-        projectId={projectId}
-        formId={form?.id || null}
-        activeId={viewId}
-        current={{ filters, sort, layout }}
-        onApply={applyView}
-        onReset={() => {
-          clearFilters();
-          setSort("newest");
-        }}
-      />
+    <>
+      {renderHeader?.(
+        showExport ? <ExportActions disabled={!filtered.length} onExport={(fmt) => exportRows(filtered, fmt)} onPrint={() => printRows(filtered)} /> : null,
+      )}
+      <div className="flex flex-col gap-4">
+        <Toolbar>
+          <div className="flex flex-wrap items-center gap-2">
+            <SavedViewsDropdown views={savedViews.views} activeId={viewId} onApply={applyView} onReset={resetView} onRemove={savedViews.remove} />
+            {!form ? <FilterDropdown value={filters.formId} onValueChange={(v) => updateFilters({ formId: v })} options={formOptions} icon={FileText} height="h-9" /> : null}
+            <FilterDropdown value={filters.status} onValueChange={(v) => updateFilters({ status: v })} options={STATUS_FILTER_OPTIONS} icon={CircleDot} height="h-9" />
+            <MoreFilters filters={filters} facets={facets} onChange={updateFilters} />
+            <FilterDropdown value={sort} onValueChange={(v) => { setSort(v); setViewId(null); }} options={SORT_OPTIONS} icon={ArrowUpDown} height="h-9" />
+            {isFiltered ? (
+              <Button variant="ghost" className="h-9 gap-1.5 px-3 text-xs text-text-secondary hover:text-foreground" onClick={clearFilters}>
+                <X className="h-3.5 w-3.5" /> Clear
+              </Button>
+            ) : null}
+            <SaveViewButton layout={layout} onSave={(name) => savedViews.save(name, { filters, sort, layout })} />
+          </div>
+          <div className="flex items-center gap-2">
+            <SearchInput value={filters.search} onChange={(v) => updateFilters({ search: v })} placeholder="Search names, emails, answers…" />
+            {canExport && focus !== "export" ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className={cn("h-9 gap-1.5 px-3 text-xs", OUTLINE_BUTTON)} disabled={!filtered.length}>
+                    <Download className="h-3.5 w-3.5" /> Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52 border-border bg-surface-subtle">
+                  <DropdownMenuItem className={MENU_ITEM} onClick={() => exportRows(filtered, "csv")}><FileText className="h-4 w-4" /> CSV (Excel-ready)</DropdownMenuItem>
+                  <DropdownMenuItem className={MENU_ITEM} onClick={() => exportRows(filtered, "json")}><FileJson className="h-4 w-4" /> JSON</DropdownMenuItem>
+                  <DropdownMenuItem className={MENU_ITEM} onClick={() => printRows(filtered)}><Printer className="h-4 w-4" /> Print / PDF</DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-border" />
+                  <p className="px-2 py-1.5 text-xs text-text-tertiary">Exports the {filtered.length} responses in the current view</p>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+            <Tabs value={layout} onValueChange={(v) => { setLayout(v); setViewId(null); }}>
+              <TabsList>
+                <TabsTrigger value="table"><Table2 />Table</TabsTrigger>
+                <TabsTrigger value="kanban"><Kanban />Kanban</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </Toolbar>
 
-      {focus === "export" && canExport ? (
-        <ExportCard count={filtered.length} disabled={!filtered.length} onExport={(fmt) => exportRows(filtered, fmt)} onPrint={() => printRows(filtered)} />
-      ) : null}
+        {selectedRows.length ? (
+          <BulkBar
+            count={selectedRows.length}
+            totalFiltered={filtered.length}
+            busy={busy}
+            canExport={canExport}
+            canDelete={canDelete}
+            tagSuggestions={facets.tags}
+            assigneeSuggestions={facets.assignees}
+            onSelectAll={() => setSelected(new Set(filtered.map((r) => r.id)))}
+            onClear={() => setSelected(new Set())}
+            onUpdate={bulkUpdate}
+            onTag={bulkTag}
+            onExport={(fmt) => exportRows(selectedRows, fmt)}
+            onPrint={() => printRows(selectedRows)}
+            onDelete={() => setDeleteIds(selectedRows.map((r) => r.id))}
+          />
+        ) : focus === "bulk" && layout === "table" && filtered.length ? (
+          <div className="flex items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs text-text-secondary">
+            <MousePointerClick className="h-3.5 w-3.5 shrink-0" />
+            Tick responses to update status, priority, tags or assignee in bulk, export them or print them as PDFs.
+          </div>
+        ) : null}
 
-      <Toolbar>
-        <div className="flex flex-wrap items-center gap-2">
-          {!form ? <FilterDropdown value={filters.formId} onValueChange={(v) => updateFilters({ formId: v })} options={formOptions} icon={FileText} /> : null}
-          <FilterDropdown value={filters.status} onValueChange={(v) => updateFilters({ status: v })} options={STATUS_FILTER_OPTIONS} icon={CircleDot} />
-          <FilterDropdown value={filters.priority} onValueChange={(v) => updateFilters({ priority: v })} options={PRIORITY_FILTER_OPTIONS} />
-          <MoreFilters filters={filters} facets={facets} onChange={updateFilters} />
-          <FilterDropdown value={sort} onValueChange={(v) => { setSort(v); setViewId(null); }} options={SORT_OPTIONS} icon={ArrowUpDown} />
-          {isFiltered ? (
-            <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs text-text-secondary hover:text-foreground" onClick={clearFilters}>
-              <X className="h-3.5 w-3.5" /> Clear
-            </Button>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-2">
-          <SearchInput value={filters.search} onChange={(v) => updateFilters({ search: v })} placeholder="Search names, emails, answers…" />
-          {canExport && focus !== "export" ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-8 gap-1.5 text-xs", OUTLINE_BUTTON)} disabled={!filtered.length}>
-                  <Download className="h-3.5 w-3.5" /> Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 border-border bg-surface-subtle">
-                <DropdownMenuItem className={MENU_ITEM} onClick={() => exportRows(filtered, "csv")}><FileText className="h-4 w-4" /> CSV (Excel-ready)</DropdownMenuItem>
-                <DropdownMenuItem className={MENU_ITEM} onClick={() => exportRows(filtered, "json")}><FileJson className="h-4 w-4" /> JSON</DropdownMenuItem>
-                <DropdownMenuItem className={MENU_ITEM} onClick={() => printRows(filtered)}><Printer className="h-4 w-4" /> Print / PDF</DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-border" />
-                <p className="px-2 py-1.5 text-[10px] text-text-tertiary">Exports the {filtered.length} responses in the current view</p>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-          <Tabs value={layout} onValueChange={(v) => { setLayout(v); setViewId(null); }}>
-            <TabsList>
-              <TabsTrigger value="table"><Table2 />Table</TabsTrigger>
-              <TabsTrigger value="kanban"><Kanban />Kanban</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </Toolbar>
+        {body()}
 
-      {selectedRows.length ? (
-        <BulkBar
-          count={selectedRows.length}
-          totalFiltered={filtered.length}
-          busy={busy}
-          canExport={canExport}
-          canDelete={canDelete}
-          tagSuggestions={facets.tags}
-          assigneeSuggestions={facets.assignees}
-          onSelectAll={() => setSelected(new Set(filtered.map((r) => r.id)))}
-          onClear={() => setSelected(new Set())}
-          onUpdate={bulkUpdate}
-          onTag={bulkTag}
-          onExport={(fmt) => exportRows(selectedRows, fmt)}
-          onPrint={() => printRows(selectedRows)}
-          onDelete={() => setDeleteIds(selectedRows.map((r) => r.id))}
+        {openRow ? (
+          <ResponseDetailPanel
+            response={openRow}
+            form={form && form.id === openRow.formId ? form : formsById[openRow.formId]}
+            onClose={() => setOpenId(null)}
+            onPatch={store.patch}
+            onReplace={(next) => store.setResponses((cur) => cur.map((r) => (r.id === next.id ? next : r)))}
+            onDelete={store.remove}
+            onOpenResponse={openDuplicate}
+            tagSuggestions={facets.tags}
+            assigneeSuggestions={facets.assignees}
+          />
+        ) : null}
+
+        <ConfirmDeleteDialog
+          open={Boolean(deleteIds)}
+          onOpenChange={(o) => !o && setDeleteIds(null)}
+          count={deleteIds?.length || 0}
+          onConfirm={confirmDelete}
         />
-      ) : focus === "bulk" && layout === "table" && filtered.length ? (
-        <div className="flex items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs text-text-secondary">
-          <MousePointerClick className="h-3.5 w-3.5 shrink-0" />
-          Tick responses to update status, priority, tags or assignee in bulk, export them or print them as PDFs.
-        </div>
-      ) : null}
-
-      {body()}
-
-      {openRow ? (
-        <ResponseDetailPanel
-          response={openRow}
-          form={form && form.id === openRow.formId ? form : formsById[openRow.formId]}
-          onClose={() => setOpenId(null)}
-          onPatch={store.patch}
-          onReplace={(next) => store.setResponses((cur) => cur.map((r) => (r.id === next.id ? next : r)))}
-          onDelete={store.remove}
-          onOpenResponse={openDuplicate}
-          tagSuggestions={facets.tags}
-          assigneeSuggestions={facets.assignees}
-        />
-      ) : null}
-
-      <ConfirmDeleteDialog
-        open={Boolean(deleteIds)}
-        onOpenChange={(o) => !o && setDeleteIds(null)}
-        count={deleteIds?.length || 0}
-        onConfirm={confirmDelete}
-      />
-    </div>
+      </div>
+    </>
   );
 }

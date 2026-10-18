@@ -16,7 +16,8 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@geiger/ui/sh
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui/tabs";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@geiger/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
+import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +27,6 @@ import {
 } from "@geiger/ui/dropdown-menu";
 import { LogoLoading } from "@geiger/ui/logo-loading";
 import { cn } from "@/lib/utils";
-import { StatusPill } from "@geiger/ui/screen-kit";
 import { useCan } from "@/context/rbac-context";
 import { getFormById } from "@/lib/supabase/forms";
 import { updateResponse } from "@/lib/supabase/responses";
@@ -43,7 +43,6 @@ import {
   RESPONSE_PRIORITY_MAP,
   RESPONSE_STATUSES,
   RESPONSE_STATUS_MAP,
-  avatarColor,
 } from "@/components/internal/screens/forms/responses/constants";
 import { AnswerValue } from "./response/answer-value";
 import { TagsEditor } from "./response/tags-editor";
@@ -85,10 +84,29 @@ function useResponseForm(formId, provided) {
 
 function PropertyRow({ label, children }) {
   return (
-    <div className="flex min-h-8 items-center gap-3">
-      <span className="w-20 shrink-0 text-[11px] text-text-tertiary">{label}</span>
+    <div className="flex min-h-9 items-center gap-3">
+      <span className="w-24 shrink-0 text-sm text-text-secondary">{label}</span>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
+  );
+}
+
+// Standard suite select for a status-like property; the coloured dot keeps the state scannable.
+function PropertySelect({ label, value, options, map, onChange }) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger size="sm" className="w-44" aria-label={label}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option} value={option}>
+            <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", map[option]?.dotClass || "bg-muted-foreground")} />
+            {map[option]?.label || option}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -110,8 +128,8 @@ function AssigneeInput({ value, suggestions, onCommit }) {
           if (e.key === "Escape") setDraft(value || "");
         }}
         list="response-assignee-options"
-        placeholder="Unassigned — type a name or email"
-        className="h-7 border-transparent bg-transparent px-1.5 text-xs shadow-none hover:border-border focus:border-border"
+        placeholder="Unassigned"
+        className="border-transparent bg-transparent px-2 py-[5px] text-sm shadow-none placeholder:text-text-tertiary hover:border-border focus-visible:border-border focus-visible:ring-0 md:text-sm"
       />
       <datalist id="response-assignee-options">
         {suggestions.map((s) => <option key={s} value={s} />)}
@@ -161,11 +179,11 @@ function AnswersTab({ response, form, formLoading }) {
     <div className="space-y-0.5">
       {rows.map((row) =>
         row.kind === "section" ? (
-          <p key={row.id} className="px-3 pb-1 pt-4 text-xs font-semibold text-foreground first:pt-1">{row.title}</p>
+          <p key={row.id} className="px-3 pb-1 pt-5 text-sm font-semibold text-foreground first:pt-1">{row.title}</p>
         ) : (
-          <div key={row.id} className="rounded-md px-3 py-2.5 transition-colors hover:bg-surface-card">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">{fieldLabel(row.field)}</p>
-            <div className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+          <div key={row.id} className="rounded-md px-3 py-3 transition-colors hover:bg-surface-card">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">{fieldLabel(row.field)}</p>
+            <div className="mt-1 text-sm leading-relaxed text-foreground">
               <AnswerValue
                 field={row.field}
                 response={response}
@@ -181,16 +199,16 @@ function AnswersTab({ response, form, formLoading }) {
       )}
       {extras.length ? (
         <>
-          <p className="px-3 pb-1 pt-4 text-xs font-semibold text-foreground">{fields.length ? "Other answers" : "Answers"}</p>
+          <p className="px-3 pb-1 pt-5 text-sm font-semibold text-foreground">{fields.length ? "Other answers" : "Answers"}</p>
           {extras.map(([key, value]) => (
-            <div key={key} className="rounded-md px-3 py-2.5 hover:bg-surface-card">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">{key === "__coupon" ? "Coupon" : key}</p>
-              <p className="mt-0.5 break-words text-sm text-muted-foreground">{typeof value === "object" ? JSON.stringify(value) : String(value)}</p>
+            <div key={key} className="rounded-md px-3 py-3 hover:bg-surface-card">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">{key === "__coupon" ? "Coupon" : key}</p>
+              <p className="mt-1 break-words text-sm text-foreground">{typeof value === "object" ? JSON.stringify(value) : String(value)}</p>
             </div>
           ))}
         </>
       ) : null}
-      {!rows.length && !extras.length ? <p className="p-4 text-center text-xs text-text-tertiary">No answers recorded.</p> : null}
+      {!rows.length && !extras.length ? <p className="p-6 text-center text-sm text-text-tertiary">No answers recorded.</p> : null}
       {response.metadata?.countersign ? (
         <div className="mx-3 mt-4 border-t border-border pt-4">
           <CountersignBlock response={response} />
@@ -282,38 +300,38 @@ export function ResponseDetailPanel({
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full gap-0 border-border bg-surface-subtle p-0 sm:max-w-[560px]">
-        <div className="flex items-start gap-3 border-b border-border px-4 py-4 pr-12">
-          <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-muted-foreground", avatarColor(row.email || row.id))}>
-            {row.initials}
-          </div>
+        <div className="flex items-start gap-3 border-b border-border px-5 py-4 pr-12">
+          <Avatar className="size-10 border border-border">
+            <AvatarFallback className="border-0 bg-surface-card text-xs font-semibold text-muted-foreground">{row.initials}</AvatarFallback>
+          </Avatar>
           <div className="min-w-0 flex-1">
-            <SheetTitle className="truncate text-sm leading-tight">{row.name}</SheetTitle>
-            <SheetDescription className="truncate text-xs text-text-tertiary">{row.email || "No email"}</SheetDescription>
-            <p className="mt-0.5 truncate text-[10px] text-text-tertiary">{row.form} · {row.received} · #{String(row.id).slice(0, 8)}</p>
+            <SheetTitle className="truncate text-base leading-tight">{row.name}</SheetTitle>
+            <SheetDescription className="mt-0.5 truncate text-sm text-text-secondary">{row.email || "No email"}</SheetDescription>
+            <p className="mt-1 truncate text-xs text-text-tertiary">{row.form} · {row.received} · #{String(row.id).slice(0, 8)}</p>
           </div>
         </div>
 
-        <div className="space-y-1 border-b border-border px-4 py-3">
+        <div className="space-y-1 border-b border-border px-5 py-3">
           <PropertyRow label="Status">
-            <Select value={row.status} onValueChange={(status) => patch({ status }, `Marked ${status}`)}>
-              <SelectTrigger size="sm" className="w-auto gap-1 border-0 bg-transparent px-1 shadow-none focus:ring-0" aria-label="Change status">
-                <StatusPill status={row.status} map={RESPONSE_STATUS_MAP} />
-              </SelectTrigger>
-              <SelectContent>
-                {RESPONSE_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <PropertySelect
+              label="Change status"
+              value={row.status}
+              options={RESPONSE_STATUSES}
+              map={RESPONSE_STATUS_MAP}
+              onChange={(status) => patch({ status }, `Marked ${status}`)}
+            />
           </PropertyRow>
           <PropertyRow label="Priority">
-            <Select value={row.priority} onValueChange={(priority) => patch({ priority }, `Priority set to ${priority}`)}>
-              <SelectTrigger size="sm" className="w-auto gap-1 border-0 bg-transparent px-1 shadow-none focus:ring-0" aria-label="Override priority">
-                <StatusPill status={row.priority} map={RESPONSE_PRIORITY_MAP} />
-              </SelectTrigger>
-              <SelectContent>
-                {RESPONSE_PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {row.score != null ? <span className="ml-2 rounded bg-surface-card px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground" title="Score">Score {row.score}</span> : null}
+            <div className="flex items-center gap-2">
+              <PropertySelect
+                label="Override priority"
+                value={row.priority}
+                options={RESPONSE_PRIORITIES}
+                map={RESPONSE_PRIORITY_MAP}
+                onChange={(priority) => patch({ priority }, `Priority set to ${priority}`)}
+              />
+              {row.score != null ? <span className="rounded-md bg-surface-card px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground" title="Score">Score {row.score}</span> : null}
+            </div>
           </PropertyRow>
           <PropertyRow label="Assignee">
             <AssigneeInput
@@ -328,31 +346,31 @@ export function ResponseDetailPanel({
           </PropertyRow>
           {outcomeLabel(row.outcome) ? (
             <PropertyRow label="Outcome">
-              <span className="rounded-md border border-violet-500/20 bg-violet-500/10 px-1.5 py-0.5 text-[11px] text-violet-300">{outcomeLabel(row.outcome)}</span>
+              <span className="rounded-md border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-xs text-violet-700 dark:text-violet-300">{outcomeLabel(row.outcome)}</span>
             </PropertyRow>
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
-          <Button type="button" variant="outline" size="sm" className={cn("h-8 gap-1.5 text-xs", OUTLINE_BUTTON)} onClick={print}>
-            <Printer className="h-3.5 w-3.5" /> Print / PDF
+        <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
+          <Button type="button" variant="outline" size="sm" className={OUTLINE_BUTTON} onClick={print}>
+            <Printer className="h-4 w-4" /> Print / PDF
           </Button>
-          <Button type="button" variant="outline" size="sm" className={cn("h-8 gap-1.5 text-xs", OUTLINE_BUTTON)} onClick={() => setDialog("edit")}>
-            <Edit3 className="h-3.5 w-3.5" /> Request edit
+          <Button type="button" variant="outline" size="sm" className={OUTLINE_BUTTON} onClick={() => setDialog("edit")}>
+            <Edit3 className="h-4 w-4" /> Request edit
           </Button>
           {flowIssue ? (
-            <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-sky-500/20 bg-sky-500/10 px-2.5 text-xs text-sky-400">
-              <ArrowUpRight className="h-3.5 w-3.5" /> Flow #{flowIssue.number ?? String(flowIssue.id).slice(0, 6)}
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-sky-500/20 bg-sky-500/10 px-2.5 text-sm text-sky-600 dark:text-sky-400">
+              <ArrowUpRight className="h-4 w-4" /> Flow #{flowIssue.number ?? String(flowIssue.id).slice(0, 6)}
             </span>
           ) : (
-            <Button type="button" variant="outline" size="sm" className={cn("h-8 gap-1.5 text-xs", OUTLINE_BUTTON)} onClick={escalate} disabled={escalating}>
-              {escalating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUpRight className="h-3.5 w-3.5" />}
+            <Button type="button" variant="outline" size="sm" className={OUTLINE_BUTTON} onClick={escalate} disabled={escalating}>
+              {escalating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
               Escalate to Flow
             </Button>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" className="ml-auto h-8 w-8 text-text-secondary" aria-label="More actions">
+              <Button type="button" variant="ghost" size="icon-sm" className="ml-auto text-text-secondary" aria-label="More actions">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -368,7 +386,7 @@ export function ResponseDetailPanel({
               {canDelete && onDelete ? (
                 <>
                   <DropdownMenuSeparator className="bg-border" />
-                  <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-xs text-red-400 focus:bg-red-500/10" onClick={() => setDialog("delete")}>
+                  <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-xs text-red-600 dark:text-red-400 focus:bg-red-500/10" onClick={() => setDialog("delete")}>
                     <Trash2 className="h-4 w-4" /> Delete response
                   </DropdownMenuItem>
                 </>
@@ -378,35 +396,36 @@ export function ResponseDetailPanel({
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col gap-0">
-          <div className="scrollbar-subtle overflow-x-auto border-b border-border px-2">
-            <TabsList variant="line" className="h-10">
-              <TabsTrigger value="answers" className="text-xs">Answers</TabsTrigger>
-              <TabsTrigger value="activity" className="text-xs">Activity</TabsTrigger>
-              <TabsTrigger value="approvals" className="text-xs">
+          <div className="scrollbar-subtle overflow-x-auto overflow-y-hidden border-b border-border px-2">
+            {/* pb-[5px] seats the line indicator on the divider instead of overflowing it */}
+            <TabsList variant="line" className="h-11 w-full justify-start pb-[5px]">
+              <TabsTrigger value="answers" className="flex-none">Answers</TabsTrigger>
+              <TabsTrigger value="activity" className="flex-none">Activity</TabsTrigger>
+              <TabsTrigger value="approvals" className="flex-none">
                 Approvals
                 {approvalPending ? <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> : null}
               </TabsTrigger>
-              <TabsTrigger value="payment" className="text-xs">Payment</TabsTrigger>
-              <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
-              <TabsTrigger value="access" className="text-xs">Access</TabsTrigger>
+              <TabsTrigger value="payment" className="flex-none">Payment</TabsTrigger>
+              <TabsTrigger value="details" className="flex-none">Details</TabsTrigger>
+              <TabsTrigger value="access" className="flex-none">Access</TabsTrigger>
             </TabsList>
           </div>
-          <TabsContent value="answers" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto p-3">
+          <TabsContent value="answers" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto px-2 py-3">
             <AnswersTab key={row.id} response={row} form={form} formLoading={formLoading} />
           </TabsContent>
           <TabsContent value="activity" className="flex min-h-0 flex-1 flex-col">
             <ActivitySection response={row} />
           </TabsContent>
-          <TabsContent value="approvals" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto p-4">
+          <TabsContent value="approvals" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto px-5 py-4">
             <ApprovalsSection response={row} form={form} onReplace={replace} />
           </TabsContent>
-          <TabsContent value="payment" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto p-4">
+          <TabsContent value="payment" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto px-5 py-4">
             <PaymentSection response={row} form={form} />
           </TabsContent>
-          <TabsContent value="details" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto p-4">
+          <TabsContent value="details" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto px-5 py-4">
             <MetadataSection response={row} onOpenResponse={onOpenResponse} />
           </TabsContent>
-          <TabsContent value="access" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto p-4">
+          <TabsContent value="access" className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto px-5 py-4">
             <AccessLogSection key={`${row.id}:${tab}`} response={row} />
           </TabsContent>
         </Tabs>

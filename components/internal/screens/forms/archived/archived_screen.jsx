@@ -101,7 +101,7 @@ export function ArchivedScreen() {
             </Button>
           ) : null}
           {canDelete ? (
-            <Button size="icon" variant="ghost" aria-label={`Delete ${f.name}`} onClick={() => setDeleteTarget(f)} className="h-8 w-8 text-text-secondary hover:bg-red-500/10 hover:text-red-400">
+            <Button size="icon" variant="ghost" aria-label={`Delete ${f.name}`} onClick={() => setDeleteTarget(f)} className="h-8 w-8 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400">
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           ) : null}

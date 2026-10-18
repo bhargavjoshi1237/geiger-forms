@@ -44,8 +44,6 @@ export function ResponsesScreen({ initialLayout = "table", initialFilters, focus
 
   return (
     <MainScreenWrapper>
-      <ScreenHeader title={copy.title} description={copy.description} />
-      <StatGrid stats={stats} columns={5} />
       <ResponseWorkspace
         store={store}
         formsById={formsById}
@@ -53,6 +51,12 @@ export function ResponsesScreen({ initialLayout = "table", initialFilters, focus
         initialLayout={initialLayout}
         initialFilters={initialFilters}
         focus={focus}
+        renderHeader={(actions) => (
+          <>
+            <ScreenHeader title={copy.title} description={copy.description} actions={actions} />
+            <StatGrid stats={stats} columns={5} />
+          </>
+        )}
       />
     </MainScreenWrapper>
   );

@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { CalendarCheck2, Clock } from "lucide-react";
+import { Button } from "@geiger/ui/button";
 import { DatePicker } from "@geiger/ui/date-picker";
+import { Skeleton } from "@geiger/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { callApi } from "@/lib/forms/api";
 import { formatSlot } from "@/lib/forms/logic";
@@ -71,7 +73,7 @@ export function BookingField({ field, value, onChange, disabled, aria, slug, tr 
     return () => controller.abort();
   }, [dateKey, slug, field.id]);
 
-  if (!mounted) return <div className="h-80 animate-pulse rounded-lg border border-border bg-surface-card" aria-busy="true" />;
+  if (!mounted) return <Skeleton className="h-80 rounded-lg border border-border bg-surface-card" aria-busy="true" />;
 
   return (
     <div className="grid gap-3" {...aria}>
@@ -101,7 +103,7 @@ export function BookingField({ field, value, onChange, disabled, aria, slug, tr 
           ) : status === "loading" ? (
             <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label={tr("slotsLoading")}>
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-9 animate-pulse rounded-md bg-surface-active" />
+                <Skeleton key={i} className="h-9 bg-surface-active" />
               ))}
             </div>
           ) : slots.length === 0 ? (
@@ -112,23 +114,22 @@ export function BookingField({ field, value, onChange, disabled, aria, slug, tr 
                 const selected = value === slot.start;
                 const unavailable = slot.available === false;
                 return (
-                  <button
+                  <Button
                     key={slot.start}
                     type="button"
+                    variant={selected ? "default" : "outline"}
                     role="radio"
                     aria-checked={selected}
                     disabled={locked || unavailable}
                     onClick={() => onChange(slot.start)}
                     className={cn(
-                      "h-9 rounded-md border text-sm tabular-nums outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                      selected
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-background text-foreground hover:border-border-strong",
-                      unavailable && "cursor-not-allowed text-text-tertiary line-through opacity-50",
+                      "min-w-0 border px-2 font-normal tabular-nums shadow-none",
+                      selected ? "border-primary" : "border-border hover:border-border-strong",
+                      unavailable && "text-text-tertiary line-through",
                     )}
                   >
                     {timeLabel(slot.start)}
-                  </button>
+                  </Button>
                 );
               })}
             </div>

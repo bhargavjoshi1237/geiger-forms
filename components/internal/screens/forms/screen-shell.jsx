@@ -8,7 +8,7 @@ export function ErrorState({ title = "Something went wrong", description, onRetr
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface-subtle px-6 py-16 text-center">
       <div className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-red-500/10">
-        <AlertTriangle className="h-4 w-4 text-red-400" />
+        <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
       </div>
       <p className="text-sm font-medium text-foreground">{title}</p>
       {description ? (

@@ -98,7 +98,7 @@ function RowActions({ form, can, onAction }) {
           {can.delete ? (
             <>
               <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-400" onClick={() => onAction("delete", form)}>
+              <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-red-600 dark:text-red-400 focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400" onClick={() => onAction("delete", form)}>
                 <Trash2 className="h-4 w-4" /> Delete
               </DropdownMenuItem>
             </>

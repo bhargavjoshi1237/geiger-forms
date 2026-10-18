@@ -147,7 +147,7 @@ function ApiKeysCard({ projectId, canManage }) {
                   ))}
                 </div>
                 {canManage ? (
-                  <Button size="icon" variant="ghost" aria-label={`Revoke ${k.name}`} onClick={() => setRevoke(k)} className="h-8 w-8 text-text-secondary hover:bg-red-500/10 hover:text-red-400">
+                  <Button size="icon" variant="ghost" aria-label={`Revoke ${k.name}`} onClick={() => setRevoke(k)} className="h-8 w-8 text-text-secondary hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400">
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 ) : null}
@@ -217,7 +217,7 @@ function EraseCard({ canManage }) {
       <div className="flex flex-col gap-2 sm:flex-row">
         <TextInput value={email} onChange={setEmail} placeholder="respondent@example.com" className="flex-1" disabled={!canManage} />
         <DisabledHint when={!canManage} hint="Only workspace admins can erase data.">
-          <Button variant="outline" onClick={() => (isEmail(email) ? setConfirming(true) : toast.error("Enter a valid email address."))} disabled={!canManage || !email} className="h-9 border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300">
+          <Button variant="outline" onClick={() => (isEmail(email) ? setConfirming(true) : toast.error("Enter a valid email address."))} disabled={!canManage || !email} className="h-9 border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300">
             <UserX className="h-4 w-4" /> Erase data
           </Button>
         </DisabledHint>

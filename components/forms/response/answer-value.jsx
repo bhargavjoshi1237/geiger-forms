@@ -27,12 +27,12 @@ function FileList({ files, responseId }) {
             href={responseFileUrl(responseId, file.path)}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-2 rounded-md border border-border bg-surface-card px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+            className="flex items-center gap-2 rounded-md border border-border bg-surface-card px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
           >
-            <Paperclip className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+            <Paperclip className="h-4 w-4 shrink-0 text-text-tertiary" />
             <span className="min-w-0 flex-1 truncate">{file.name || "File"}</span>
-            <span className="shrink-0 text-[10px] text-text-tertiary">{formatBytes(file.size)}</span>
-            <Download className="h-3.5 w-3.5 shrink-0" />
+            <span className="shrink-0 text-xs text-text-tertiary">{formatBytes(file.size)}</span>
+            <Download className="h-4 w-4 shrink-0" />
           </a>
         </li>
       ))}
@@ -44,12 +44,12 @@ function MatrixGrid({ field, value }) {
   const rows = field.config?.rows?.length ? field.config.rows : Object.keys(value || {});
   return (
     <div className="mt-1 overflow-hidden rounded-md border border-border">
-      <Table className="text-xs">
+      <Table className="text-sm">
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row} className="hover:bg-transparent">
-              <TableCell className="bg-surface-card px-2.5 py-1.5 text-text-secondary">{row}</TableCell>
-              <TableCell className="px-2.5 py-1.5 text-foreground">{value?.[row] || <Empty />}</TableCell>
+              <TableCell className="bg-surface-card px-3 py-2 text-text-secondary">{row}</TableCell>
+              <TableCell className="px-3 py-2 text-foreground">{value?.[row] || <Empty />}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -64,21 +64,21 @@ function RepeaterTable({ field, value }) {
     : Object.keys(value[0] || {}).map((id) => ({ id, label: id }));
   return (
     <div className="mt-1 overflow-x-auto rounded-md border border-border">
-      <Table className="text-xs">
+      <Table className="text-sm">
         <TableHeader className="bg-transparent">
           <TableRow className="bg-surface-card hover:bg-surface-card">
-            <TableHead className="h-auto px-2.5 py-1.5 text-xs font-medium normal-case tracking-normal text-text-tertiary">#</TableHead>
+            <TableHead className="h-auto px-3 py-2 text-xs font-medium normal-case tracking-normal text-text-tertiary">#</TableHead>
             {subs.map((s) => (
-              <TableHead key={s.id} className="h-auto px-2.5 py-1.5 text-xs font-medium normal-case tracking-normal text-text-tertiary">{s.label || s.id}</TableHead>
+              <TableHead key={s.id} className="h-auto px-3 py-2 text-xs font-medium normal-case tracking-normal text-text-tertiary">{s.label || s.id}</TableHead>
             ))}
           </TableRow>
         </TableHeader>
         <TableBody>
           {value.map((row, i) => (
             <TableRow key={i} className="hover:bg-transparent">
-              <TableCell className="px-2.5 py-1.5 text-text-tertiary">{i + 1}</TableCell>
+              <TableCell className="px-3 py-2 text-text-tertiary">{i + 1}</TableCell>
               {subs.map((s) => (
-                <TableCell key={s.id} className="px-2.5 py-1.5 text-foreground">{displayValue(s, row?.[s.id]) || "—"}</TableCell>
+                <TableCell key={s.id} className="px-3 py-2 text-foreground">{displayValue(s, row?.[s.id]) || "—"}</TableCell>
               ))}
             </TableRow>
           ))}
@@ -101,8 +101,8 @@ export function AnswerValue({ field, response, fields, revealed, onReveal, revea
           <Lock className="h-3.5 w-3.5" />••••••
         </span>
         {onReveal ? (
-          <Button type="button" variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[11px] text-text-secondary hover:text-foreground" onClick={() => onReveal(field.id)} disabled={revealing}>
-            {revealing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
+          <Button type="button" variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs text-text-secondary hover:text-foreground" onClick={() => onReveal(field.id)} disabled={revealing}>
+            {revealing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
             Reveal
           </Button>
         ) : null}
@@ -132,7 +132,7 @@ export function AnswerValue({ field, response, fields, revealed, onReveal, revea
             // eslint-disable-next-line @next/next/no-img-element
             <img src={src} alt={`Signature for ${field.label || field.title}`} className="h-20 max-w-full rounded-md border border-border bg-white object-contain p-1" />
           ) : null}
-          {value?.signedAt ? <span className="text-[10px] text-text-tertiary">Signed {new Date(value.signedAt).toLocaleString()}</span> : null}
+          {value?.signedAt ? <span className="text-xs text-text-tertiary">Signed {new Date(value.signedAt).toLocaleString()}</span> : null}
         </div>
       );
     }
@@ -144,7 +144,7 @@ export function AnswerValue({ field, response, fields, revealed, onReveal, revea
       return (
         <div className="mt-1 flex flex-wrap gap-1">
           {(Array.isArray(value) ? value : [value]).map((v) => (
-            <span key={v} className="rounded-md border border-border bg-surface-card px-1.5 py-0.5 text-xs text-foreground">{v}</span>
+            <span key={v} className="rounded-md border border-border bg-surface-card px-2 py-0.5 text-sm text-foreground">{v}</span>
           ))}
         </div>
       );
@@ -160,10 +160,10 @@ export function AnswerValue({ field, response, fields, revealed, onReveal, revea
       return <span className="tabular-nums">{formatMoney(value, field.config?.currency || currency)}</span>;
     case "url":
       return /^https?:\/\//i.test(String(value)) ? (
-        <a href={String(value)} target="_blank" rel="noreferrer" className="break-all text-sky-400 hover:underline">{String(value)}</a>
+        <a href={String(value)} target="_blank" rel="noreferrer" className="break-all text-sky-600 dark:text-sky-400 hover:underline">{String(value)}</a>
       ) : <span>{String(value)}</span>;
     case "email":
-      return <a href={`mailto:${value}`} className="break-all text-sky-400 hover:underline">{String(value)}</a>;
+      return <a href={`mailto:${value}`} className="break-all text-sky-600 dark:text-sky-400 hover:underline">{String(value)}</a>;
     case "textarea":
       return <p className="whitespace-pre-wrap break-words">{String(value)}</p>;
     default:

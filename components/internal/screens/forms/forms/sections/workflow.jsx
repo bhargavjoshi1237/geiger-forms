@@ -33,7 +33,7 @@ function MiniSelect({ value, onChange, options, placeholder, className }) {
 }
 
 const IconBtn = ({ label, onClick, disabled, children, danger }) => (
-  <Button type="button" size="icon" variant="ghost" aria-label={label} onClick={onClick} disabled={disabled} className={cn("h-8 w-8 text-text-secondary hover:bg-surface-active hover:text-foreground", danger && "hover:bg-red-500/10 hover:text-red-400")}>
+  <Button type="button" size="icon" variant="ghost" aria-label={label} onClick={onClick} disabled={disabled} className={cn("h-8 w-8 text-text-secondary hover:bg-surface-active hover:text-foreground", danger && "hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400")}>
     {children}
   </Button>
 );

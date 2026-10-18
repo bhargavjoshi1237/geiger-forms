@@ -36,7 +36,7 @@ function cleanObject(obj) {
 function TypePicker({ field, onChange }) {
   return (
     <Select value={field.type} onValueChange={(type) => onChange(changeFieldType(field, type))}>
-      <SelectTrigger className="h-8 w-full bg-background text-sm"><SelectValue /></SelectTrigger>
+      <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue /></SelectTrigger>
       <SelectContent className="max-h-80">
         {FIELD_GROUPS.map((group) => (
           <SelectGroup key={group}>
@@ -60,7 +60,7 @@ function DefaultValueInput({ field, onChange }) {
   if (field.type === "select" || field.type === "dropdown") {
     return (
       <Select value={value || "__none"} onValueChange={(v) => set(v === "__none" ? undefined : v)}>
-        <SelectTrigger className="h-8 w-full bg-background text-sm"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="__none">No default</SelectItem>
           {(field.options || []).filter(Boolean).map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -70,7 +70,7 @@ function DefaultValueInput({ field, onChange }) {
   }
   if (["number", "currency", "rating", "scale", "nps"].includes(field.type)) return <NumberInput value={value} onChange={set} />;
   const type = field.type === "date" ? "date" : field.type === "time" ? "time" : field.type === "datetime" ? "datetime-local" : "text";
-  return <Input type={type} value={value ?? ""} onChange={(e) => set(e.target.value)} className="h-8 bg-background text-sm" />;
+  return <Input type={type} value={value ?? ""} onChange={(e) => set(e.target.value)} className="h-8 bg-surface-card text-sm" />;
 }
 
 function QuestionTab({ field, onChange, allFields, scoring, quiz, currency }) {
@@ -91,7 +91,7 @@ function QuestionTab({ field, onChange, allFields, scoring, quiz, currency }) {
 
       {field.type === "content" || field.type === "heading" ? (
         <FieldRow label={field.type === "content" ? "Text" : "Subheading"}>
-          <Textarea value={field.hint || ""} onChange={(e) => onChange({ hint: e.target.value })} rows={field.type === "content" ? 4 : 2} className="min-h-14 resize-y bg-background text-sm" placeholder={field.type === "content" ? "Supports merge tags like {Field Title}." : "Optional"} />
+          <Textarea value={field.hint || ""} onChange={(e) => onChange({ hint: e.target.value })} rows={field.type === "content" ? 4 : 2} className="min-h-14 resize-y bg-surface-card text-sm placeholder:text-text-tertiary" placeholder={field.type === "content" ? "Supports merge tags like {Field Title}." : "Optional"} />
         </FieldRow>
       ) : null}
 
@@ -165,7 +165,7 @@ function ValidationTab({ field, onChange, quiz }) {
             </FieldRow>
             <FieldRow label="Error message"><TextInput value={v.patternMessage} onChange={(patternMessage) => setRule({ patternMessage })} placeholder="This value isn't in the expected format." /></FieldRow>
           </div>
-          {patternError ? <p className="text-[11px] text-red-400">{patternError}</p> : null}
+          {patternError ? <p className="text-[11px] text-red-600 dark:text-red-400">{patternError}</p> : null}
         </>
       ) : null}
       {field.type === "multiselect" ? (
@@ -178,7 +178,7 @@ function ValidationTab({ field, onChange, quiz }) {
 
       {showQuizPoints ? (
         <div className="space-y-3 rounded-md border border-violet-500/20 bg-violet-500/5 p-3">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-violet-300">Quiz</p>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-violet-700 dark:text-violet-300">Quiz</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {showQuizAnswer ? (
               <FieldRow label="Correct answer" hint="Matched case-insensitively.">
@@ -225,17 +225,17 @@ function AdvancedTab({ field, onChange }) {
       ) : null}
       {input ? (
         <div className={cn("rounded-md border p-3", field.sensitive ? "border-amber-500/20 bg-amber-500/5" : "border-border bg-background")}>
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                {field.sensitive ? <Lock className="h-3.5 w-3.5 text-amber-400" /> : <ShieldCheck className="h-3.5 w-3.5 text-text-secondary" />}
+                {field.sensitive ? <Lock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> : <ShieldCheck className="h-3.5 w-3.5 text-text-secondary" />}
                 Sensitive data (ePHI)
               </p>
               <p className="mt-1 text-[11px] leading-4 text-text-tertiary">
                 Encrypted at rest and masked in the inbox, exports and notifications. Teammates must reveal it explicitly, and every reveal is logged.
               </p>
             </div>
-            <Switch checked={Boolean(field.sensitive)} onCheckedChange={(sensitive) => onChange({ sensitive })} aria-label="Sensitive data" className="mt-0.5 shrink-0" />
+            <Switch checked={Boolean(field.sensitive)} onCheckedChange={(sensitive) => onChange({ sensitive })} aria-label="Sensitive data" className="shrink-0" />
           </div>
         </div>
       ) : null}

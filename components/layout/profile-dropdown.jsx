@@ -188,9 +188,9 @@ export function ProfileDropdown({ children }) {
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={handleSignOut}
-              className={`${itemBaseStyle} text-muted-foreground hover:bg-red-500/10 focus:bg-red-500/10 hover:text-red-400 focus:text-red-400 group`}
+              className={`${itemBaseStyle} text-muted-foreground hover:bg-red-500/10 focus:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 focus:text-red-600 dark:focus:text-red-400 group`}
             >
-              <LogOut className="size-4 group-hover:text-red-400 group-focus:text-red-400" />
+              <LogOut className="size-4 group-hover:text-red-600 dark:group-hover:text-red-400 group-focus:text-red-600 dark:group-focus:text-red-400" />
               <span>Sign out</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>

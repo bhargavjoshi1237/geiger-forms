@@ -121,7 +121,7 @@ function VariantsDialog({ form, open, onOpenChange, onSave }) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 text-red-400 hover:bg-red-500/10"
+                  className="h-8 w-8 shrink-0 text-red-600 dark:text-red-400 hover:bg-red-500/10"
                   aria-label="Remove variant"
                   onClick={() => setDraft((d) => ({ ...d, variants: d.variants.filter((_, j) => j !== i) }))}
                 >
@@ -256,7 +256,7 @@ export function AbTestScreen() {
         r.lift == null ? (
           <span className="text-text-tertiary">—</span>
         ) : (
-          <span className={`tabular-nums ${r.lift >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+          <span className={`tabular-nums ${r.lift >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
             {r.lift > 0 ? "+" : ""}
             {r.lift}%
           </span>

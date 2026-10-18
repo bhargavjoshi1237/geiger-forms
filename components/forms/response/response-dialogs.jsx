@@ -131,7 +131,7 @@ export function RequestEditDialog({ open, onOpenChange, response }) {
               <div className="flex gap-2">
                 <Input readOnly value={result.url} onFocus={(e) => e.target.select()} className="text-xs" />
                 <Button type="button" variant="outline" size="icon" onClick={copy} aria-label="Copy link">
-                  {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                  {copied ? <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
             </Field>
