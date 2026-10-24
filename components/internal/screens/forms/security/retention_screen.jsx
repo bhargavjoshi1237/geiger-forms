@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Eraser, FileText, Globe2, Loader2 } from "lucide-react";
+import { Download, Eraser, FileText, Globe2, Loader2 } from "lucide-react";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -31,6 +31,8 @@ import { useCan } from "@/context/rbac-context";
 import { useForms } from "@/lib/hooks/use-forms";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { callApi } from "@/lib/forms/api";
+import { triggerDownload } from "@/lib/forms/export";
+import { plural } from "@/lib/utils";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -79,6 +81,56 @@ function RetentionCell({ form, canEdit, onSave }) {
       <span className="text-xs text-text-tertiary">days</span>
       {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-text-tertiary" /> : null}
     </div>
+  );
+}
+
+function ExportCard() {
+  const canExport = useCan("forms.response.export");
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const valid = EMAIL_RE.test(email.trim());
+
+  const exportData = async () => {
+    const target = email.trim();
+    setBusy(true);
+    const { ok, data } = await callApi("/api/workspace/export", { method: "POST", body: { email: target } });
+    setBusy(false);
+    if (!ok) {
+      toast.error(data?.error || "Couldn't export that respondent's data.");
+      return;
+    }
+    if (!data?.bundle) {
+      toast.success(`No data found for ${target}`);
+      return;
+    }
+    const { responses, partials, bookings } = data.counts;
+    const stamp = new Date().toISOString().slice(0, 10);
+    triggerDownload(JSON.stringify(data.bundle, null, 2), `subject-access-${target.replace(/[^\w.-]+/g, "-")}-${stamp}.json`, "application/json");
+    toast.success(`Exported ${plural(responses, "response")}, ${plural(partials, "partial")} and ${plural(bookings, "booking")} for ${target}`);
+  };
+
+  return (
+    <SectionCard
+      title="Right of access"
+      description="Download everything held about an email address — responses, partials, bookings, payments, uploaded files and team comments — as JSON (GDPR Art. 15 / CCPA access requests). File links expire after an hour."
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <Field label="Respondent email" className="flex-1">
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="person@example.com"
+            className="border-border bg-surface-card text-foreground"
+          />
+        </Field>
+        <Button variant="outline" disabled={!valid || !canExport || busy} onClick={exportData}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Export data
+        </Button>
+      </div>
+      {!canExport ? <p className="mt-2 text-xs text-text-tertiary">Your role can&apos;t export responses.</p> : null}
+    </SectionCard>
   );
 }
 
@@ -226,7 +278,7 @@ export function RetentionScreen({ focus = "retention" }) {
   const header = (
     <ScreenHeader
       title={gdpr ? "Data Protection & GDPR" : "Retention & GDPR"}
-      description="Control how long responses are kept, honor erasure requests, and collect anonymously where you can."
+      description="Control how long responses are kept, answer access and erasure requests, and collect anonymously where you can."
     />
   );
 
@@ -288,12 +340,14 @@ export function RetentionScreen({ focus = "retention" }) {
       <StatsBar stats={stats} />
       {gdpr ? (
         <>
+          <ExportCard />
           <EraseCard />
           {table}
         </>
       ) : (
         <>
           {table}
+          <ExportCard />
           <EraseCard />
         </>
       )}

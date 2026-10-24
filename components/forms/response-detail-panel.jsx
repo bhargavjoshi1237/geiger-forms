@@ -15,7 +15,6 @@ import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@geiger/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui/tabs";
 import { Button } from "@geiger/ui/button";
-import { Input } from "@geiger/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
 import {
@@ -29,7 +28,8 @@ import { LogoLoading } from "@geiger/ui/logo-loading";
 import { cn } from "@/lib/utils";
 import { useCan } from "@/context/rbac-context";
 import { getFormById } from "@/lib/supabase/forms";
-import { updateResponse } from "@/lib/supabase/responses";
+import { assignResponses, updateResponse } from "@/lib/supabase/responses";
+import { resolvePerson, useMembers } from "@/lib/hooks/use-members";
 import { logAccess } from "@/lib/supabase/audit";
 import { callApi } from "@/lib/forms/api";
 import { visibleFieldIds } from "@/lib/forms/logic";
@@ -46,6 +46,7 @@ import {
 } from "@/components/internal/screens/forms/responses/constants";
 import { AnswerValue } from "./response/answer-value";
 import { TagsEditor } from "./response/tags-editor";
+import { AssigneePicker, PersonChip, assigneeValue } from "./response/members";
 import { ConfirmDeleteDialog, CountersignDialog, RequestEditDialog } from "./response/response-dialogs";
 import {
   AccessLogSection,
@@ -107,34 +108,6 @@ function PropertySelect({ label, value, options, map, onChange }) {
         ))}
       </SelectContent>
     </Select>
-  );
-}
-
-// Uncontrolled; remounted per response via `key` so no effect is needed to resync.
-function AssigneeInput({ value, suggestions, onCommit }) {
-  const [draft, setDraft] = useState(value || "");
-  const commit = () => {
-    const next = draft.trim();
-    if (next !== (value || "")) onCommit(next);
-  };
-  return (
-    <>
-      <Input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-          if (e.key === "Escape") setDraft(value || "");
-        }}
-        list="response-assignee-options"
-        placeholder="Unassigned"
-        className="border-transparent bg-transparent px-2 py-[5px] text-sm shadow-none placeholder:text-text-tertiary hover:border-border focus-visible:border-border focus-visible:ring-0 md:text-sm"
-      />
-      <datalist id="response-assignee-options">
-        {suggestions.map((s) => <option key={s} value={s} />)}
-      </datalist>
-    </>
   );
 }
 
@@ -224,20 +197,23 @@ export function ResponseDetailPanel({
   form: formProp,
   onClose,
   onPatch,
+  onAssign,
   onReplace,
   onDelete,
   onOpenResponse,
   tagSuggestions = [],
-  assigneeSuggestions = [],
 }) {
   const [local, setLocal] = useState(null);
   const row = local?.id === response.id && local.updatedAt === response.updatedAt ? local.row : response;
   const { form, loading: formLoading } = useResponseForm(row.formId, formProp);
+  const { members, byId, me } = useMembers();
   const [tab, setTab] = useState("answers");
   const [dialog, setDialog] = useState(null);
   const [escalating, setEscalating] = useState(false);
+  const [assigning, setAssigning] = useState(false);
   const canDelete = useCan("forms.response.delete");
   const canExport = useCan("forms.response.export");
+  const canAssign = useCan("forms.form.edit");
   const logged = useRef(null);
 
   // One 'view' access line per opened response.
@@ -259,6 +235,19 @@ export function ResponseDetailPanel({
       if (message) toast.success(message);
     } catch {
       toast.error("Couldn't save that change.");
+    }
+  };
+
+  const assign = async (member) => {
+    setAssigning(true);
+    try {
+      if (onAssign) await onAssign([row.id], member);
+      else replace((await assignResponses([row.id], member?.id ?? null))[0]);
+      toast.success(member ? `Assigned to ${member.name}` : "Unassigned");
+    } catch (err) {
+      toast.error(err.message || "Couldn't change the assignee.");
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -294,12 +283,18 @@ export function ResponseDetailPanel({
     }
   };
 
+  const assignee = resolvePerson(row.assigneeId, row.assignee, byId);
   const flowIssue = row.metadata?.flowIssue;
   const approvalPending = row.approval?.state === "pending" || (form?.settings?.approval?.enabled && !row.approval?.state);
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full gap-0 border-border bg-surface-subtle p-0 sm:max-w-[560px]">
+      <SheetContent
+        side="right"
+        className="w-full gap-0 border-border bg-surface-subtle p-0 sm:max-w-[560px]"
+        // Escape first closes an open autocomplete (the mention list), not the whole panel.
+        onEscapeKeyDown={(e) => e.target?.getAttribute?.("aria-expanded") === "true" && e.preventDefault()}
+      >
         <div className="flex items-start gap-3 border-b border-border px-5 py-4 pr-12">
           <Avatar className="size-10 border border-border">
             <AvatarFallback className="border-0 bg-surface-card text-xs font-semibold text-muted-foreground">{row.initials}</AvatarFallback>
@@ -334,12 +329,16 @@ export function ResponseDetailPanel({
             </div>
           </PropertyRow>
           <PropertyRow label="Assignee">
-            <AssigneeInput
-              key={`${row.id}:${row.assignee}`}
-              value={row.assignee}
-              suggestions={assigneeSuggestions}
-              onCommit={(assignee) => patch({ assignee }, assignee ? `Assigned to ${assignee}` : "Unassigned")}
-            />
+            {canAssign ? (
+              <AssigneePicker value={assigneeValue(row)} members={members} me={me} onChange={assign}>
+                <Button type="button" variant="ghost" size="sm" disabled={assigning} aria-label={`Change assignee, currently ${assignee ? assignee.name : "unassigned"}`} className="max-w-full justify-start px-2 font-normal text-foreground hover:bg-surface-hover">
+                  <PersonChip person={assignee} />
+                  {assigning ? <Loader2 className="size-3.5 shrink-0 animate-spin text-text-tertiary" /> : null}
+                </Button>
+              </AssigneePicker>
+            ) : (
+              <PersonChip person={assignee} className="px-2 text-sm" />
+            )}
           </PropertyRow>
           <PropertyRow label="Tags">
             <TagsEditor tags={row.tags} suggestions={tagSuggestions} onChange={(tags) => patch({ tags })} />

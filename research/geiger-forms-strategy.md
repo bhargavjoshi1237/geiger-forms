@@ -9,24 +9,34 @@ it needs *finishing and extending in the right order*, not rebuilding.
 ## 1. Where the code actually is (🔵 from the repo)
 
 **Already built and real:**
-- Visual **builder** (`components/forms/form-builder.jsx`, 1,187 lines), public
-  **filler** (`form-filler-content.jsx`), **field renderer**, publish dialog.
-- **10 field types** + **conditional visibility** + **calculated fields (formula
-  eval)** + **scoring/priority thresholds** (`lib/forms/`).
-- **9-screen workspace**: Overview, Forms, Responses, Analytics, Templates,
-  Folders, Shared, Archived, Settings.
-- **Data layer + SQL + RLS**: `geiger_forms`, `geiger_form_responses`,
-  `geiger_form_versions`, `geiger_form_comments`. Comments and version history
-  already exist — features most competitors *lack*.
+- Visual **builder** (`components/forms/form-builder.jsx` + `components/forms/builder/`),
+  public **filler** (`form-filler-content.jsx` + `components/forms/filler/`, classic
+  and conversational), **field renderer**, publish dialog.
+- **39 field types** (`lib/forms/field-types.js`) + **conditional visibility** +
+  **calculated fields (formula eval)** + **scoring/priority thresholds**, quizzes
+  and outcome branching (`lib/forms/`).
+- **37-view workspace** (`sidebar_nav.js`): overview, forms, responses, analytics,
+  integrations, collaboration, security & compliance, templates & admin and
+  developer views; the 4 AI views are Coming soon.
+- **Data layer + SQL + RLS** in the `forms` schema: `forms.forms`,
+  `forms.responses`, `forms.versions`, `forms.comments`, plus partials, bookings,
+  funnel events, activity and access logs, saved views, webhook deliveries, API
+  keys and RBAC grants. RLS is scoped by `@geiger/rbac` grants; anon has no direct
+  access. Comments and version history already exist — features most competitors
+  *lack*.
 
-**The blocking gap (do this first):**
-- 🔴 The builder and filler **aren't routed.** `app/forms/[formId]/page.js` and
-  `app/form/[formId]/page.js` are **empty (0 bytes)**. The landing page links to
-  `/form/demo` → dead. **Nothing renders the builder or the public form yet.**
+**The blocking gap is closed:**
+- ✅ The builder (`app/forms/[formId]/page.js`) and the SSR public filler
+  (`app/form/[formId]/page.js`) are routed, and the landing page's `/form/demo`
+  is backed by `supabase/seeds/demo_form.sql`.
 
-**So the honest status:** ~70% of a strong v1 forms product is built; it's not
-shippable until the two routes are wired and a payment path + a few table-stakes
-(multi-page, embed, spam) land.
+**So the honest status:** P0 and P1 below have shipped (bar an HTML block; text
+blocks are plain text), and so has most of P2–P4. Still open: AI (8–9, waits for the suite's `@geiger/ai`); a stored,
+server-rendered PDF (14, 16 — documents print from the browser and aren't
+attached to emails); native Google Sheets, Zapier and Make apps (18 — Zapier and
+Make work through webhooks); merged real-time co-editing (20 — presence only; SSO
+comes from the suite account); custom domains and white-label email (21 —
+branding is a per-form footer toggle).
 
 ---
 

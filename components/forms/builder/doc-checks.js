@@ -1,5 +1,7 @@
 import { hasOptions, isInputField } from "@/lib/forms/field-types";
 import { checkFormula } from "@/lib/forms/formula";
+import { OUTCOME_METRICS, safeHttpUrl } from "@/lib/forms/logic";
+import { imageSource, videoSource } from "@/lib/forms/media";
 
 // Pre-publish checks, version diffs and the doc signature hash used by co-editing.
 
@@ -15,6 +17,18 @@ function refKeys(fields) {
 
 export function formulaRefs(formula) {
   return [...String(formula || "").matchAll(/\{([^}]+)\}/g)].map((m) => m[1].trim());
+}
+
+// Response metrics a branch can test right now: the score while scoring or a quiz is on, the quiz result while a quiz is on.
+export function offeredMetrics(settings) {
+  const quiz = Boolean(settings?.quiz?.enabled);
+  return OUTCOME_METRICS.filter((m) => (m.id === "__quiz" ? quiz : quiz || settings?.scoringEnabled));
+}
+
+// True when a non-empty URL template can't resolve to an absolute http(s) URL, whatever its merge tags hold.
+export function isInvalidUrlTemplate(template) {
+  const value = String(template || "").trim();
+  return Boolean(value) && !safeHttpUrl(value.replace(/\{[^}]+\}/g, "x"));
 }
 
 // Returns [{ id, fieldId?, message }] — problems a respondent would hit on the live form.
@@ -50,6 +64,15 @@ export function collectWarnings({ fields, settings }) {
     if (f.type === "product" && !(Number(f.config?.price) > 0)) {
       warnings.push({ id: `price-${f.id}`, fieldId: f.id, message: `${name(f)} has no price.` });
     }
+    if ((f.type === "picture" || f.type === "multipicture") && (f.options || []).some((o) => !imageSource(f.config?.images?.[o]?.url))) {
+      warnings.push({ id: `pictures-${f.id}`, fieldId: f.id, message: `${name(f)} has choices without a picture.` });
+    }
+    if (f.type === "image" && !imageSource(f.config?.url)) {
+      warnings.push({ id: `image-${f.id}`, fieldId: f.id, message: `${name(f)} has no image, so it's hidden.` });
+    }
+    if (f.type === "video" && !videoSource(f.config?.url)) {
+      warnings.push({ id: `video-${f.id}`, fieldId: f.id, message: `${name(f)} needs a YouTube, Vimeo or .mp4 link, so it's hidden.` });
+    }
     const broken = (f.conditions || []).filter((c) => c.fieldId && !ids.has(c.fieldId));
     if (broken.length) {
       warnings.push({ id: `cond-${f.id}`, fieldId: f.id, message: `${name(f)} has ${broken.length} condition${broken.length > 1 ? "s" : ""} on a deleted field.` });
@@ -60,12 +83,27 @@ export function collectWarnings({ fields, settings }) {
     }
   }
 
+  if (settings?.thankYouType === "redirect" && isInvalidUrlTemplate(settings.thankYouUrl)) {
+    warnings.push({ id: "redirect-url", message: "The redirect URL must start with http:// or https://, so it's ignored." });
+  }
+
   if (settings?.branchingEnabled) {
+    const offered = new Set(offeredMetrics(settings).map((m) => m.id));
     for (const b of settings.branches || []) {
       const conds = b.conditions || [];
       if (conds.length === 0) warnings.push({ id: `branch-${b.id}`, message: `Branch “${b.name || "Untitled"}” has no conditions, so it never matches.` });
-      else if (conds.some((c) => c.fieldId && !ids.has(c.fieldId))) {
+      else if (conds.some((c) => c.fieldId && !c.fieldId.startsWith("__") && !ids.has(c.fieldId))) {
         warnings.push({ id: `branch-ref-${b.id}`, message: `Branch “${b.name || "Untitled"}” references a deleted field.` });
+      }
+      const metric = OUTCOME_METRICS.find((m) => !offered.has(m.id) && conds.some((c) => c.fieldId === m.id));
+      if (metric) {
+        warnings.push({
+          id: `branch-metric-${b.id}`,
+          message: `Branch “${b.name || "Untitled"}” tests “${metric.title}”, which needs ${metric.id === "__quiz" ? "a quiz" : "scoring or a quiz"} turned on, so that condition never matches.`,
+        });
+      }
+      if (b.ending?.enabled && (isInvalidUrlTemplate(b.ending.buttonUrl) || isInvalidUrlTemplate(b.ending.redirectUrl))) {
+        warnings.push({ id: `branch-url-${b.id}`, message: `Branch “${b.name || "Untitled"}” has an ending link that isn't http(s), so it's ignored.` });
       }
     }
   }

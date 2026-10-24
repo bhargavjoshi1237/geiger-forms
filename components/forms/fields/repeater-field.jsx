@@ -11,7 +11,8 @@ function SubInput({ sub, id, value, onChange, disabled, tr }) {
   const common = { field, id, value, onChange, disabled, aria: { "aria-required": sub.required || undefined } };
   if (sub.type === "textarea") return <LongTextInput {...common} />;
   if (sub.type === "dropdown") return <DropdownInput {...common} placeholder={tr("selectPlaceholder")} />;
-  return <TextLikeInput {...common} />;
+  // Rows usually describe other people, so the respondent's own autofill profile must not fill them.
+  return <TextLikeInput {...common} autoComplete="off" />;
 }
 
 // Repeating group: rows of sub-fields with add/remove bounded by config.minRows / maxRows.

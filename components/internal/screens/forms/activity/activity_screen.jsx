@@ -36,6 +36,7 @@ const ACTION_LABELS = {
   "form.shared": "Shared form",
   "response.created": "New response",
   "response.updated": "Updated response",
+  "response.assigned": "Changed assignee",
   "response.approved": "Approved response",
   "response.rejected": "Rejected response",
   "response.escalated": "Escalated to Flow",
@@ -44,6 +45,7 @@ const ACTION_LABELS = {
   "responses.deleted": "Deleted responses",
   "responses.exported": "Exported responses",
   "respondent.erased": "Erased respondent data",
+  "respondent.exported": "Exported respondent data",
   "role.changed": "Changed a role",
   "apikey.created": "Created API key",
   "apikey.revoked": "Revoked API key",
@@ -75,7 +77,7 @@ function detailText(detail = {}) {
   if (!detail || typeof detail !== "object") return "";
   if (typeof detail.count === "number") return `${detail.count} item${detail.count === 1 ? "" : "s"}`;
   const parts = Object.entries(detail)
-    .filter(([k, v]) => k !== "title" && (typeof v === "string" || typeof v === "number" || typeof v === "boolean"))
+    .filter(([k, v]) => k !== "title" && !k.endsWith("Id") && (typeof v === "string" || typeof v === "number" || typeof v === "boolean"))
     .slice(0, 3)
     .map(([k, v]) => `${k}: ${v}`);
   return parts.join(" · ");

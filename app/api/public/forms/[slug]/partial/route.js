@@ -40,6 +40,9 @@ export async function POST(request, { params }) {
   if (jsonSize(answers) > MAX_BODY_BYTES) return fail("Your answers are too large to save.", 413);
   const form = await loadPublishedForm(slug);
   if (!form) return notFound("Form not found.");
+  // Consent-gated forms store nothing until the respondent opts in.
+  const consentRequired = Boolean(form.settings.partialConsent);
+  if (consentRequired && body.consent !== true) return fail("Opt in before your progress can be saved.", 403, { code: "consent" });
   if (!(await rateLimit(`partial:${form.id}:${ipHash(request)}`, 600))) return rateLimited();
 
   // Inline signature images aren't kept in drafts; the respondent signs again on resume.
@@ -68,14 +71,38 @@ export async function POST(request, { params }) {
       .is("deleted_at", null)
       .select("token")
       .maybeSingle();
-    if (dbError) console.error("[api.partial.update]", dbError.message);
-    if (data) return ok({ token: data.token });
+    if (dbError) {
+      console.error("[api.partial.update]", dbError.message);
+      return fail("Couldn't save your progress.", 500);
+    }
+    // A withdrawn, submitted or expired partial is never silently re-created; the client drops its token.
+    if (!data) return fail("This saved response is no longer available.", 410, { code: "gone" });
+    return ok({ token: data.token });
   }
   const token = randomToken(24);
-  const { error: insertError } = await db.from("partials").insert({ ...row, form_id: form.id, token });
+  const consent = consentRequired ? { metadata: { consentedAt: new Date().toISOString() } } : {};
+  const { error: insertError } = await db.from("partials").insert({ ...row, ...consent, form_id: form.id, token });
   if (insertError) {
     console.error("[api.partial.insert]", insertError.message);
     return fail("Couldn't save your progress.", 500);
   }
   return ok({ token });
+}
+
+// Withdraws opt-in: hard-deletes the unfinished partial saved under this token.
+export async function DELETE(request, { params }) {
+  const { slug } = await params;
+  const db = formsAdmin();
+  if (!db) return unavailable();
+  const { body, error } = await readJson(request, 2 * 1024);
+  if (error) return error;
+  if (!validToken(body.token)) return fail("A resume token is required.", 400);
+  const form = await loadPublishedForm(slug);
+  if (!form) return notFound("Form not found.");
+  const { error: dbError } = await db.from("partials").delete().eq("form_id", form.id).eq("token", body.token).is("completed_at", null);
+  if (dbError) {
+    console.error("[api.partial.delete]", dbError.message);
+    return fail("Couldn't delete your saved progress.", 500);
+  }
+  return ok();
 }

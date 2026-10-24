@@ -9,23 +9,19 @@ import {
 } from "@/context/project-context";
 import { withPrefix } from "@/lib/workspace/base-path";
 import { LoadingScreen } from "@geiger/ui/screen-kit";
+import { NoProjectState } from "@/components/internal/screens/forms/no_project";
 
 function ProjectResolver() {
   const router = useRouter();
   const { projects, loading } = useProject();
 
   useEffect(() => {
-    if (loading) return;
-    // Forms has no standalone login page — fall back to the unscoped
-    // workspace when the user holds no project.
-    if (projects.length === 0) {
-      router.replace(withPrefix("/forms"));
-      return;
-    }
+    if (loading || projects.length === 0) return;
     const id = pickDefaultProjectId(projects);
     if (id) router.replace(withPrefix(`/project/${id}`));
   }, [loading, projects, router]);
 
+  if (!loading && projects.length === 0) return <NoProjectState />;
   return <LoadingScreen className="bg-background" label="Loading workspace" />;
 }
 

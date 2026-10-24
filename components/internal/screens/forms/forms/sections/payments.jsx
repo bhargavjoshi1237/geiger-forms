@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@geiger/ui/tabs";
 import { computeOrder, formatMoney } from "@/lib/forms/logic";
 import { cn } from "@/lib/utils";
 import { CURRENCIES } from "../constants";
+import { ServiceNotice } from "../../settings/service_status";
 import { AddButton, BuilderLink, CopyField, FIELD_CLS, ItemCard, Note, NumberInput, Stack, TextInput, useOrigin } from "./kit";
 import { withPrefix } from "@/lib/workspace/base-path";
 
@@ -26,6 +27,7 @@ export function GatewaysSection({ settings, setGroup }) {
         </SettingsList>
         {payments.enabled ? (
           <div className="mt-4 grid gap-4">
+            <ServiceNotice service={["payments", "paymentWebhooks"]} />
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Currency">
                 <Select value={payments.currency || "usd"} onValueChange={(v) => setGroup("payments", { currency: v })}>

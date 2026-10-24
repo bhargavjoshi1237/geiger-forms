@@ -18,13 +18,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { LogoLoading } from "@geiger/ui/logo-loading";
-import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
 import { Button } from "@geiger/ui/button";
-import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
 import { cn } from "@/lib/utils";
 import { StatusPill } from "@geiger/ui/screen-kit";
 import { useComments } from "@/lib/hooks/use-comments";
+import { resolvePerson, useMembers } from "@/lib/hooks/use-members";
 import { listAccess, listActivity } from "@/lib/supabase/audit";
 import { normalizeResponse } from "@/lib/supabase/responses";
 import { callApi } from "@/lib/forms/api";
@@ -35,6 +34,8 @@ import {
   formatDateTime,
   formatDuration,
 } from "@/components/internal/screens/forms/responses/constants";
+import { MemberAvatar } from "./members";
+import { MentionInput, MentionText, mentionedIds } from "./mention-input";
 
 function SectionBlock({ title, children, action }) {
   return (
@@ -396,6 +397,7 @@ const ACTIVITY_LABEL = {
 
 function describeActivity(a) {
   const d = a.detail || {};
+  if (a.action === "response.assigned") return d.assignee ? `assigned ${d.assignee}` : "cleared the assignee";
   if (a.action === "response.updated") {
     const parts = [];
     if (d.status) parts.push(`set status to ${d.status}`);
@@ -409,6 +411,7 @@ function describeActivity(a) {
 
 export function ActivitySection({ response }) {
   const { comments, loading, add } = useComments(response.id);
+  const { members, byId } = useMembers();
   const [activity, setActivity] = useState(null);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -427,20 +430,28 @@ export function ActivitySection({ response }) {
     const items = [
       { kind: "event", id: "submitted", at: response.submittedAt, actor: response.name, text: "submitted the form" },
       ...(activity || []).map((a) => ({ kind: "event", id: a.id, at: a.createdAt, actor: a.actorName, text: describeActivity(a) })),
-      ...comments.map((c) => ({ kind: "comment", id: c.id, at: c.createdAt, actor: c.author, initials: c.initials, text: c.body, when: c.when })),
+      ...comments.map((c) => ({
+        kind: "comment",
+        id: c.id,
+        at: c.createdAt,
+        person: resolvePerson(c.authorId, c.author, byId),
+        mentioned: c.mentions.map((id) => byId.get(id)).filter(Boolean),
+        text: c.body,
+        when: c.when,
+      })),
     ];
     return items.sort((a, b) => new Date(a.at) - new Date(b.at));
-  }, [activity, comments, response.submittedAt, response.name]);
+  }, [activity, comments, byId, response.submittedAt, response.name]);
 
   const send = async () => {
     const text = input.trim();
     if (!text || sending) return;
     setSending(true);
     try {
-      await add(text);
+      await add(text, mentionedIds(text, members));
       setInput("");
-    } catch {
-      toast.error("Couldn't post your comment.");
+    } catch (err) {
+      toast.error(err.message || "Couldn't post your comment.");
     } finally {
       setSending(false);
     }
@@ -456,15 +467,15 @@ export function ActivitySection({ response }) {
             {timeline.map((item) =>
               item.kind === "comment" ? (
                 <li key={item.id} className="flex gap-3">
-                  <Avatar className="border border-border">
-                    <AvatarFallback className="border-0 bg-surface-card text-[11px] font-semibold text-muted-foreground">{item.initials}</AvatarFallback>
-                  </Avatar>
+                  <MemberAvatar person={item.person} size="default" />
                   <div className="min-w-0 flex-1 rounded-lg border border-border bg-surface-card px-3 py-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground">{item.actor}</span>
+                      <span className="text-sm font-medium text-foreground">{item.person?.name || "Teammate"}</span>
                       <span className="text-xs text-text-tertiary">{item.when}</span>
                     </div>
-                    <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{item.text}</p>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
+                      <MentionText text={item.text} people={item.mentioned} />
+                    </p>
                   </div>
                 </li>
               ) : (
@@ -482,24 +493,12 @@ export function ActivitySection({ response }) {
       </div>
       <div className="border-t border-border px-5 py-3">
         <div className="flex items-stretch gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-            placeholder="Add a comment for your team…"
-            aria-label="Comment"
-            className="flex-1"
-          />
+          <MentionInput value={input} onChange={setInput} members={members} onSubmit={send} placeholder="Add a comment for your team…" aria-label="Comment" />
           <Button type="button" size="sm" onClick={send} disabled={sending || !input.trim()} aria-label="Send comment" className="h-auto w-10 shrink-0 self-stretch bg-primary p-0 text-primary-foreground hover:bg-primary/90">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
-        <p className="mt-2 text-xs text-text-tertiary">Enter to send · Visible to workspace members only</p>
+        <p className="mt-2 text-xs text-text-tertiary">Enter to send · @ to mention a teammate · Visible to workspace members only</p>
       </div>
     </div>
   );

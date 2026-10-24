@@ -19,17 +19,16 @@ import { ListPagination, usePagination } from "@/components/internal/shared/pagi
 import { ErrorState } from "../screen-shell";
 import { useForms } from "@/lib/hooks/use-forms";
 import { useResponses } from "@/lib/hooks/use-responses";
+import { useServiceStatus } from "@/lib/hooks/use-service-status";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { ChecklistItem, OnOff, ACCESS_SECTION } from "./security_shared";
-
-// Turnstile's public key is inlined at build time, so the client can tell whether captcha is wired up.
-const CAPTCHA_READY = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
 // Spam & abuse overview: per-form protections plus flagged-response counts.
 export function SpamScreen() {
   const { forms, loading: formsLoading, error, refresh } = useForms();
   const { responses, loading: responsesLoading } = useResponses();
   const { openForm, setView } = useWorkspaceUrl();
+  const { services } = useServiceStatus();
   const [search, setSearch] = useState("");
 
   const spamByForm = useMemo(() => {
@@ -42,11 +41,11 @@ export function SpamScreen() {
     const spamTotal = [...spamByForm.values()].reduce((a, b) => a + b, 0);
     return [
       { label: "Honeypot on", value: `${forms.filter((f) => f.settings?.spam?.honeypot).length}/${forms.length}` },
-      { label: "Captcha on", value: `${forms.filter((f) => f.settings?.spam?.captcha).length}/${forms.length}`, footer: CAPTCHA_READY ? "Turnstile configured" : "Turnstile keys missing" },
+      { label: "Captcha on", value: `${forms.filter((f) => f.settings?.spam?.captcha).length}/${forms.length}`, footer: services ? (services.captcha ? "Turnstile configured" : "Turnstile keys missing") : undefined },
       { label: "Duplicate checks", value: String(forms.filter((f) => f.settings?.duplicates?.enabled).length), footer: "Forms flagging or blocking repeats" },
       { label: "Flagged as spam", value: String(spamTotal), footer: responses.length ? `${Math.round((spamTotal / responses.length) * 100)}% of responses` : "No responses yet" },
     ];
-  }, [forms, responses.length, spamByForm]);
+  }, [forms, responses.length, spamByForm, services]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -158,10 +157,12 @@ export function SpamScreen() {
           <ChecklistItem done title="Honeypot">
             A hidden field bots fill in and people never see. Submissions that fill it are silently dropped. On by default.
           </ChecklistItem>
-          <ChecklistItem done={CAPTCHA_READY} title="Captcha (Cloudflare Turnstile)">
-            {CAPTCHA_READY
-              ? "Turnstile is configured; enable it per form to challenge suspicious traffic."
-              : "Needs NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY in the environment before the per-form toggle has any effect."}
+          <ChecklistItem done={services ? Boolean(services.captcha) : null} title="Captcha (Cloudflare Turnstile)">
+            {!services
+              ? "Couldn't check this deployment's keys. Verify NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY are set before relying on the per-form toggle."
+              : services.captcha
+                ? "Turnstile is configured; enable it per form to challenge suspicious traffic."
+                : "Needs NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY in the environment before the per-form toggle has any effect."}
           </ChecklistItem>
           <ChecklistItem done title="Rate limiting">
             Caps submissions per hashed IP within a short window, enforced server-side. Over-limit requests get a friendly retry message.

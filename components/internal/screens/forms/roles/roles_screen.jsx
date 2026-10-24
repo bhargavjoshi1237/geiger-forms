@@ -289,8 +289,12 @@ export function RolesScreen({ focus = "roles" }) {
   const access = focus === "access";
   const header = (
     <ScreenHeader
-      title={access ? "Access Control (SSO/RBAC)" : "Roles & Permissions"}
-      description="Who can see and do what in this project's Forms workspace. Roles are shared suite-wide; assignments here only affect Forms."
+      title={access ? "Access Control" : "Roles & Permissions"}
+      description={
+        access
+          ? "Who can see and do what in this project's Forms workspace. Sign-in and single sign-on come from your Geiger suite account."
+          : "Who can see and do what in this project's Forms workspace. Roles are shared suite-wide; assignments here only affect Forms."
+      }
       actions={
         projectId ? (
           <Button className="bg-primary text-primary-foreground" disabled={!canManage} onClick={() => setCreating(true)}>
@@ -518,9 +522,9 @@ export function RolesScreen({ focus = "roles" }) {
       )}
 
       {access ? (
-        <SectionCard title="Single sign-on & 2FA">
+        <SectionCard title="Sign-in & single sign-on">
           <p className="text-sm text-text-secondary">
-            Sign-in, SSO (SAML/OIDC), and two-factor authentication are handled by the Geiger suite account, not by Forms — configure them in the suite&apos;s organization settings. Forms enforces roles on top of that session; for respondent-side access, use a form&apos;s Access &amp; Sharing section (login-only, organization domain, signed links).
+            Sign-in, single sign-on (an OAuth2/OIDC provider per organization) and passkeys are handled by the Geiger suite account, not by Forms — set up SSO in the suite&apos;s organization settings and passkeys in your suite profile. Forms enforces roles on top of that session; for respondent-side access, use a form&apos;s Access &amp; Sharing section (login-only, organization domain, signed links).
           </p>
         </SectionCard>
       ) : null}

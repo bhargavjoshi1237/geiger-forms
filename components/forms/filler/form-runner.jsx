@@ -5,14 +5,14 @@ import { Link2Off, RotateCcw } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { callApi } from "@/lib/forms/api";
 import { withPrefix } from "@/lib/workspace/base-path";
-import { detectRespondent, validateAnswers, visiblePages } from "@/lib/forms/logic";
-import { isInputField } from "@/lib/forms/field-types";
+import { detectRespondent, interpolate, safeHttpUrl, validateAnswers, visiblePages } from "@/lib/forms/logic";
+import { isInputField, isLayoutField } from "@/lib/forms/field-types";
 import { clearDraft, clearQueued, loadDraft, loadPartialToken, loadQueued, markOnce, queueSubmission, saveDraft, savePartialToken, sessionIdFor } from "@/lib/forms/draft";
 import { FormFieldRenderer } from "@/components/forms/form-field-renderer";
 import { fieldIds } from "@/components/forms/fields/field-shell";
-import { buildInitialAnswers, partialAnswers, postEvent, publicApi } from "./session";
+import { buildInitialAnswers, partialAnswers, postEvent, publicApi, restartPath } from "./session";
 import { AttestationBlock, DelegateBlock, Honeypot, PolicyBlock, TurnstileWidget } from "./submit-extras";
-import { Banner } from "./banners";
+import { Banner, ConsentNotice } from "./banners";
 import { StatusScreen } from "./filler-shell";
 import { ThankYou } from "./thank-you";
 import { SaveResumeDialog } from "./save-resume-dialog";
@@ -21,7 +21,6 @@ import { ConversationalView } from "./conversational-view";
 import { WelcomeScreen } from "./welcome-screen";
 
 const has = (obj) => Object.keys(obj || {}).length > 0;
-const LAYOUT_TYPES = new Set(["heading", "content"]);
 
 function isAnswered(value) {
   if (value == null || value === "" || value === false) return false;
@@ -60,6 +59,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
   const fields = form.fieldDefs;
   const conversational = settings.layout === "conversational";
   const offlineEnabled = settings.offline !== false;
+  const consentRequired = Boolean(settings.partialConsent);
   const welcome = settings.welcome || {};
   const title = variant?.title || form.title;
   const description = variant?.description ?? form.description;
@@ -94,6 +94,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
   const [hp, setHp] = useState("");
   const [isOnline, setIsOnline] = useState(true);
   const [resumeOpen, setResumeOpen] = useState(false);
+  const [partialConsent, setPartialConsent] = useState(Boolean(params.resume));
   const [reviewLeft, setReviewLeft] = useState(reviewSeconds);
 
   const sessionRef = useRef("");
@@ -101,6 +102,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
   const startAtRef = useRef(0);
   const partialTokenRef = useRef(params.resume || null);
   const partialInFlight = useRef(null);
+  const withdrawnRef = useRef(false);
   const lastFieldRef = useRef(null);
   const answersRef = useRef(answers);
   const indexRef = useRef(0);
@@ -123,7 +125,13 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
     for (const page of pages) {
       for (const field of page.fields) {
         if (field.type === "hidden") continue;
-        if (LAYOUT_TYPES.has(field.type)) {
+        // A statement is its own screen; other content blocks lead into the next question.
+        if (field.type === "statement") {
+          out.push({ id: field.id, field: null, statement: field, preface, pageTitle: page.title });
+          preface = [];
+          continue;
+        }
+        if (isLayoutField(field.type)) {
           preface.push(field);
           continue;
         }
@@ -158,6 +166,8 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
   useEffect(() => {
     sessionRef.current = sessionIdFor(slug);
     if (!partialTokenRef.current && !params.edit) partialTokenRef.current = loadPartialToken(slug);
+    // A partial already saved from this browser means the respondent opted in earlier.
+    if (partialTokenRef.current) setPartialConsent(true);
     if (markOnce(slug, "view")) {
       postEvent(slug, "view", { sessionId: sessionRef.current, variant: variant?.id || null, utm: params.utm, referrer: document.referrer || params.ref || "" });
     }
@@ -249,8 +259,12 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
 
   // --- Partials (drop-off analytics + save & resume) ---------------------------
 
+  const dropPartial = useCallback((token) => callApi(publicApi(slug, "/partial"), { method: "DELETE", body: { token } }), [slug]);
+
   const sendPartial = useCallback(async () => {
     if (partialInFlight.current) await partialInFlight.current;
+    // Saves queued behind a withdrawal never post, so nothing is re-created after the delete.
+    if (withdrawnRef.current) return null;
     const current = answersRef.current;
     const run = callApi(publicApi(slug, "/partial"), {
       method: "POST",
@@ -261,34 +275,60 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
         pageIndex: indexRef.current,
         progress: Math.round(progressRef.current * 100),
         email: detectRespondent(fields, current).email || undefined,
+        consent: partialConsent || undefined,
       },
     }).then((res) => {
-      if (res.ok && res.data?.token) {
-        partialTokenRef.current = res.data.token;
-        savePartialToken(slug, res.data.token);
+      const token = res.ok ? res.data?.token : null;
+      // Consent was withdrawn while this save was in flight: delete what it stored instead of keeping it.
+      if (withdrawnRef.current) {
+        if (token) dropPartial(token);
+        return null;
       }
-      return res.ok ? res.data?.token || partialTokenRef.current : null;
+      // The saved partial is gone (withdrawn, submitted or expired): forget it so the next save starts a new one.
+      if (res.status === 410) {
+        partialTokenRef.current = null;
+        savePartialToken(slug, null);
+        return null;
+      }
+      if (token) {
+        partialTokenRef.current = token;
+        savePartialToken(slug, token);
+      }
+      return res.ok ? token || partialTokenRef.current : null;
     });
     partialInFlight.current = run;
     const token = await run;
     partialInFlight.current = null;
     return token;
-  }, [slug, fields]);
+  }, [slug, fields, partialConsent, dropPartial]);
 
   useEffect(() => {
-    if (!startedRef.current || params.edit || stage !== "form") return undefined;
+    if (!startedRef.current || params.edit || stage !== "form" || (consentRequired && !partialConsent)) return undefined;
     const timer = setTimeout(() => {
       sendPartial();
     }, 2000);
     return () => clearTimeout(timer);
-  }, [answers, currentIndex, stage, params.edit, sendPartial]);
+  }, [answers, currentIndex, stage, params.edit, sendPartial, consentRequired, partialConsent]);
 
-  // Local draft for offline-capable forms.
+  // Withdrawing the opt-in deletes whatever was already saved, on the server and in this browser.
+  const changeConsent = (on) => {
+    withdrawnRef.current = !on;
+    setPartialConsent(on);
+    if (on) return;
+    clearDraft(slug);
+    const token = partialTokenRef.current;
+    if (!token) return;
+    partialTokenRef.current = null;
+    savePartialToken(slug, null);
+    dropPartial(token);
+  };
+
+  // Local draft for offline-capable forms (consent-gated forms keep none until the respondent opts in).
   useEffect(() => {
-    if (!offlineEnabled || !startedRef.current || stage !== "form") return undefined;
+    if (!offlineEnabled || !startedRef.current || stage !== "form" || (consentRequired && !partialConsent)) return undefined;
     const timer = setTimeout(() => saveDraft(slug, { answers, pageIndex: currentIndex }), 600);
     return () => clearTimeout(timer);
-  }, [answers, currentIndex, stage, slug, offlineEnabled]);
+  }, [answers, currentIndex, stage, slug, offlineEnabled, consentRequired, partialConsent]);
 
   // --- Submission ---------------------------------------------------------------
 
@@ -331,13 +371,14 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
         navigateTop(data.checkoutUrl, embed);
         return;
       }
-      const redirect = data?.thankYou?.redirectUrl || (settings.thankYouType === "redirect" ? settings.thankYouUrl : "");
+      // The server resolves the outcome's (or default) ending; only its validated http(s) redirect is followed.
+      const redirect = safeHttpUrl(data?.thankYou?.redirectUrl);
       if (redirect) {
         setRedirecting(true);
         setTimeout(() => navigateTop(redirect, embed), 1200);
       }
     },
-    [slug, embed, onSubmitted, settings.thankYouType, settings.thankYouUrl],
+    [slug, embed, onSubmitted],
   );
 
   const flushQueue = useCallback(async () => {
@@ -562,10 +603,15 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
     setCaptchaKeyN((n) => n + 1);
     setReviewLeft(reviewSeconds);
     setNotice(null);
+    // The next respondent opts in to saving progress for themselves; handleSuccess already dropped the token.
+    setPartialConsent(false);
     setStage(welcome.enabled ? "welcome" : "form");
   };
 
   // --- Render helpers ---------------------------------------------------------------
+
+  // Recalls hidden/URL fields and earlier answers into the welcome and description text.
+  const recall = (text) => interpolate(text, form, answers);
 
   const renderField = (field, { large = false, autoFocus = false } = {}) => (
     <FormFieldRenderer
@@ -583,7 +629,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
       large={large}
       autoFocus={autoFocus}
       disabled={submitState.status === "submitting"}
-      onAdvance={large && field.type === "select" ? scheduleAdvance : undefined}
+      onAdvance={large && (field.type === "select" || field.type === "picture") ? scheduleAdvance : undefined}
       onEnter={large ? () => nextRef.current() : undefined}
     />
   );
@@ -645,6 +691,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
           {tr("restoreDraftBody", { when: draftOffer.savedAt ? new Date(draftOffer.savedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "" })}
         </Banner>
       )}
+      {consentRequired && !params.edit && <ConsentNotice checked={partialConsent} onChange={changeConsent} tr={tr} />}
       {notice && <Banner tone={notice.tone}>{notice.text}</Banner>}
       {offlineEnabled && !isOnline && submitState.status !== "queued" && <Banner tone="offline">{tr("offlineBanner")}</Banner>}
       {submitState.status === "queued" && <Banner tone="offline">{tr("offlineQueued")}</Banner>}
@@ -672,7 +719,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
     return (
       <StatusScreen icon={Link2Off} tone="danger" title={tr("editExpired")} description={editState.message || ""}>
         <Button asChild variant="outline">
-          <a href={withPrefix(`/form/${encodeURIComponent(slug)}${embed ? "?embed=1" : ""}`)}>
+          <a href={withPrefix(restartPath(slug, params))}>
             <RotateCcw />
             {tr("startOver")}
           </a>
@@ -685,8 +732,8 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
     return (
       <WelcomeScreen
         form={form}
-        title={welcome.title || title}
-        body={welcome.body || description}
+        title={recall(welcome.title || title)}
+        body={recall(welcome.body || description)}
         buttonLabel={welcome.buttonLabel || tr("start")}
         questionCount={inputFields.length}
         banners={banners}
@@ -702,14 +749,17 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
   const shared = {
     form,
     title,
-    description,
+    description: recall(description),
     tr,
     banners,
     extras,
     submitState,
     reviewLeft,
     saveResume: Boolean(settings.saveResume),
-    onSaveLater: () => setResumeOpen(true),
+    onSaveLater: () => {
+      changeConsent(true);
+      setResumeOpen(true);
+    },
     renderField,
     direction,
     editing: editState?.status === "ready",
@@ -725,7 +775,6 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
           steps={steps}
           stepIndex={stepIndex}
           isLastStep={isLastStep}
-          progress={steps.length > 1 ? stepIndex / (steps.length - 1) : 1}
           answers={answers}
           setAnswer={setAnswer}
           scheduleAdvance={scheduleAdvance}

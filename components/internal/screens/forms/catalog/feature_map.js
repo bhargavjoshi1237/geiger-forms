@@ -1,7 +1,8 @@
 // Builder-only features (no form editor section) shown on the Feature Hub, with per-form usage via `detect(form)` → { on, note }.
 
+import { plural } from "@/lib/utils";
+
 const settingsOf = (form) => form.settings || {};
-const plural = (n, noun) => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
 export const STATUS_META = {
   available: { label: "Available", variant: "success" },
@@ -12,17 +13,17 @@ export const STATUS_META = {
 export const FEATURE_MAP = {
   "builder.versions": {
     title: "Version History",
-    description: "Every saved version of a form's fields and settings, with restore.",
+    description: "Snapshots of a form's fields and settings that you save from the builder, with preview and restore.",
     status: "available",
     builder: true,
-    detect: (form) => ({ on: true, note: form.lastEdited ? `Edited ${form.lastEdited}` : "Tracked" }),
+    detect: (form) => ({ on: true, note: form.lastEdited ? `Edited ${form.lastEdited}` : "Available" }),
   },
   "collab.realtime": {
-    title: "Real-time Co-editing",
-    description: "Work on forms together without overwriting each other.",
-    status: "partial",
+    title: "Live Presence",
+    description: "See who else has a form open in the builder and get a reload prompt when they save. Edits aren't merged: the latest save of the fields wins.",
+    status: "available",
     builder: true,
-    detect: (form) => ({ on: (settingsOf(form).sharing || []).length > 0, note: (settingsOf(form).sharing || []).length ? plural(settingsOf(form).sharing.length, "collaborator") : "Just you" }),
+    detect: (form) => ({ on: (settingsOf(form).sharing || []).length > 0, note: (settingsOf(form).sharing || []).length ? plural(settingsOf(form).sharing.length, "collaborator") : "Not shared" }),
   },
 };
 

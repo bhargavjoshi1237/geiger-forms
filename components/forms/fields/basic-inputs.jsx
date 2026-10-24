@@ -4,6 +4,7 @@ import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import { cn } from "@/lib/utils";
+import { autofillToken } from "@/lib/forms/field-types";
 import { fieldIds } from "./field-shell";
 
 const INPUT_TYPES = {
@@ -18,8 +19,8 @@ const INPUT_TYPES = {
   datetime: "datetime-local",
 };
 
-const AUTOCOMPLETE = { email: "email", phone: "tel", url: "url" };
 const INPUT_MODE = { number: "decimal", currency: "decimal", phone: "tel", email: "email", url: "url" };
+const VERBATIM = new Set(["email", "url"]);
 
 // Currency symbol for a 3-letter code via Intl (falls back to the code).
 export function currencySymbol(currency = "usd") {
@@ -48,8 +49,8 @@ const BOX_PADDING = "px-[var(--input-box-padding-x,0.75rem)] py-[var(--input-box
 export const selectBox = (large) => cn("w-full bg-surface-card data-[size=default]:h-auto", BOX_PADDING, large && "py-3 text-base md:text-lg");
 const textareaBox = (large) => cn("min-h-28 resize-y", BOX_PADDING, large && "text-base md:text-lg");
 
-// Single-line input for text-like, numeric and date/time types.
-export function TextLikeInput({ field, value, onChange, disabled, aria, large, autoFocus, currency, id, onEnter, placeholder }) {
+// Single-line input for text-like, numeric and date/time types; `autoComplete` overrides the field's autofill token.
+export function TextLikeInput({ field, value, onChange, disabled, aria, large, autoFocus, currency, id, onEnter, placeholder, autoComplete }) {
   const type = field.type;
   const v = field.validation || {};
   const symbol = type === "currency" ? currencySymbol(field.config?.currency || currency) : "";
@@ -60,7 +61,9 @@ export function TextLikeInput({ field, value, onChange, disabled, aria, large, a
       id={id || fieldIds(field).control}
       type={inputType}
       inputMode={INPUT_MODE[type]}
-      autoComplete={AUTOCOMPLETE[type] || (type === "text" && /name/i.test(field.title || "") ? "name" : undefined)}
+      autoComplete={autoComplete ?? autofillToken(field)}
+      autoCapitalize={VERBATIM.has(type) ? "none" : undefined}
+      spellCheck={VERBATIM.has(type) ? false : undefined}
       placeholder={placeholder ?? field.placeholder ?? ""}
       value={value ?? ""}
       min={numeric && v.min !== "" ? v.min : undefined}

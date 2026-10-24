@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@geiger/ui/dropdown-menu";
 import { StatusPill } from "@geiger/ui/screen-kit";
+import { AssigneePicker } from "@/components/forms/response/members";
 import {
   MENU_ITEM,
   OUTLINE_BUTTON,
@@ -49,13 +50,13 @@ function MenuButton({ icon: Icon, label, ...props }) {
   );
 }
 
-// Input popover with primary/secondary actions (tag add/remove, assign/unassign).
+// Input popover with primary/secondary actions (tag add/remove).
 function InputPopover({ icon, label, placeholder, suggestions, primary, secondary }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
-  const run = (fn, needsValue = true) => {
+  const run = (fn) => {
     const v = value.trim();
-    if (needsValue && !v) return;
+    if (!v) return;
     fn(v);
     setValue("");
     setOpen(false);
@@ -83,7 +84,7 @@ function InputPopover({ icon, label, placeholder, suggestions, primary, secondar
             {primary.label}
           </Button>
           {secondary ? (
-            <Button type="button" size="sm" variant="ghost" className="h-7 flex-1 text-xs" onClick={() => run(secondary.run, secondary.needsValue !== false)}>
+            <Button type="button" size="sm" variant="ghost" className="h-7 flex-1 text-xs" onClick={() => run(secondary.run)}>
               {secondary.label}
             </Button>
           ) : null}
@@ -100,11 +101,13 @@ export function BulkBar({
   busy,
   canExport,
   canDelete,
+  canAssign,
   tagSuggestions,
-  assigneeSuggestions,
+  people,
   onSelectAll,
   onClear,
   onUpdate,
+  onAssign,
   onTag,
   onExport,
   onPrint,
@@ -154,14 +157,11 @@ export function BulkBar({
         secondary={{ label: "Remove tag", run: (v) => onTag({ remove: [v] }) }}
       />
 
-      <InputPopover
-        icon={UserPlus}
-        label="Assign"
-        placeholder="Name or email"
-        suggestions={assigneeSuggestions}
-        primary={{ label: "Assign", run: (v) => onUpdate({ assignee: v }, `Assigned to ${v}`) }}
-        secondary={{ label: "Unassign", needsValue: false, run: () => onUpdate({ assignee: "" }, "Unassigned") }}
-      />
+      {canAssign ? (
+        <AssigneePicker members={people.members} me={people.me} onChange={onAssign}>
+          <MenuButton icon={UserPlus} label="Assign" />
+        </AssigneePicker>
+      ) : null}
 
       {canExport ? (
         <DropdownMenu>

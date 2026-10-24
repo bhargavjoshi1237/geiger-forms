@@ -1,35 +1,35 @@
 # Module Conventions (Screen ↔ Suite)
 
 How to build a workspace screen (navigation, data, UI, permissions) so it matches
-the rest of the app. Reference implementation: the **events** area
-(`components/internal/screens/events`, `components/internal/screens/overview`)
-and the shared kit (`components/internal/shared`).
+the rest of the app. Reference implementation: the **forms** area
+(`components/internal/screens/forms/forms`, `components/internal/screens/forms/overview`)
+and the shared kit (`@geiger/ui/screen-kit` plus `components/internal/shared`).
 
 ## Where things go
 
 | Concern | Location | Naming |
 |---|---|---|
-| Workspace screen | `components/internal/screens/<area>/<name>.jsx` | snake_case file, `*Screen` export |
-| Screen ↔ nav wiring | `components/internal/screens/registry.jsx` | title → component map |
-| Sidebar nav entries | `components/internal/sidebar/sidebar_nav.jsx` | `title` must match registry key |
+| Workspace screen | `components/internal/screens/forms/<area>/<name>_screen.jsx` | snake_case file, `*Screen` export |
+| Screen ↔ nav wiring | `components/forms/forms-workspace.jsx` | `renderActiveScreen` switch on the nav `id` |
+| Sidebar nav entries | `components/internal/sidebar/sidebar_nav.js` | `id` is the routing key; `title` is display-only |
 | Shared screen primitives | `@geiger/ui/screen-kit` (suite library) | `ScreenHeader`, `StatsBar`, `DataTable`… |
 | Page-width wrappers | `components/internal/shared/screen_wrappers.jsx` | `MainScreenWrapper`, `SecondaryScreenWrapper` |
-| Lookups & formatters | `components/internal/screens/<area>/constants.js` | status/type `*_MAP`, `*_FILTER_OPTIONS`, `formatDate`/`currency` |
-| shadcn primitives | `@geiger/ui/*` (shared suite library) | `import { Button } from "@geiger/ui/button"` |
-| Local-only primitive | `components/ui/file-input.jsx` | `@/components/ui/file-input` (no suite equivalent yet) |
-| Permissions catalog | `lib/rbac.js` | `WORKSPACE_PERMISSIONS`, dot-namespaced keys |
-| Supabase client | `lib/supabase/client.js` | `createClient()` (browser, activity-tracked) |
-| Data layer (per area) | `lib/supabase/<area>.js` | `list*/get*/create*/update*/softDelete*`, `normalize*/toRow` |
-| Media/storage | `lib/supabase/storage.js` | `products` bucket, `events/<id>/` prefix, public URL persisted |
-| Signed-in user | `lib/supabase/user.js` | `getUser()` → stamps `created_by` / RLS ownership |
+| Lookups & formatters | `components/internal/screens/forms/<area>/constants.js` | status `*_MAP`, `*_FILTER_OPTIONS`, `formatRate`/`formatCount` |
+| shadcn primitives | `@geiger/ui/*` (shared suite library) | `import { Button } from "@geiger/ui/button"` (file inputs: `@geiger/ui/file-input`) |
+| Permissions catalog | `geiger-rbac.config.js` (re-exported by `lib/rbac.js`) | `WORKSPACE_PERMISSIONS`, `forms.<scope>.<action>` keys |
+| Supabase client | `lib/supabase/client.js`, `supabase/components/forms-client.js` | `createClient()` (browser, activity-tracked), `schemaClient()` (pinned to `forms`) |
+| Data layer (per area) | `lib/supabase/<area>.js` + `lib/hooks/use-<area>.js` | `list*/get*/create*/update*/softDelete*`, `normalize*/toRow` |
+| Respondent uploads | `lib/server/storage.js` (server-only) | private `forms-uploads` bucket, `forms/<formId>/` prefix, path persisted |
+| Signed-in user | `lib/supabase/user.js` | `getUser()` → stamps `created_by` and authorship |
 | SQL (when persisted) | `supabase/migrations/<version>_<name>.sql` | `<schema>.<table>`, idempotent + self-contained DDL |
 | Migrations | `@geiger/orm` (`npm run db:push`) | timestamped `@up`/`@down` SQL, ledgered in `<schema>.geiger_migrations` — see `MIGRATION_CONVENTIONS.md` |
 | Re-runnable data | `supabase/seeds/**.sql` | idempotent inserts, `npm run db:seed`, never ledgered |
-| Environment | `.env` | `NEXT_PUBLIC_SUPABASE_URL`/`_ANON_KEY` (runtime), `STRING_URI` (migrations) |
+| Environment | `.env` | `NEXT_PUBLIC_SUPABASE_URL`/`_ANON_KEY` (runtime), `SUPABASE_SERVICE_ROLE_KEY` (server routes), `STRING_URI` (migrations) |
 
-Files use snake_case names; React components are PascalCase; permission keys are
-dot-namespaced (`view.overview`, `team.invite`). All imports use the `@/` root
-alias.
+Screen files use snake_case names (builder and filler files under `components/forms/`
+use kebab-case); React components are PascalCase; permission keys are
+dot-namespaced (`forms.overview.view`, `forms.team.invite`). All imports use the
+`@/` root alias.
 
 ## Screens & navigation
 
@@ -37,19 +37,24 @@ alias.
   matching default). It renders inside a width wrapper — `MainScreenWrapper` for
   primary list/overview screens, `SecondaryScreenWrapper` for narrower
   detail/settings screens.
-- **Wire it through the registry, never by ad-hoc routing.** Add the component to
-  `SCREEN_REGISTRY` in `registry.jsx` keyed by the **exact** sidebar title from
-  `sidebar_nav.jsx`. Unlisted titles fall back to `ComingSoonScreen`.
-- **Per-entity features are tabs, not top-level screens.** Cover media, tickets,
-  visibility, page design, publishing, etc. live as tabs inside the event editor
-  (`events/event_detail.jsx`), reached by selecting a row in All Events — they do
-  **not** get their own registry entry. Only workspace-level views (Overview,
-  All Events, Templates, Event Series…) are registered.
+- **Wire it through the workspace switch, never by ad-hoc routing.** Add a `case`
+  to `renderActiveScreen` in `components/forms/forms-workspace.jsx` keyed by the
+  **exact** nav `id` from `sidebar_nav.js`. In the `default` branch,
+  `DEVELOPER_VIEWS` ids open the developer hub and ids listed in
+  `catalog/feature_map.js` open a `FeatureHubScreen`; only `AI_VIEWS` reach
+  `ComingSoonScreen`. `BUILT_VIEWS` is every other nav id.
+- **Per-entity features are editor sections, not top-level screens.** Access,
+  payments, notifications, sharing, workflow, etc. live as sections of the form
+  editor (`forms/form_detail.jsx`, grouped in `forms/form_sections.jsx`, one file
+  per section under `forms/sections/`), reached by selecting a row in All Forms —
+  they do **not** get their own switch case. Only workspace-level views
+  (Overview, All Forms, Responses, Templates…) are wired.
 - A list screen swaps to its detail screen by reading the open entity id from the
-  URL (`?event=<id>` via `useWorkspaceUrl()`), resolving it against the fetched
-  rows, and early-returning the detail component
-  (`<EventDetailScreen … onBack={…} />`) — there is no separate route/page push,
-  but the id lives in the URL so a refresh/deep-link stays on it.
+  URL (`?form=<id>&section=<key>` via `useWorkspaceUrl()`, opened with
+  `openForm(id, section)`), resolving it against the fetched rows, and
+  early-returning the detail component (`<FormDetailScreen … onBack={…} />`) —
+  there is no separate route/page push, but the id lives in the URL so a
+  refresh/deep-link stays on it.
 
 ## Data layer
 
@@ -72,7 +77,8 @@ component file** — fetch the real rows from the data layer instead.
   the inserted DB row.
 - Talk to Supabase only through `createClient()` from `@/lib/supabase/client` (a
   browser client whose `fetch` is wrapped for activity tracking — don't construct
-  a raw client). The DB is snake_case; the UI is camelCase — map at that boundary
+  a raw client), or its `forms`-scoped `schemaClient()` from
+  `@/supabase/components/forms-client`. The DB is snake_case; the UI is camelCase — map at that boundary
   and keep the screen rendering camelCase view models. Keep data access pure
   (validate, `console.error` on failure, return `null`/`false`/`[]`); the screen
   decides UX (toasts). See **Persistence (Supabase)** below for the full pattern.
@@ -82,17 +88,23 @@ component file** — fetch the real rows from the data layer instead.
 The data layer is the source of truth for every screen — see **`SUPABASE_CONVENTIONS.md`**
 for the full data-layer playbook (client, `normalize`/`toRow`, RLS, metadata bag);
 this is the screen-side summary. Schema changes have their own playbook in
-**`MIGRATION_CONVENTIONS.md`**. Reference: `lib/supabase/events.js`,
-`lib/supabase/storage.js`, `supabase/migrations/`, and the fetch-on-mount load
-in `events/all_events.jsx`. (`all_events.jsx` still carries a legacy
-`useState(EVENTS)` seed — that is being removed; **don't copy it**.)
+**`MIGRATION_CONVENTIONS.md`**. Reference: `lib/supabase/forms.js` with its
+`lib/hooks/use-forms.js` hook, `supabase/migrations/`, and the load in
+`forms/forms_screen.jsx`. (`forms.js`, `responses.js`, `versions.js` and most
+other data files don't follow the tri-state contract below — they **throw** on error;
+their `lib/hooks/use-<area>.js` hook catches it and exposes `error` for the
+screen's `ErrorState`. `lib/supabase/rbac.js` follows the contract.)
 
-### Two clients, two paths
+### Three clients, three paths
 
 - **Runtime (browser):** `createClient()` from `@/lib/supabase/client` — the
   anon client, `fetch` wrapped for activity tracking. Every data-layer call first
   checks `isSupabaseConfigured()` (both `NEXT_PUBLIC_SUPABASE_URL` and
   `_ANON_KEY` present); missing env degrades to "no DB", never crashes.
+- **Server routes:** `formsAdmin()` from `lib/server/supabase-admin.js` — the
+  service-role client (`SUPABASE_SERVICE_ROLE_KEY`, **server-only**). The public
+  filler, uploads, webhooks and REST v1 go through `app/api` on it; anon has no
+  direct table access.
 - **Migrations (Node):** `@geiger/orm` connects over `STRING_URI` (direct Postgres,
   **server-only**, never `NEXT_PUBLIC_`). `npm run db:push` applies every pending
   `supabase/migrations/<version>_<name>.sql` in version order and records it in
@@ -132,10 +144,10 @@ Fetch from the data layer; there is no static seed:
    layer; `toast.error` and reconcile (re-fetch or roll back) only if the write
    returns falsy. Mint the optimistic row's id with `crypto.randomUUID()` and pass
    it to `create*` so the optimistic row and the inserted row share a UUID.
-4. The open entity lives in the **URL** (`?event=<id>` via `useWorkspaceUrl()`),
+4. The open entity lives in the **URL** (`?form=<id>` via `useWorkspaceUrl()`),
    not plain state, so refresh/deep-link stays on it.
-5. Stamp `createdBy` from `getUser()` (`lib/supabase/user.js`) so storage RLS
-   lets only the owner upload that entity's media.
+5. Stamp `createdBy` from `getUser()` (`lib/supabase/user.js`) where a table
+   records ownership.
 
 ### SQL / DDL (`supabase/migrations/<version>_<name>.sql`)
 
@@ -151,53 +163,60 @@ idempotency, drift, rollback, seeds. What matters to a screen:
 - Each file is **self-contained + idempotent** and ships an `@down`. Scaffold it
   with `npm run db:new -- <name> --template table`; never hand-name a file, never
   edit one that has already been pushed.
-- `metadata jsonb` is the **expansion bag** — store not-yet-promoted per-section
-  config (tickets, page design, SEO…) there; promote to a real column once it
-  needs indexing, constraints, or its own RLS. Per-section tab saves go through a
-  **shallow-merge RPC** (`<schema>.event_merge_meta(p_id, p_patch)` →
-  `metadata || patch`) so one tab never clobbers another.
-- **RLS on**, currently a demo `for all to anon, authenticated using (true)`
-  policy; tightening it to a project/org-scoped policy is a **new** migration.
+- `metadata jsonb` is the **expansion bag** — store not-yet-promoted config there;
+  promote to a real column once it needs indexing, constraints, or its own RLS.
+  A form's per-section config lives in `forms.forms.settings`, and editor saves go
+  through a **shallow-merge RPC** (`forms.merge_settings(p_id, p_patch)` →
+  `settings || patch`, called by `mergeFormSettings`) so one section never
+  clobbers another.
+- **RLS on.** `20261008155427_lock_down_rls.sql` replaced the demo-open policies
+  with ones scoped by `forms.rbac_allows`, and anon has no direct access;
+  tightening further is a **new** migration.
 - **Demo rows are seeds, not migrations** — `supabase/seeds/`, `npm run db:seed`,
-  `insert … on conflict (id) do nothing` with stable hard-coded UUIDs so shared
-  `/e/<uuid>` links resolve. The screen never depends on the seed; an empty table
-  renders the empty state.
+  idempotent `insert … on conflict … do …` with stable keys so shared links
+  resolve (`demo_form.sql` backs `/form/demo`). The screen never depends on the
+  seed; an empty table renders the empty state.
 
-### Storage (`lib/supabase/storage.js`)
+### Storage (`lib/server/storage.js`)
 
-- Media lives in the public **`products`** bucket under `events/<id>/`. Persist
-  the resulting **public URL** in `cover_url`/`gallery`, not the storage path.
-- Compress under ~500 KB before upload; writes are **creator-only** (RLS), reads
-  public. Helpers return `null`/`false`/`[]` like the data layer.
+- Respondent files live in the private **`forms-uploads`** bucket under
+  `forms/<formId>/`. The filler gets a signed upload URL from
+  `/api/public/forms/<slug>/upload` and the answer stores the **path**, not a
+  public URL.
+- Downloads go through `/api/responses/<id>/file`, which redirects to a
+  short-lived signed URL and writes the access log. The helpers are server-only.
 
 ## Permissions (RBAC)
 
-Authorization here is **advisory UI-gating only** — it hides/disables nav and
-controls; it does not secure data.
+UI gating is **advisory** — it hides/disables nav and controls. Data is secured
+by RLS (`forms.rbac_allows`) and by server routes (`userCan` in
+`lib/server/auth.js`).
 
-- The catalog lives in `lib/rbac.js` as `WORKSPACE_PERMISSIONS` — dot-namespaced
-  `{ key, label, group }` entries (`view.*` for nav visibility, plus
-  `team.*`, `roles.*`, `billing.*`, `settings.*`).
-- A nav tab's permission key derives from its title via `tabPermissionKey(title)`
-  → `view.<normalized_title>`. Gate a tab by checking
-  `roleHasPermission(roles, roleId, key)` (returns `true` when no roles are
-  configured, so screens stay reachable by default).
-- Role ids are normalized with `normalizeRoleId` and persisted under
-  `ROLE_STORAGE_KEY`. To add a gated surface: add the permission to
-  `WORKSPACE_PERMISSIONS`, then check it where the nav/control is rendered.
+- The catalog lives in `geiger-rbac.config.js` (`@geiger/rbac`), re-exported by
+  `lib/rbac.js` as `WORKSPACE_PERMISSIONS` — dot-namespaced
+  `{ key, label, group, scopeBy? }` entries (`forms.<view>.view` for workspace
+  views, plus `forms.form.*`, `forms.response.*`, `forms.team.*`,
+  `forms.role.manage`, `forms.billing.manage`, `forms.settings.manage`).
+- A view's permission key derives from its nav id via `navPermissionKey(id)`
+  → `forms.<slug>.view` (only ids listed in `NAV_SECTIONS` carry one). Check a
+  key with `useCan(key)` (or `useRbac().can`) from `context/rbac-context.js`; it
+  returns `true` while grants load and when no provider is mounted, so screens
+  stay reachable by default.
+- Roles live in `public.roles` (suite-wide) and grants in `forms.role_grants`,
+  read through `lib/supabase/rbac.js`. To add a gated surface: add the permission
+  to `geiger-rbac.config.js`, then check it where the nav/control is rendered.
 
 ## UI conventions
 
 - **Components:** prefer the shared suite library (`@geiger/ui/*`, same as
-  geiger-events) and **Lucide** icons. Only `components/ui/file-input.jsx` stays
-  local — `@geiger/ui` has no file-input equivalent yet. Build screens out of the shared kit
+  geiger-events) and **Lucide** icons. There is no local `components/ui/` — file
+  inputs come from `@geiger/ui/file-input` too. Build screens out of the shared kit
   (`@geiger/ui/screen-kit`) before writing bespoke layout —
   `ScreenHeader`, `StatsBar`/`StatGrid`, `SectionCard`, `Toolbar` + `SearchInput`,
   `DataTable`, `StatusPill`, `EmptyState`, `SettingsList`/`SettingRow`, `Field`.
 - **Screen frame:** `MainScreenWrapper` → `ScreenHeader` (title + description over
   a bottom divider, primary action on the right; **no** icon chip or badge) →
-  `StatsBar` → `Toolbar` → `DataTable`. Match the Events Overview / All Events
-  rhythm.
+  `StatsBar` → `Toolbar` → `DataTable`. Match the Overview / All Forms rhythm.
 - **Dialogs:** shadcn `Dialog` with `DialogHeader`/`DialogTitle`/`DialogDescription`,
   a `grid gap-4` of `Field`-wrapped controls, then `DialogFooter` with a ghost
   Cancel + a `bg-primary` primary action. Keep the default close button.
@@ -222,20 +241,20 @@ controls; it does not secure data.
    Before writing code, ask the user about every detail you can't infer from the
    reference: the entity and its **fields/types**, the **status set** and their
    colors, which **filters/sort/search** apply, the **KPIs** for the stats bar,
-   what the **detail tabs** are, **create-dialog** required fields and defaults,
+   what the **detail sections** are, **create-dialog** required fields and defaults,
    **row actions** (edit/duplicate/delete…), whether it's **gated** (which
-   `view.*` permission), and the **persistence shape** (table columns, storage,
+   `forms.*.view` permission), and the **persistence shape** (table columns, storage,
    RLS — the screen always reads through the data layer, never a static array).
    Confirm the scope, then build in one pass. Pick an obvious default only when
    the answer is truly inconsequential — and say which default you took.
-1. Component at `components/internal/screens/<area>/<name>.jsx` — `"use client"`,
-   `*Screen` export, wrapped in `MainScreenWrapper`/`SecondaryScreenWrapper`.
-2. Register it in `registry.jsx` under the exact `sidebar_nav.jsx` title (and add
-   the nav entry if it's new).
+1. Component at `components/internal/screens/forms/<area>/<name>_screen.jsx` —
+   `"use client"`, `*Screen` export, wrapped in `MainScreenWrapper`/`SecondaryScreenWrapper`.
+2. Add a `case` for its nav `id` to `renderActiveScreen` in `forms-workspace.jsx`
+   (and the nav entry in `sidebar_nav.js` if it's new).
 3. Fetch rows from `lib/supabase/<area>.js` (start empty + loading, no static
    seed); keep `*_MAP`/`*_FILTER_OPTIONS`/formatters in `constants.js`; derive
    lists/stats with `useMemo`; mutate optimistically + persist + `toast`.
 4. Build the UI from the shared kit + shadcn primitives; three list states;
    semantic color tokens only.
-5. (If gated) add a `view.*` permission to `WORKSPACE_PERMISSIONS` and check it
-   where the nav/control renders.
+5. (If gated) add the view to `NAV_SECTIONS` in `geiger-rbac.config.js` (its key
+   is `forms.<slug>.view`) and check it with `useCan` where the nav/control renders.

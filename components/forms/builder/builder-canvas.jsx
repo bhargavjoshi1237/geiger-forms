@@ -85,6 +85,7 @@ function EmptyCanvas({ active, onDragOver, onDrop, onPick }) {
 // The editable form canvas: cover, field/page cards with drag-and-drop, and insert actions.
 export function BuilderCanvas({
   doc,
+  formId,
   selectedId,
   sources,
   scoring,
@@ -118,6 +119,16 @@ export function BuilderCanvas({
     return map;
   }, [visible]);
   const hasPages = visible.some((f) => f.type === "page");
+  // How many answer sources precede each field in doc order, so Recall only offers earlier answers.
+  const sourcesBefore = useMemo(() => {
+    const map = new Map();
+    let n = 0;
+    for (const f of fields) {
+      map.set(f.id, n);
+      if (isInputField(f.type)) n += 1;
+    }
+    return map;
+  }, [fields]);
 
   const startResize = useCallback(
     (e) => {
@@ -184,7 +195,7 @@ export function BuilderCanvas({
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-80">
-              <CoverPicker settings={settings} onChange={onSettingsChange} />
+              <CoverPicker formId={formId} settings={settings} onChange={onSettingsChange} />
             </PopoverContent>
           </Popover>
         </div>
@@ -235,7 +246,9 @@ export function BuilderCanvas({
                   number={numbering.get(field.id)}
                   selected={selectedId === field.id}
                   sources={sources}
+                  sourcesBefore={sourcesBefore.get(field.id)}
                   allFields={field.type === "calculated" && selectedId === field.id ? fields : undefined}
+                  formId={formId}
                   scoring={scoring}
                   quiz={quiz}
                   currency={currency}

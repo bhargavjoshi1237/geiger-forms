@@ -21,7 +21,10 @@ Everything else is optional; each feature degrades cleanly when its key is missi
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Captcha on forms that turn it on |
 | `FORMS_ENCRYPTION_KEY` | AES-256-GCM encryption of fields marked sensitive |
 | `FORMS_LINK_SECRET` | Signed/expiring form links |
-| `CRON_SECRET` | `/api/cron/{retention,reminders,reports}` (scheduled daily in `vercel.json`) |
+| `CRON_SECRET` | `/api/cron/{retention,reminders,reports,webhooks}` (scheduled daily in `vercel.json`) |
+| `NEXT_PUBLIC_DASH_ORIGIN` | Suite hub origin for the signed-out redirect to `/login` (e.g. `http://localhost:3000` in dev) |
+
+Workspace Settings → Configuration shows which of these the running deployment has.
 
 ## 2. Database
 
@@ -35,6 +38,7 @@ npm run db:seed        # optional: the /form/demo form linked from the landing p
 
 - `20261008155426_platform_expansion` is **required** by the current code (new columns and tables).
 - `20261008155427_lock_down_rls` replaces the demo-open policies with `@geiger/rbac` grants and removes anon access. Push it once the workspace runs behind a signed-in suite session; without a session the workspace sees no rows.
+- `20261021104907_inbox_members`, `20261021104920_webhook_retries`, `20261021105053_retire_unscoped_access` and `20261021105156_forms_media` are required by the current code: member assignees and mentions, webhook retries and replay, creator-only access to forms without a project, and the public `forms-media` bucket for builder images.
 
 ## 3. Run
 
@@ -66,5 +70,6 @@ enforces gates, captcha, rate limits, validation, encryption and payments with t
 ## Not in app code
 
 - **AI** (form generation, response analysis, fill assist, moderation) waits for the suite's `@geiger/ai` package.
-- **Custom domains, data residency, SSO/2FA, SMS, a HIPAA BAA** are hosting, provider or suite-auth concerns;
-  the catalog screens explain the setup for each.
+- **Custom domains, SMS and two-factor authentication** aren't built.
+- **Data residency, SSO and a HIPAA BAA** are hosting, provider or suite-auth concerns; the catalog screens
+  explain the setup for each.

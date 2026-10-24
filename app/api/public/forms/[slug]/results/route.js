@@ -6,8 +6,8 @@ import { includedFields } from "@/lib/forms/logic";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const CHOICE = new Set(["select", "dropdown", "multiselect", "checkbox", "ranking"]);
-const NUMERIC = new Set(["rating", "scale", "nps"]);
+const CHOICE = new Set(["select", "dropdown", "multiselect", "picture", "multipicture", "checkbox", "ranking"]);
+const NUMERIC = new Set(["rating", "scale", "nps", "opinion"]);
 
 function bump(counts, key) {
   counts[key] = (counts[key] || 0) + 1;

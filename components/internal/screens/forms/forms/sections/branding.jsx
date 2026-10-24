@@ -1,16 +1,17 @@
 "use client";
 
 import { Field, SectionCard, SettingRow, SettingsList } from "@geiger/ui/screen-kit";
+import { ImageInput } from "@/components/forms/image-input";
 import { Stack, TextInput } from "./kit";
 
 // Logo, form icon and the "Powered by Geiger Forms" footer.
-export function BrandingSection({ settings, set }) {
+export function BrandingSection({ form, settings, set }) {
   return (
     <Stack>
       <SectionCard title="Your brand">
         <div className="grid gap-4">
-          <Field label="Logo URL" hint="PNG or SVG, shown above the form title.">
-            <TextInput value={settings.logoUrl} onChange={(v) => set("logoUrl", v)} placeholder="https://…/logo.svg" />
+          <Field label="Logo" hint="Upload an image or link a PNG or SVG; shown above the form title.">
+            <ImageInput formId={form.id} value={settings.logoUrl} onChange={(v) => set("logoUrl", v)} placeholder="https://…/logo.svg" label="logo" fit="contain" />
           </Field>
           {settings.logoUrl ? (
             <div className="flex h-16 items-center justify-center rounded-lg border border-border bg-surface-card">
@@ -18,6 +19,9 @@ export function BrandingSection({ settings, set }) {
               <img src={settings.logoUrl} alt="Logo preview" className="max-h-10 w-auto" />
             </div>
           ) : null}
+          <Field label="Logo alt text" hint="Read aloud by screen readers; leave blank if the title already names the brand.">
+            <TextInput value={settings.logoAlt} onChange={(v) => set("logoAlt", v)} placeholder="e.g. Halcyon Studio" />
+          </Field>
         </div>
       </SectionCard>
       <SectionCard title="White-label">

@@ -5,7 +5,8 @@ const assetPrefix = isProd ? "/forms" : "";
 const nextConfig = {
   transpilePackages: ["@geiger/ui"],
   assetPrefix,
-  allowedDevOrigins: ["127.0.0.1"],
+  // Tailscale Serve hostnames (machine.tailnet.ts.net) need `**` to span both labels
+  allowedDevOrigins: ["127.0.0.1", "**.ts.net"],
   env: {
     NEXT_PUBLIC_ASSET_PREFIX: assetPrefix,
   },

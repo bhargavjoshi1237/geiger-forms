@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, Info, PencilLine, WifiOff } from "lucide-react";
+import { Checkbox } from "@geiger/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 const TONES = {
@@ -27,5 +28,18 @@ export function Banner({ tone = "info", icon, title, children, actions, classNam
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2 sm:ml-2">{actions}</div>}
     </div>
+  );
+}
+
+// Opt-in for saving unfinished answers on the server, shown when the form requires consent first.
+export function ConsentNotice({ checked, onChange, tr }) {
+  return (
+    <label htmlFor="gf-partial-consent" className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-surface-card px-4 py-3 text-sm">
+      <Checkbox id="gf-partial-consent" checked={checked} onCheckedChange={(c) => onChange(c === true)} className="mt-0.5" />
+      <span className="min-w-0">
+        <span className="block font-medium text-foreground">{tr("partialConsent")}</span>
+        <span className="mt-0.5 block text-xs leading-5 text-text-secondary">{tr("partialConsentHint")}</span>
+      </span>
+    </label>
   );
 }

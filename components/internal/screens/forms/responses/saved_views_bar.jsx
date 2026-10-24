@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bookmark, BookmarkPlus, ChevronDown, Kanban, Loader2, Table2, X } from "lucide-react";
+import { Bookmark, BookmarkPlus, ChevronDown, Kanban, Loader2, Table2, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@geiger/ui/button";
 import {
@@ -19,6 +19,9 @@ import { cn } from "@/lib/utils";
 import { createSavedView, deleteSavedView, listSavedViews } from "@/lib/supabase/saved_views";
 
 const ITEM = "cursor-pointer gap-2 text-xs focus:bg-surface-hover focus:text-foreground";
+
+// Built-in view id: responses assigned to whoever is viewing.
+export const MINE_VIEW = "mine";
 
 // Saved filter/sort/layout presets for a project (inbox) or one form; shared by the views dropdown and the save button.
 export function useSavedViews({ projectId, formId, activeId, onApply, onReset }) {
@@ -67,10 +70,14 @@ export function useSavedViews({ projectId, formId, activeId, onApply, onReset })
   return { views, save, remove };
 }
 
-// Toolbar dropdown to switch between "All responses" and saved views; hidden until at least one exists.
-export function SavedViewsDropdown({ views, activeId, onApply, onReset, onRemove }) {
-  if (!views.length) return null;
-  const active = views.find((v) => v.id === activeId);
+// Toolbar dropdown to switch between "All responses", the built-in "Assigned to me" view and saved views.
+export function SavedViewsDropdown({ views, activeId, onApply, onReset, onMine, onRemove }) {
+  const active = activeId === MINE_VIEW ? { id: MINE_VIEW, name: "Assigned to me" } : views.find((v) => v.id === activeId);
+  const select = (id) => {
+    if (id === "all") onReset();
+    else if (id === MINE_VIEW) onMine();
+    else onApply(views.find((v) => v.id === id));
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -81,12 +88,13 @@ export function SavedViewsDropdown({ views, activeId, onApply, onReset, onRemove
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-60 border-border bg-surface-subtle text-foreground">
-        <DropdownMenuRadioGroup
-          value={active ? active.id : "all"}
-          onValueChange={(id) => (id === "all" ? onReset() : onApply(views.find((v) => v.id === id)))}
-        >
+        <DropdownMenuRadioGroup value={active ? active.id : "all"} onValueChange={select}>
           <DropdownMenuRadioItem value="all" className={ITEM}>All responses</DropdownMenuRadioItem>
-          <DropdownMenuSeparator className="bg-border" />
+          <DropdownMenuRadioItem value={MINE_VIEW} className={ITEM}>
+            <UserRound className="h-3.5 w-3.5 text-text-secondary" />
+            Assigned to me
+          </DropdownMenuRadioItem>
+          {views.length ? <DropdownMenuSeparator className="bg-border" /> : null}
           {views.map((view) => {
             const Icon = view.layout === "kanban" ? Kanban : Table2;
             return (

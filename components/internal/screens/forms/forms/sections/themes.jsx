@@ -5,15 +5,22 @@ import { Check } from "lucide-react";
 import { Field, SectionCard } from "@geiger/ui/screen-kit";
 import { Tabs, TabsList, TabsTrigger } from "@geiger/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@geiger/ui/toggle-group";
-import { ACCENT_PRESETS, BACKGROUND_OPTIONS, FONT_OPTIONS, HEX_RE, MODE_OPTIONS, RADIUS_OPTIONS, ThemePreview } from "@/components/forms/theme-preview";
+import { FontPicker } from "@/components/forms/font-picker";
+import { ImageInput } from "@/components/forms/image-input";
+import { ThemeGallery } from "@/components/forms/theme-gallery";
+import { ACCENT_PRESETS, BACKGROUND_OPTIONS, HEX_RE, MODE_OPTIONS, RADIUS_OPTIONS, ThemePreview } from "@/components/forms/theme-preview";
 import { Stack, TextInput } from "./kit";
 
-export function ThemesSection({ draft, settings, set, setGroup }) {
+export function ThemesSection({ form, draft, settings, set, setGroup }) {
   const theme = settings.theme || {};
   const accent = theme.accent || "";
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
       <Stack>
+        <SectionCard title="Themes" description="Start from a preset or a workspace theme. Applying one copies its look into this form; later changes to the theme don't affect it.">
+          <ThemeGallery settings={settings} projectId={form.projectId} onApply={(patch) => Object.entries(patch).forEach(([key, value]) => set(key, value))} />
+        </SectionCard>
+
         <SectionCard title="Colour mode">
           <Tabs value={theme.mode || "dark"} onValueChange={(v) => setGroup("theme", { mode: v })}>
             <TabsList>
@@ -77,21 +84,19 @@ export function ThemesSection({ draft, settings, set, setGroup }) {
                 </TabsList>
               </Tabs>
             </Field>
-            <Field label="Font">
-              <Tabs value={theme.font || "sans"} onValueChange={(v) => setGroup("theme", { font: v })}>
-                <TabsList>
-                  {FONT_OPTIONS.map((t) => (
-                    <TabsTrigger key={t.value} value={t.value}>
-                      {t.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Body font" hint="Questions, answers and buttons.">
+                <FontPicker label="Body font" value={theme.font || "sans"} onChange={(font) => setGroup("theme", { font })} />
+              </Field>
+              <Field label="Heading font" hint="Form, page and ending titles.">
+                <FontPicker label="Heading font" value={theme.headingFont || ""} inheritLabel="Same as body" onChange={(headingFont) => setGroup("theme", { headingFont })} />
+              </Field>
+            </div>
+            <p className="text-xs text-text-tertiary">Fonts load via Bunny Fonts, a GDPR-friendly mirror, so respondents&apos; IP addresses never reach Google.</p>
           </div>
         </SectionCard>
 
-        <SectionCard title="Background & images">
+        <SectionCard title="Background & cover">
           <div className="grid gap-4">
             <Field label="Background">
               <Tabs value={theme.background || "plain"} onValueChange={(v) => setGroup("theme", { background: v })}>
@@ -104,11 +109,8 @@ export function ThemesSection({ draft, settings, set, setGroup }) {
                 </TabsList>
               </Tabs>
             </Field>
-            <Field label="Cover image URL" hint={theme.background === "image" ? "Shown behind the form." : "Shown as a header image when the background is set to Image."}>
-              <TextInput value={settings.coverUrl} onChange={(v) => set("coverUrl", v)} placeholder="https://…/cover.jpg" />
-            </Field>
-            <Field label="Logo URL" hint="Displayed above the form title.">
-              <TextInput value={settings.logoUrl} onChange={(v) => set("logoUrl", v)} placeholder="https://…/logo.svg" />
+            <Field label="Cover image" hint={theme.background === "image" ? "Shown behind the form." : "Shown as a header image when the background is set to Image."}>
+              <ImageInput formId={form.id} value={settings.coverUrl} onChange={(v) => set("coverUrl", v)} placeholder="https://…/cover.jpg" label="cover image" />
             </Field>
           </div>
         </SectionCard>

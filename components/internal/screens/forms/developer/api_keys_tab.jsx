@@ -17,6 +17,7 @@ import {
 } from "@geiger/ui/dialog";
 import { DataTable, EmptyState, Field, LoadingArea, SearchInput } from "@geiger/ui/screen-kit";
 import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
+import { NoProjectNote } from "../no_project";
 import { ErrorState } from "../screen-shell";
 import { useCan } from "@/context/rbac-context";
 import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/supabase/api_keys";
@@ -212,11 +213,12 @@ export function ApiKeysTab({ projectId }) {
 
   return (
     <div className="space-y-4">
+      {projectId ? null : <NoProjectNote />}
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-text-secondary">Send keys as <code className="rounded bg-surface-card px-1 text-xs">Authorization: Bearer gf_…</code>. Keys are stored hashed.</p>
         <div className="flex shrink-0 items-center gap-2">
           <SearchInput value={search} onChange={setSearch} placeholder="Search keys…" />
-          <Button className="shrink-0 bg-primary text-primary-foreground" disabled={!canManage} onClick={() => setCreating(true)}>
+          <Button className="shrink-0 bg-primary text-primary-foreground" disabled={!canManage || !projectId} onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" /> New key
           </Button>
         </div>

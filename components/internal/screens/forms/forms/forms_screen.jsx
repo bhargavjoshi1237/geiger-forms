@@ -46,8 +46,10 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { slugify } from "@/lib/forms/schema";
 import { withPrefix } from "@/lib/workspace/base-path";
 import { FormResponsesScreen } from "../responses/form_responses_screen";
+import { NoProjectNote } from "../no_project";
 import { ErrorState } from "../screen-shell";
-import { applyWorkspaceDefaults, folderNames, useWorkspaceSettings } from "../settings/use_workspace_settings";
+import { useWorkspaceSettings } from "@/lib/hooks/use-workspace-settings";
+import { applyWorkspaceDefaults, folderNames } from "../settings/use_workspace_settings";
 import { FORM_STATUS_MAP, STATUS_FILTER_OPTIONS, formatCount } from "./constants";
 import { FormDetailScreen } from "./form_detail";
 import { NewFormDialog } from "./new_form_dialog";
@@ -57,6 +59,8 @@ const ITEM = "cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover 
 function RowActions({ form, can, onAction }) {
   const published = form.status === "Published";
   const archived = form.status === "Archived";
+  // Copies land in the open project, else the source's own; an unscoped form outside a project can't be copied.
+  const copyable = can.create || Boolean(form.projectId);
   return (
     <div onClick={(e) => e.stopPropagation()}>
       <DropdownMenu>
@@ -78,13 +82,17 @@ function RowActions({ form, can, onAction }) {
           <DropdownMenuItem className={ITEM} onClick={() => onAction("preview", form)}>
             <ExternalLink className="h-4 w-4" /> Preview
           </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-border" />
-          <DropdownMenuItem className={ITEM} onClick={() => onAction("duplicate", form)}>
-            <Copy className="h-4 w-4" /> Duplicate
-          </DropdownMenuItem>
-          <DropdownMenuItem className={ITEM} onClick={() => onAction("template", form)}>
-            <BookmarkPlus className="h-4 w-4" /> Save as template
-          </DropdownMenuItem>
+          {copyable || can.publish ? <DropdownMenuSeparator className="bg-border" /> : null}
+          {copyable ? (
+            <>
+              <DropdownMenuItem className={ITEM} onClick={() => onAction("duplicate", form)}>
+                <Copy className="h-4 w-4" /> Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem className={ITEM} onClick={() => onAction("template", form)}>
+                <BookmarkPlus className="h-4 w-4" /> Save as template
+              </DropdownMenuItem>
+            </>
+          ) : null}
           {can.publish ? (
             <>
               <DropdownMenuItem className={ITEM} onClick={() => onAction(published ? "unpublish" : "publish", form)}>
@@ -115,7 +123,8 @@ export function FormsScreen() {
   const { forms, loading, error, refresh, create, update, mergeSettings, remove, changeStatus, duplicate } = useForms();
   const templates = useForms({ templates: true });
   const workspace = useWorkspaceSettings();
-  const can = { publish: useCan("forms.form.publish"), delete: useCan("forms.form.delete") };
+  // New forms need a project, so the unscoped workspace (legacy /forms, landing playground) can't create them.
+  const can = { create: Boolean(url.projectId), publish: useCan("forms.form.publish"), delete: useCan("forms.form.delete") };
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Active");
@@ -303,11 +312,15 @@ export function FormsScreen() {
         title="All Forms"
         description="Every form in this workspace. Open one to edit its settings, or jump into the builder."
         actions={
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setShowNew(true)}>
-            <Plus className="h-4 w-4" /> New form
-          </Button>
+          can.create ? (
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setShowNew(true)}>
+              <Plus className="h-4 w-4" /> New form
+            </Button>
+          ) : null
         }
       />
+
+      {can.create ? null : <NoProjectNote />}
 
       <StatsBar stats={stats} />
 
@@ -340,7 +353,13 @@ export function FormsScreen() {
                 <EmptyState
                   icon={forms.length ? Inbox : FileText}
                   title={forms.length ? "No forms match your filters" : "No forms yet"}
-                  description={forms.length ? "Clear the search or filters to see everything." : "Create your first form, or start from one of the templates."}
+                  description={
+                    forms.length
+                      ? "Clear the search or filters to see everything."
+                      : can.create
+                        ? "Create your first form, or start from one of the templates."
+                        : "Forms you made outside a project show up here."
+                  }
                   action={
                     forms.length && hasFilters ? (
                       <Button
@@ -353,11 +372,11 @@ export function FormsScreen() {
                       >
                         Clear filters
                       </Button>
-                    ) : (
+                    ) : can.create ? (
                       <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setShowNew(true)}>
                         <Plus className="h-4 w-4" /> New form
                       </Button>
-                    )
+                    ) : null
                   }
                 />
               </div>

@@ -4,12 +4,14 @@ import { useEffect, useRef } from "react";
 import { ArrowRight, BookmarkPlus, Check, ChevronDown, ChevronUp, CornerDownLeft } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
+import { isMultiChoice } from "@/lib/forms/field-types";
 import { LinearProgress } from "./progress";
 import { SubmitButton } from "./classic-view";
 import { Banner } from "./banners";
 import { SpotsBadge } from "./form-hero";
 
 const TEXT_ENTRY = new Set(["text", "email", "phone", "url", "number", "currency", "date", "time", "datetime", "textarea", "name", "address"]);
+const LETTER_TYPES = new Set(["select", "multiselect", "picture", "multipicture"]);
 
 // One question per screen with large type, Enter to advance, letter shortcuts for choices and slide transitions.
 export function ConversationalView({
@@ -28,7 +30,6 @@ export function ConversationalView({
   steps,
   stepIndex,
   isLastStep,
-  progress,
   answers,
   setAnswer,
   scheduleAdvance,
@@ -42,6 +43,7 @@ export function ConversationalView({
   const fieldSteps = steps.filter((s) => s.field);
   const number = steps.slice(0, stepIndex + 1).filter((s) => s.field).length;
   const field = step?.field;
+  const statement = step?.statement;
 
   // Keyboard: Enter advances (Shift+Enter keeps a newline in long text); A–Z picks choice options.
   useEffect(() => {
@@ -61,12 +63,12 @@ export function ConversationalView({
         return;
       }
       if (typing || e.metaKey || e.ctrlKey || e.altKey || !field) return;
-      if (field.type !== "select" && field.type !== "multiselect") return;
+      if (!LETTER_TYPES.has(field.type)) return;
       if (!/^[a-z]$/i.test(e.key)) return;
       const option = field.options?.[e.key.toUpperCase().charCodeAt(0) - 65];
       if (!option) return;
       e.preventDefault();
-      if (field.type === "select") {
+      if (!isMultiChoice(field.type)) {
         setAnswer(field.id, option);
         scheduleAdvance();
       } else {
@@ -99,7 +101,7 @@ export function ConversationalView({
           <span className="min-w-0 truncate font-medium text-foreground">{title}</span>
           <SpotsBadge form={form} tr={tr} />
         </div>
-        {settings.progressBar !== false && <LinearProgress value={progress} label={tr("questionOf", { current: number, total: fieldSteps.length })} />}
+        {settings.progressBar !== false && <LinearProgress index={stepIndex} total={steps.length} label={tr("questionOf", { current: number, total: fieldSteps.length })} />}
         {banners}
       </div>
 
@@ -120,10 +122,11 @@ export function ConversationalView({
           )}
           {step?.preface?.length > 0 && <div className="mb-6 grid gap-4">{step.preface.map((f) => renderField(f, { large: true }))}</div>}
           {field && renderField(field, { large: true, autoFocus: TEXT_ENTRY.has(field.type) })}
+          {statement && renderField(statement, { large: true })}
           {step?.submit && !field && step.preface.length === 0 && (
             <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{tr("submit")}</h2>
           )}
-          {isLastStep && extras && <div className={cn(field || step?.preface?.length ? "mt-8" : "mt-6")}>{extras}</div>}
+          {isLastStep && extras && <div className={cn(field || statement || step?.preface?.length ? "mt-8" : "mt-6")}>{extras}</div>}
 
           {error && (
             <Banner tone="danger" role="alert" className="mt-6">
@@ -136,8 +139,8 @@ export function ConversationalView({
               <SubmitButton type="button" submitState={submitState} reviewLeft={reviewLeft} tr={tr} onClick={onNext} />
             ) : (
               <Button type="button" size="lg" onClick={onNext} className="min-w-24">
-                {tr("ok")}
-                <Check />
+                {statement ? statement.config?.buttonLabel || tr("continue") : tr("ok")}
+                {statement ? <ArrowRight className="rtl:rotate-180" /> : <Check />}
               </Button>
             )}
             <span className="hidden items-center gap-1 text-xs text-text-tertiary sm:flex">

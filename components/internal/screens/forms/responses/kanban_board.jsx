@@ -6,6 +6,8 @@ import { Button } from "@geiger/ui/button";
 import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
 import { Badge } from "@geiger/ui/badge";
 import { StatusPill } from "@geiger/ui/screen-kit";
+import { AssigneePicker, PersonChip, assigneeValue } from "@/components/forms/response/members";
+import { resolvePerson } from "@/lib/hooks/use-members";
 import {
   RESPONSE_PRIORITY_MAP,
   RESPONSE_STATUSES,
@@ -14,43 +16,57 @@ import {
 
 const DRAG_TYPE = "application/x-geiger-response";
 
-function KanbanCard({ r, showForm, onOpen, onDragStart, onDragEnd, dragging }) {
+// The card body opens the response; the footer's assignee button reassigns it in place (read-only without `onAssign`).
+function KanbanCard({ r, showForm, people, onOpen, onAssign, onDragStart, onDragEnd, dragging }) {
+  const person = resolvePerson(r.assigneeId, r.assignee, people.byId);
   return (
-    <Button
-      type="button"
-      variant="outline"
+    <div
       draggable
       onDragStart={(e) => onDragStart(e, r)}
       onDragEnd={onDragEnd}
-      onClick={() => onOpen(r)}
       className={cn(
-        "h-auto w-full cursor-grab flex-col items-stretch justify-start gap-0 whitespace-normal rounded-lg bg-surface-card p-3 text-left font-normal shadow-none hover:border-border-strong hover:bg-surface-hover active:cursor-grabbing",
+        "cursor-grab rounded-lg border border-border bg-surface-card transition-colors hover:border-border-strong hover:bg-surface-hover active:cursor-grabbing",
         dragging && "opacity-40",
       )}
     >
-      <div className="flex items-center gap-2">
-        <Avatar size="sm" className="border border-border">
-          <AvatarFallback className="border-0 bg-surface-subtle text-[10px] font-semibold text-muted-foreground">{r.initials}</AvatarFallback>
-        </Avatar>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{r.name}</span>
-        {r.score != null ? <Badge variant="neutral" className="tabular-nums" title="Score">{r.score}</Badge> : null}
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => onOpen(r)}
+        className="h-auto w-full cursor-[inherit] flex-col items-stretch justify-start gap-0 whitespace-normal rounded-b-none p-3 pb-2 text-left font-normal hover:bg-transparent"
+      >
+        <div className="flex items-center gap-2">
+          <Avatar size="sm" className="border border-border">
+            <AvatarFallback className="border-0 bg-surface-subtle text-[10px] font-semibold text-muted-foreground">{r.initials}</AvatarFallback>
+          </Avatar>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{r.name}</span>
+          {r.score != null ? <Badge variant="neutral" className="tabular-nums" title="Score">{r.score}</Badge> : null}
+        </div>
+        {showForm ? <p className="mt-1.5 truncate text-xs text-text-tertiary">{r.form}</p> : null}
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          <StatusPill status={r.priority} map={RESPONSE_PRIORITY_MAP} />
+          {(r.tags || []).slice(0, 2).map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
+          {(r.tags || []).length > 2 ? <Badge variant="outline" className="text-text-tertiary">+{r.tags.length - 2}</Badge> : null}
+        </div>
+      </Button>
+      <div className="flex items-center justify-between gap-2 px-1.5 pb-1.5 text-xs text-text-tertiary">
+        {onAssign ? (
+          <AssigneePicker value={assigneeValue(r)} members={people.members} me={people.me} onChange={(member) => onAssign(r, member)}>
+            <Button type="button" variant="ghost" size="xs" aria-label={`Change assignee for ${r.name}, currently ${person ? person.name : "unassigned"}`} className="min-w-0 max-w-[70%] justify-start px-1.5 font-normal text-text-secondary hover:bg-surface-active hover:text-foreground">
+              <PersonChip person={person} />
+            </Button>
+          </AssigneePicker>
+        ) : (
+          <PersonChip person={person} className={cn("max-w-[70%] px-1.5", person && "text-text-secondary")} />
+        )}
+        <span className="shrink-0 pr-1.5">{r.received}</span>
       </div>
-      {showForm ? <p className="mt-1.5 truncate text-xs text-text-tertiary">{r.form}</p> : null}
-      <div className="mt-2 flex flex-wrap items-center gap-1">
-        <StatusPill status={r.priority} map={RESPONSE_PRIORITY_MAP} />
-        {(r.tags || []).slice(0, 2).map((t) => <Badge key={t} variant="outline">{t}</Badge>)}
-        {(r.tags || []).length > 2 ? <Badge variant="outline" className="text-text-tertiary">+{r.tags.length - 2}</Badge> : null}
-      </div>
-      <div className="mt-2 flex items-center justify-between text-xs text-text-tertiary">
-        <span className="truncate">{r.assignee || "Unassigned"}</span>
-        <span className="shrink-0">{r.received}</span>
-      </div>
-    </Button>
+    </div>
   );
 }
 
-// Status columns; dropping a card into another column changes its status.
-export function KanbanBoard({ rows, showForm, onOpen, onMove, statuses = RESPONSE_STATUSES }) {
+// Status columns; dropping a card into another column changes its status. `people` is the useMembers() directory.
+export function KanbanBoard({ rows, showForm, people, onOpen, onMove, onAssign, statuses = RESPONSE_STATUSES }) {
   const [draggingId, setDraggingId] = useState(null);
   const [overStatus, setOverStatus] = useState(null);
 
@@ -102,7 +118,9 @@ export function KanbanBoard({ rows, showForm, onOpen, onMove, statuses = RESPONS
                     key={r.id}
                     r={r}
                     showForm={showForm}
+                    people={people}
                     onOpen={onOpen}
+                    onAssign={onAssign}
                     onDragStart={onDragStart}
                     onDragEnd={() => setDraggingId(null)}
                     dragging={draggingId === r.id}

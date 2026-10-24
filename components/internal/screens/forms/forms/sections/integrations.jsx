@@ -8,12 +8,13 @@ import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Checkbox } from "@geiger/ui/checkbox";
 import { Switch } from "@geiger/ui/switch";
-import { Field, SectionCard, SettingRow, SettingsList } from "@geiger/ui/screen-kit";
+import { Field, LoadingArea, SectionCard, SettingRow, SettingsList, StatusPill } from "@geiger/ui/screen-kit";
 import { Tabs, TabsList, TabsTrigger } from "@geiger/ui/tabs";
 import { callApi } from "@/lib/forms/api";
 import { relativeTime } from "@/lib/forms/schema";
 import { withPrefix } from "@/lib/workspace/base-path";
-import { WEBHOOK_EVENTS } from "../constants";
+import { ReplayButton } from "@/components/internal/screens/forms/developer/deliveries_tab";
+import { DELIVERY_STATE_MAP, WEBHOOK_EVENTS } from "../constants";
 import { AddButton, ChipsInput, CopyField, ItemCard, OUTLINE_BTN, Stack, TextInput, randomHex, uid, useOrigin } from "./kit";
 
 const URL_RE = /^https?:\/\/\S+\.\S+/i;
@@ -79,6 +80,8 @@ function Deliveries({ formId }) {
     const res = await callApi(`/api/forms/${formId}/deliveries`);
     setRows(res.ok ? res.data?.deliveries || [] : []);
   }, [formId]);
+  // A refresh may have cleared the list while the replay was in flight.
+  const replaced = (next) => setRows((list) => list?.map((d) => (d.id === next.id ? next : d)) ?? list);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
@@ -93,25 +96,21 @@ function Deliveries({ formId }) {
       }
     >
       {rows === null ? (
-        <div className="flex justify-center py-6">
-          <Loader2 className="h-4 w-4 animate-spin text-text-secondary" />
-        </div>
+        <LoadingArea size={32} label="Loading deliveries" className="py-6" />
       ) : rows.length ? (
         <div className="divide-y divide-border">
-          {rows.slice(0, 20).map((d, i) => {
-            const status = d.statusCode ?? d.status_code;
-            const ok = d.ok ?? (Number(status) >= 200 && Number(status) < 300);
-            return (
-              <div key={d.id || i} className="flex items-center gap-3 py-2.5 text-sm">
-                <Badge variant={ok ? "success" : "danger"}>{status || (ok ? "OK" : "Failed")}</Badge>
-                <span className="min-w-0 flex-1 truncate text-muted-foreground" title={d.error || undefined}>
-                  {d.event || "delivery"} → {d.url}
-                  {d.error ? <span className="text-red-600 dark:text-red-400"> · {d.error}</span> : null}
-                </span>
-                <span className="shrink-0 text-xs text-text-tertiary">{relativeTime(d.created_at || d.createdAt)}</span>
-              </div>
-            );
-          })}
+          {rows.slice(0, 20).map((d) => (
+            <div key={d.id} className="flex items-center gap-3 py-2.5 text-sm">
+              <StatusPill status={d.state} map={DELIVERY_STATE_MAP} />
+              <span className="min-w-0 flex-1 truncate text-muted-foreground" title={d.error || undefined}>
+                {d.event} → {d.url}
+                {d.error ? <span className="text-red-600 dark:text-red-400"> · {d.error}</span> : null}
+                {d.attemptCount > 1 ? <span className="text-text-tertiary"> · {d.attemptCount} attempts</span> : null}
+              </span>
+              <span className="shrink-0 text-xs text-text-tertiary">{relativeTime(d.createdAt)}</span>
+              <ReplayButton compact formId={formId} delivery={d} onReplayed={replaced} />
+            </div>
+          ))}
         </div>
       ) : (
         <p className="text-sm text-text-secondary">No deliveries yet.</p>
@@ -120,7 +119,7 @@ function Deliveries({ formId }) {
   );
 }
 
-// Webhooks, Slack, Geiger Flow / Assets, and no-code connectors.
+// Webhooks, Slack, Geiger Flow / Assets, and webhook-based no-code tools.
 export function IntegrationsSection({ form, settings, set, setGroup }) {
   const origin = useOrigin();
   const hooks = settings.webhooks || [];
@@ -130,7 +129,11 @@ export function IntegrationsSection({ form, settings, set, setGroup }) {
 
   return (
     <Stack>
-      <SectionCard title="Webhooks" description="POST each response as JSON to your endpoint. Retries automatically on failure." action={<AddButton onClick={addHook}>Add webhook</AddButton>}>
+      <SectionCard
+        title="Webhooks"
+        description="POST each response as signed JSON to your endpoint. Timeouts, 429s and 5xx errors are retried twice within seconds, then with growing delays (5 minutes up to a day) for up to 8 attempts. Delayed retries run at the first background sweep after they fall due (within minutes while webhooks are flowing, otherwise daily) or as soon as the endpoint accepts a new delivery. If a delivery still fails, the form owner is alerted and can replay it below."
+        action={<AddButton onClick={addHook}>Add webhook</AddButton>}
+      >
         {hooks.length ? (
           <div className="space-y-3">
             {hooks.map((h) => (
@@ -183,10 +186,10 @@ export function IntegrationsSection({ form, settings, set, setGroup }) {
         </SettingsList>
       </SectionCard>
 
-      <SectionCard title="Google Sheets, Zapier & Make" description="Connect any tool with a webhook or the REST API.">
+      <SectionCard title="Zapier, Make & Google Sheets (via webhook)" description="No native connectors: these tools receive responses through a webhook above, or pull them from the REST API.">
         <div className="grid gap-3 text-sm text-text-secondary">
           <p>
-            <span className="font-medium text-foreground">Zapier / Make:</span> add a “Catch hook” trigger and paste its URL as a webhook above. Each response arrives as JSON with answers keyed by field id and label.
+            <span className="font-medium text-foreground">Zapier / Make:</span> add a “Catch hook” trigger and paste its URL as a webhook above. Each response arrives as JSON with answers keyed by field id.
           </p>
           <p>
             <span className="font-medium text-foreground">Google Sheets:</span> use a Zapier or Make scenario (“Webhook → Add row”), or pull responses on a schedule from the REST API with an API key from Settings.

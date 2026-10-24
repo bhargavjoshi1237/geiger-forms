@@ -105,7 +105,7 @@ export const formNav = [
     children: [
       { id: "Shared", title: "Team & Sharing", Icon: UserPlus },
       { id: "collab.roles", title: "Roles & Permissions", Icon: KeyRound },
-      { id: "collab.realtime", title: "Real-time Co-editing", Icon: MousePointerClick },
+      { id: "collab.realtime", title: "Live Presence", Icon: MousePointerClick },
       { id: "collab.comments", title: "Response Comments", Icon: MessagesSquare },
       { id: "collab.activity", title: "Activity & Audit", Icon: Activity },
     ],
@@ -116,8 +116,8 @@ export const formNav = [
     children: [
       { id: "security.spam", title: "Spam & Abuse", Icon: ShieldBan },
       { id: "security.gdpr", title: "Data Protection & GDPR", Icon: Lock },
-      { id: "security.access", title: "Access Control (SSO/RBAC)", Icon: Fingerprint },
-      { id: "security.hipaa", title: "HIPAA & Certifications", Icon: FileLock2 },
+      { id: "security.access", title: "Access Control", Icon: Fingerprint },
+      { id: "security.hipaa", title: "HIPAA Readiness", Icon: FileLock2 },
     ],
   },
   {

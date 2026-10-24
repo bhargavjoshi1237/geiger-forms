@@ -1,5 +1,4 @@
 -- Imported from 01_forms.sql by geiger-orm.
--- No @down section — this migration cannot be rolled back.
 
 -- @up
 -- ===========================================================================
@@ -132,3 +131,10 @@ create policy forms_all on forms.forms
 drop policy if exists responses_all on forms.responses;
 create policy responses_all on forms.responses
   for all to anon, authenticated using (true) with check (true);
+
+-- @down
+-- The forms schema (it holds the migration ledger), its grants and the shared pgcrypto extension stay.
+drop table if exists forms.responses cascade;
+drop table if exists forms.forms cascade;
+drop function if exists forms.sync_response_count();
+drop function if exists forms.touch_updated_at();

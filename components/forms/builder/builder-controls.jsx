@@ -1,8 +1,9 @@
 "use client";
 
 import { createElement, useState } from "react";
-import { ArrowDown, ArrowUp, ClipboardPaste, Plus, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Braces, ClipboardPaste, Plus, X } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@geiger/ui/dropdown-menu";
 import { Input } from "@geiger/ui/input";
 import { SegmentedTabs } from "@geiger/ui/segmented-tabs";
 import { Switch } from "@geiger/ui/switch";
@@ -69,6 +70,27 @@ export function Segmented({ value, options, onChange, className }) {
 
 export function SubtleNote({ children, className }) {
   return <p className={cn("text-[11px] leading-4 text-text-tertiary", className)}>{children}</p>;
+}
+
+// "Insert field" menu that hands back a {Field title} token — formula references and answer recall share the syntax.
+export function FieldTokenMenu({ fields, onInsert, label = "Insert field", heading = "Reference a field", emptyText = "No other fields yet." }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="outline" size="xs" className="gap-1"><Braces />{label}</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="max-h-72 w-60 overflow-y-auto border-border bg-surface-subtle">
+        <DropdownMenuLabel className="text-xs text-text-tertiary">{heading}</DropdownMenuLabel>
+        {fields.length === 0 ? <div className="px-2 py-1.5 text-xs text-text-tertiary">{emptyText}</div> : null}
+        {fields.map((f) => (
+          <DropdownMenuItem key={f.id} onSelect={() => onInsert(`{${f.title}}`)}>
+            <FieldTypeIcon type={f.type} className="h-3.5 w-3.5 text-text-secondary" />
+            <span className="truncate">{f.title}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 function move(list, from, to) {

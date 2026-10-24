@@ -12,7 +12,7 @@ import {
   SettingsList,
   StatsBar,
 } from "@geiger/ui/screen-kit";
-import { getFieldIcon, isInputField } from "@/lib/forms/field-types";
+import { getFieldIcon, isInputField, isLayoutField } from "@/lib/forms/field-types";
 import { checkFormula } from "@/lib/forms/formula";
 import { fieldTypeLabel, splitPages } from "@/lib/forms/logic";
 import { BuilderLink, CopyField, NumberInput, OUTLINE_BTN, Stack, publicFormUrl, useOrigin } from "./kit";
@@ -111,7 +111,7 @@ export function LayoutSection({ form, openBuilder }) {
         <SectionCard title="Row preview">
           <div className="flex flex-wrap gap-2">
             {s.defs.map((f) => {
-              const w = f.type === "page" || f.type === "heading" || f.type === "content" ? "full" : f.width || "full";
+              const w = isLayoutField(f.type) ? "full" : f.width || "full";
               const basis = w === "half" ? "calc(50% - 0.25rem)" : w === "third" ? "calc(33.333% - 0.34rem)" : "100%";
               return (
                 <div key={f.id} style={{ flexBasis: basis }} className="min-w-0 truncate rounded-md border border-border bg-surface-card px-2.5 py-1.5 text-xs text-text-secondary">

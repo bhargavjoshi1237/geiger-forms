@@ -42,7 +42,7 @@ export function FormHero({ form, title, description, tr, compact = false, meta }
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={logo}
-            alt=""
+            alt={settings.logoAlt || ""}
             className={cn("mb-4 size-14 rounded-xl border border-border bg-surface-card object-cover shadow-sm", showCover && "-mt-14 sm:-mt-16")}
           />
         )}

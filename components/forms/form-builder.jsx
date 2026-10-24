@@ -359,6 +359,7 @@ function FormBuilderEditor({ form, backHref }) {
 
                 <BuilderCanvas
                   doc={doc}
+                  formId={form.id}
                   selectedId={selectedId}
                   sources={sources}
                   scoring={scoring}
@@ -380,6 +381,7 @@ function FormBuilderEditor({ form, backHref }) {
           {!previewing ? (
             <BuilderSidebar
               doc={doc}
+              form={form}
               selectedId={selectedId}
               sources={sources}
               onInsert={insertField}
@@ -405,7 +407,7 @@ function NotFoundState({ slug, projectId, backHref, onCreated }) {
   const create = async () => {
     setBusy(true);
     try {
-      const created = await createForm({ title: titleFromSlug(slug) || "Untitled form", slug, projectId: projectId || null });
+      const created = await createForm({ title: titleFromSlug(slug) || "Untitled form", slug, projectId });
       toast.success("Form created");
       onCreated(created);
     } catch (err) {
@@ -427,7 +429,7 @@ function NotFoundState({ slug, projectId, backHref, onCreated }) {
         <Button type="button" variant="ghost" asChild>
           <Link href={backHref}><ArrowLeft className="h-4 w-4" />Back to forms</Link>
         </Button>
-        <Button type="button" onClick={create} disabled={busy || !canCreate}>
+        <Button type="button" onClick={create} disabled={busy || !canCreate || !projectId}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />}Create this form
         </Button>
       </div>

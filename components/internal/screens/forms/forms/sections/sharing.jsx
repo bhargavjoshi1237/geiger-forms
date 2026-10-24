@@ -12,11 +12,15 @@ import {
   SettingsList,
   StatusPill,
 } from "@geiger/ui/screen-kit";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@geiger/ui/tabs";
+import { HEX_RE } from "@/components/forms/theme-preview";
 import { callApi } from "@/lib/forms/api";
+import { cn } from "@/lib/utils";
 import { withPrefix } from "@/lib/workspace/base-path";
+import { ServiceNotice } from "../../settings/service_status";
 import { FORM_STATUS_MAP } from "../constants";
-import { ChipsInput, CopyField, Detail, Note, NumberInput, OUTLINE_BTN, Stack, TextArea, TextInput, isEmail, publicFormUrl, useOrigin } from "./kit";
+import { ChipsInput, CopyField, Detail, FIELD_CLS, Note, NumberInput, OUTLINE_BTN, Stack, TextArea, TextInput, isEmail, publicFormUrl, useOrigin } from "./kit";
 import { QrCode } from "./qr_code";
 
 const STATUS_COPY = {
@@ -72,41 +76,241 @@ export function PublishSection({ form, changeStatus, canPublish, statusBusy, pre
   );
 }
 
-// Embed snippets: inline + popup via /embed.js, and a plain iframe.
+const EMBED_MODES = [
+  { value: "inline", label: "Inline", hint: "Sits in the page and grows with the form." },
+  { value: "popup", label: "Popup", hint: "A centred dialog over the page." },
+  { value: "slider", label: "Slider", hint: "A panel that slides in from the edge of the screen." },
+  { value: "side-tab", label: "Side tab", hint: "A tab pinned to the screen edge that opens a slider." },
+  { value: "popover", label: "Popover", hint: "A corner bubble that opens a compact panel." },
+  { value: "fullscreen", label: "Full screen", hint: "Covers the whole screen, for longer focused forms." },
+  { value: "iframe", label: "Plain iframe", hint: "A fixed-height iframe that works without the script." },
+];
+const DIALOG_MODES = new Set(["popup", "slider", "side-tab", "popover", "fullscreen"]);
+const FLOATING_MODES = new Set(["side-tab", "popover"]);
+const SIDED_MODES = new Set(["slider", "side-tab", "popover"]);
+const DEFAULT_WIDTH = { popup: 720, slider: 420, "side-tab": 420, popover: 380 };
+const LAUNCHER_NOUN = { "side-tab": "Tab", popover: "Bubble" };
+const FREQUENCIES = [
+  { value: "always", label: "Every page view" },
+  { value: "session", label: "Once per session" },
+  { value: "days", label: "Once every few days" },
+];
+const EMBED_DEFAULTS = { buttonText: "", buttonColor: "", position: "right", width: "", trigger: "click", delay: 5, scroll: 50, frequency: "always", frequencyDays: 7, hideAfterSubmit: false, autoClose: "", openSelector: "", inherit: "utm" };
+
+const num = (value, fallback) => (value === "" || !Number.isFinite(Number(value)) ? fallback : Number(value));
+const attr = (value) => String(value).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+
+// /embed.js snippet for a script mode, emitting only options that differ from the script's defaults.
+function scriptSnippet(mode, o, slug, hiddenKeys, script) {
+  const attrs = [["data-geiger-form", slug], ["data-mode", mode]];
+  const add = (name, value, when) => {
+    if (when) attrs.push([name, value]);
+  };
+  if (DIALOG_MODES.has(mode)) {
+    const floating = FLOATING_MODES.has(mode);
+    const auto = o.trigger !== "click";
+    const selector = o.openSelector.trim();
+    const launcher = floating || (!auto && !selector);
+    add("data-trigger", o.trigger, auto);
+    add("data-delay", Math.max(0, num(o.delay, 5)), o.trigger === "delay");
+    add("data-scroll", Math.min(100, Math.max(1, num(o.scroll, 50))), o.trigger === "scroll");
+    add("data-open-selector", selector, !floating && !auto && selector);
+    add("data-button-text", o.buttonText.trim(), launcher && o.buttonText.trim());
+    add("data-button-color", o.buttonColor, launcher && HEX_RE.test(o.buttonColor));
+    add("data-position", "left", SIDED_MODES.has(mode) && o.position === "left");
+    add("data-width", Math.max(280, num(o.width, 0)), mode !== "fullscreen" && num(o.width, 0) > 0);
+    add("data-frequency", o.frequency, auto && o.frequency !== "always");
+    add("data-frequency-days", Math.max(1, num(o.frequencyDays, 7)), auto && o.frequency === "days");
+    add("data-hide-after-submit", "true", (auto || floating) && o.hideAfterSubmit);
+    add("data-auto-close", num(o.autoClose, 0), num(o.autoClose, 0) > 0);
+  }
+  add("data-inherit-params", "all", o.inherit === "all");
+  for (const key of hiddenKeys) attrs.push([`data-param-${key}`, ""]);
+  const parts = attrs.map(([name, value]) => `${name}="${attr(value)}"`);
+  const tag = parts.length > 2 ? `<div\n  ${parts.join("\n  ")}\n>` : `<div ${parts.join(" ")}>`;
+  return `${tag}</div>\n${script}`;
+}
+
+function OptionSelect({ value, onChange, options }) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={cn("h-9", FIELD_CLS)}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+// Embed builder: inline, dialog and launcher modes via /embed.js with display rules, or a plain iframe.
 export function EmbedSection({ form }) {
   const origin = useOrigin();
   const [mode, setMode] = useState("inline");
-  const [buttonText, setButtonText] = useState("Open form");
+  const [opts, setOpts] = useState(EMBED_DEFAULTS);
   const [height, setHeight] = useState(640);
+  const set = (key) => (value) => setOpts((o) => ({ ...o, [key]: value }));
+  const dialog = DIALOG_MODES.has(mode);
+  const floating = FLOATING_MODES.has(mode);
+  const auto = dialog && opts.trigger !== "click";
+  const launcher = floating || (dialog && !auto && !opts.openSelector.trim());
+  const noun = LAUNCHER_NOUN[mode] || "Button";
+  const hiddenKeys = (form.fieldDefs || [])
+    .filter((f) => f.type === "hidden" && f.included !== false && f.prefillKey && !/^utm_/i.test(f.prefillKey))
+    .map((f) => f.prefillKey.toLowerCase());
   const url = publicFormUrl(origin, form.slug);
   const script = `<script src="${origin}${withPrefix("/embed.js")}" async></script>`;
-  const snippets = {
-    inline: `<div data-geiger-form="${form.slug}" data-mode="inline"></div>\n${script}`,
-    popup: `<div data-geiger-form="${form.slug}" data-mode="popup" data-button-text="${buttonText.replace(/"/g, "&quot;")}"></div>\n${script}`,
-    iframe: `<iframe src="${url}?embed=1" title="${form.title.replace(/"/g, "&quot;")}" width="100%" height="${Number(height) || 640}" style="border:0;max-width:100%" loading="lazy" allow="payment; clipboard-write"></iframe>`,
-  };
+  const snippet =
+    mode === "iframe"
+      ? `<iframe src="${url}?embed=1" title="${attr(form.title)}" width="100%" height="${Number(height) || 640}" style="border:0;max-width:100%" loading="lazy" allow="payment; clipboard-write"></iframe>`
+      : scriptSnippet(mode, opts, form.slug, hiddenKeys, script);
+  const triggers = [
+    { value: "click", label: floating ? `Only when the ${noun.toLowerCase()} is clicked` : "On click" },
+    { value: "delay", label: "After a delay" },
+    { value: "scroll", label: "At a scroll depth" },
+    { value: "exit", label: "On exit intent" },
+  ];
+  const triggerHint = opts.trigger === "exit" ? "Desktop only: when the pointer leaves through the top of the window." : floating ? `The ${noun.toLowerCase()} is always shown.` : undefined;
+  const codeHint = mode === "iframe" || mode === "inline" ? "Paste where the form should appear." : "Paste into any page; the form loads the first time it opens.";
+
   return (
     <Stack>
-      <SectionCard title="Embed code" description="Paste into any page. The inline and popup embeds resize automatically.">
+      <SectionCard title="Embed type" description="Choose how the form appears on your site.">
         <div className="grid gap-4">
           <Tabs value={mode} onValueChange={setMode}>
-            <TabsList>
-              <TabsTrigger value="inline">Inline</TabsTrigger>
-              <TabsTrigger value="popup">Popup button</TabsTrigger>
-              <TabsTrigger value="iframe">Plain iframe</TabsTrigger>
+            <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
+              {EMBED_MODES.map((m) => (
+                <TabsTrigger key={m.value} value={m.value}>
+                  {m.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
-          {mode === "popup" ? (
-            <Field label="Button text" className="max-w-xs">
-              <TextInput value={buttonText} onChange={setButtonText} />
-            </Field>
-          ) : null}
+          <p className="text-sm text-text-secondary">{EMBED_MODES.find((m) => m.value === mode).hint}</p>
           {mode === "iframe" ? (
             <Field label="Height (px)" className="max-w-[160px]">
               <NumberInput value={height} min={200} onChange={setHeight} />
             </Field>
           ) : null}
-          <CopyField multiline value={snippets[mode]} label="Embed code copied" />
+          {dialog ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {launcher ? (
+                <Field label={mode === "popover" ? "Bubble label" : `${noun} text`} hint={mode === "popover" ? "Read out by screen readers." : undefined}>
+                  <TextInput value={opts.buttonText} onChange={set("buttonText")} placeholder={mode === "side-tab" ? "Feedback" : "Open form"} />
+                </Field>
+              ) : null}
+              {launcher ? (
+                <Field label={`${noun} colour`}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      aria-label={`${noun} colour`}
+                      value={HEX_RE.test(opts.buttonColor) ? opts.buttonColor : "#111111"}
+                      onChange={(e) => set("buttonColor")(e.target.value)}
+                      className="h-9 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-surface-card p-1"
+                    />
+                    <TextInput value={opts.buttonColor} onChange={(v) => set("buttonColor")(v.trim())} placeholder="#111111" className="font-mono" />
+                  </div>
+                  {opts.buttonColor && !HEX_RE.test(opts.buttonColor) ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">Use a 6-digit hex colour.</p> : null}
+                </Field>
+              ) : null}
+              {SIDED_MODES.has(mode) ? (
+                <Field label="Position">
+                  <OptionSelect
+                    value={opts.position}
+                    onChange={set("position")}
+                    options={[
+                      { value: "right", label: mode === "popover" ? "Bottom right" : "Right" },
+                      { value: "left", label: mode === "popover" ? "Bottom left" : "Left" },
+                    ]}
+                  />
+                </Field>
+              ) : null}
+              {mode !== "fullscreen" ? (
+                <Field label="Width (px)" hint={mode === "popup" ? undefined : "Full width on phones."}>
+                  <NumberInput value={opts.width} min={280} placeholder={String(DEFAULT_WIDTH[mode])} onChange={set("width")} />
+                </Field>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </SectionCard>
+
+      {dialog ? (
+        <SectionCard title="Display rules" description="When the form opens and how often visitors see it.">
+          <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Opens" hint={triggerHint}>
+                <OptionSelect value={opts.trigger} onChange={set("trigger")} options={triggers} />
+              </Field>
+              {opts.trigger === "delay" ? (
+                <Field label="Delay (seconds)">
+                  <NumberInput value={opts.delay} min={0} onChange={set("delay")} />
+                </Field>
+              ) : null}
+              {opts.trigger === "scroll" ? (
+                <Field label="Scroll depth (%)">
+                  <NumberInput value={opts.scroll} min={1} max={100} onChange={set("scroll")} />
+                </Field>
+              ) : null}
+              {!floating && !auto ? (
+                <Field label="Your own button (optional)" hint="CSS selector for elements on your page that open the form instead of the generated button.">
+                  <TextInput value={opts.openSelector} onChange={set("openSelector")} placeholder="#open-form" className="font-mono" />
+                </Field>
+              ) : null}
+              {auto ? (
+                <Field label="Show" hint="Remembered in the visitor's browser.">
+                  <OptionSelect value={opts.frequency} onChange={set("frequency")} options={FREQUENCIES} />
+                </Field>
+              ) : null}
+              {auto && opts.frequency === "days" ? (
+                <Field label="Days between showings">
+                  <NumberInput value={opts.frequencyDays} min={1} onChange={set("frequencyDays")} />
+                </Field>
+              ) : null}
+              <Field label="Close after submit (seconds)" hint="Empty keeps the thank-you screen open.">
+                <NumberInput value={opts.autoClose} min={0} placeholder="Never" onChange={set("autoClose")} />
+              </Field>
+            </div>
+            {auto || floating ? (
+              <SettingsList>
+                <SettingRow
+                  title="Stop after a response"
+                  description={floating ? `Visitors who responded no longer see the ${noun.toLowerCase()} or automatic openings.` : "Visitors who responded aren't shown the form automatically again."}
+                  checked={opts.hideAfterSubmit}
+                  onCheckedChange={set("hideAfterSubmit")}
+                />
+              </SettingsList>
+            ) : null}
+          </div>
+        </SectionCard>
+      ) : null}
+
+      <SectionCard title="Embed code" description={codeHint}>
+        <div className="grid gap-4">
+          {mode !== "iframe" ? (
+            <Field label="Page URL parameters" hint="Forwarded from your page's address for prefill and hidden fields." className="max-w-xs">
+              <OptionSelect
+                value={opts.inherit}
+                onChange={set("inherit")}
+                options={[
+                  { value: "utm", label: "UTM tags only" },
+                  { value: "all", label: "All parameters" },
+                ]}
+              />
+            </Field>
+          ) : null}
+          <CopyField multiline value={snippet} label="Embed code copied" />
+          {mode !== "iframe" && hiddenKeys.length ? (
+            <p className="text-xs text-text-tertiary">
+              Fill in the <code className="rounded bg-surface-card px-1 text-text-secondary">data-param-*</code> values to pass hidden fields from your page.
+            </p>
+          ) : null}
         </div>
       </SectionCard>
       {form.status !== "Published" ? <Note tone="warning">Embedded forms show a closed notice until the form is published.</Note> : null}
@@ -139,6 +343,7 @@ function SignedLinkCard({ form }) {
   return (
     <SectionCard title="Signed link" description="A personal, expiring link — required when access is set to “Signed links only”, and it can lock the response to one email.">
       <div className="grid gap-4">
+        <ServiceNotice service="signedLinks" />
         <div className="grid gap-4 sm:grid-cols-[1fr_140px_auto] sm:items-end">
           <Field label="Recipient email (optional)">
             <TextInput value={email} onChange={setEmail} placeholder="person@company.com" />
@@ -193,6 +398,7 @@ function InviteCard({ form }) {
         <SettingsList>
           <SettingRow icon={PenLine} title="Personal signed links" description="Each recipient gets their own link tied to their email — best for signing." checked={signed} onCheckedChange={setSigned} />
         </SettingsList>
+        <ServiceNotice service={signed ? ["email", "signedLinks"] : "email"} />
         {form.status !== "Published" ? <Note tone="warning">Publish the form first — invitations can only be sent for live forms.</Note> : null}
         <div>
           <Button type="button" onClick={send} disabled={busy || !emails.length || form.status !== "Published"} className="bg-primary text-primary-foreground hover:bg-primary/90">

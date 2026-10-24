@@ -25,8 +25,10 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { relativeTime } from "@/lib/forms/schema";
 import { FORM_STATUS_MAP, formatCount } from "../forms/constants";
 import { TextInput } from "../forms/sections/kit";
+import { NoProjectNote } from "../no_project";
 import { ErrorState } from "../screen-shell";
-import { folderNames, useWorkspaceSettings } from "../settings/use_workspace_settings";
+import { useWorkspaceSettings } from "@/lib/hooks/use-workspace-settings";
+import { folderNames } from "../settings/use_workspace_settings";
 
 const NONE = "__none";
 const ITEM = "cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground";
@@ -125,6 +127,8 @@ export function FoldersScreen() {
   const { forms, loading, error, refresh, update } = useForms();
   const workspace = useWorkspaceSettings();
   const { openForm } = useWorkspaceUrl();
+  // The folder list is saved per project, so outside one forms can only move between existing folders.
+  const canManage = Boolean(workspace.projectId);
 
   const [openFolder, setOpenFolder] = useState(null);
   const [search, setSearch] = useState("");
@@ -230,13 +234,17 @@ export function FoldersScreen() {
             <DropdownMenuItem className={ITEM} onClick={() => setAddTo(name)}>
               <Plus className="h-4 w-4" /> Add forms
             </DropdownMenuItem>
-            <DropdownMenuItem className={ITEM} onClick={() => setDialog({ mode: "rename", name })}>
-              <Pencil className="h-4 w-4" /> Rename
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-border" />
-            <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-red-600 dark:text-red-400 focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400" onClick={() => setDeleteTarget(name)}>
-              <Trash2 className="h-4 w-4" /> Delete
-            </DropdownMenuItem>
+            {canManage ? (
+              <>
+                <DropdownMenuItem className={ITEM} onClick={() => setDialog({ mode: "rename", name })}>
+                  <Pencil className="h-4 w-4" /> Rename
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-border" />
+                <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-red-600 dark:text-red-400 focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400" onClick={() => setDeleteTarget(name)}>
+                  <Trash2 className="h-4 w-4" /> Delete
+                </DropdownMenuItem>
+              </>
+            ) : null}
           </>
         ) : null}
       </DropdownMenuContent>
@@ -295,9 +303,11 @@ export function FoldersScreen() {
           actions={
             openFolder !== NONE ? (
               <>
-                <Button variant="outline" onClick={() => setDialog({ mode: "rename", name: openFolder })} className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground">
-                  <Pencil className="h-4 w-4" /> Rename
-                </Button>
+                {canManage ? (
+                  <Button variant="outline" onClick={() => setDialog({ mode: "rename", name: openFolder })} className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground">
+                    <Pencil className="h-4 w-4" /> Rename
+                  </Button>
+                ) : null}
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setAddTo(openFolder)}>
                   <Plus className="h-4 w-4" /> Add forms
                 </Button>
@@ -310,12 +320,16 @@ export function FoldersScreen() {
           title="Folders"
           description="Group forms by team, client or workflow. A form lives in one folder at a time."
           actions={
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setDialog({ mode: "create" })}>
-              <FolderPlus className="h-4 w-4" /> New folder
-            </Button>
+            canManage ? (
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setDialog({ mode: "create" })}>
+                <FolderPlus className="h-4 w-4" /> New folder
+              </Button>
+            ) : null
           }
         />
       )}
+
+      {canManage ? null : <NoProjectNote />}
 
       <Toolbar>
         <span className="text-sm text-text-secondary">
@@ -430,9 +444,11 @@ export function FoldersScreen() {
             title="No folders yet"
             description="Create a folder, then move forms into it to keep the workspace tidy."
             action={
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setDialog({ mode: "create" })}>
-                <FolderPlus className="h-4 w-4" /> New folder
-              </Button>
+              canManage ? (
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setDialog({ mode: "create" })}>
+                  <FolderPlus className="h-4 w-4" /> New folder
+                </Button>
+              ) : null
             }
           />
         </div>

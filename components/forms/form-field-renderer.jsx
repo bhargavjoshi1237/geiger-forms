@@ -4,8 +4,10 @@ import { interpolate } from "@/lib/forms/logic";
 import { translator } from "@/lib/forms/i18n";
 import { FieldShell, ariaProps } from "@/components/forms/fields/field-shell";
 import { DropdownInput, LongTextInput, TextLikeInput } from "@/components/forms/fields/basic-inputs";
-import { ConsentCheckbox, MultiChoice, RankingField, SingleChoice } from "@/components/forms/fields/choice-fields";
-import { MatrixField, NpsField, RatingField, ScaleField } from "@/components/forms/fields/survey-fields";
+import { ConsentCheckbox, ConsentField, MultiChoice, RankingField, SingleChoice } from "@/components/forms/fields/choice-fields";
+import { PictureChoice } from "@/components/forms/fields/picture-choice";
+import { MatrixField, NpsField, OpinionScale, RatingField, ScaleField } from "@/components/forms/fields/survey-fields";
+import { ImageBlock, StatementBlock, VideoBlock } from "@/components/forms/fields/content-blocks";
 import { AddressField, NameField } from "@/components/forms/fields/contact-fields";
 import { BookingField } from "@/components/forms/fields/booking-field";
 import { FileField } from "@/components/forms/fields/file-field";
@@ -14,7 +16,7 @@ import { RepeaterField } from "@/components/forms/fields/repeater-field";
 import { CalculatedField, OrderTotal, ProductField } from "@/components/forms/fields/commerce-fields";
 import { cn } from "@/lib/utils";
 
-const GROUP_TYPES = new Set(["select", "multiselect", "ranking", "rating", "scale", "nps", "matrix", "name", "address", "booking", "repeater"]);
+const GROUP_TYPES = new Set(["select", "multiselect", "picture", "multipicture", "ranking", "rating", "scale", "nps", "opinion", "matrix", "name", "address", "booking", "repeater"]);
 
 // Heading / text block: `label` is the heading, `hint` the body (merge tags resolved).
 function LayoutBlock({ field, text, large }) {
@@ -68,6 +70,9 @@ export function FormFieldRenderer({
   const change = onChange || (() => {});
 
   if (field.type === "heading" || field.type === "content") return <LayoutBlock field={field} text={text} large={large} />;
+  if (field.type === "statement") return <StatementBlock label={label} body={hint} large={large} />;
+  if (field.type === "image") return <ImageBlock field={field} caption={hint} preview={!slug} />;
+  if (field.type === "video") return <VideoBlock field={field} title={label} caption={hint} preview={!slug} />;
   if (field.type === "calculated") return <CalculatedField field={field} label={label} allFields={fields} answers={answers} currency={currency} />;
   if (field.type === "total") {
     return <OrderTotal field={field} label={label} form={form} allFields={fields} answers={answers} onSetAnswer={onSetAnswer} disabled={disabled} tr={tr} />;
@@ -123,10 +128,26 @@ export function FormFieldRenderer({
         ),
       );
     }
-    case "checkbox": {
+    case "picture":
+    case "multipicture": {
+      const note = field.type === "multipicture" ? choiceHint() : "";
+      return shell(
+        field.options?.length ? (
+          <>
+            <PictureChoice {...props} onAdvance={onAdvance} />
+            {note && <p className="mt-2 text-xs text-text-tertiary">{note}</p>}
+          </>
+        ) : (
+          <EmptyOptions tr={tr} />
+        ),
+      );
+    }
+    case "checkbox":
+    case "consent": {
       const statement = text(field.label && field.label !== field.title ? field.label : field.title);
       const showTitle = field.title && field.label && field.label !== field.title;
-      return shell(<ConsentCheckbox {...props} label={statement} />, showTitle ? { label: text(field.title), field: { ...field, required: false } } : { hideLabel: true });
+      const Control = field.type === "consent" ? ConsentField : ConsentCheckbox;
+      return shell(<Control {...props} label={statement} />, showTitle ? { label: text(field.title), field: { ...field, required: false } } : { hideLabel: true });
     }
     case "ranking":
       return shell(field.options?.length ? <RankingField {...props} /> : <EmptyOptions tr={tr} />);
@@ -136,6 +157,8 @@ export function FormFieldRenderer({
       return shell(<ScaleField {...props} />);
     case "nps":
       return shell(<NpsField {...props} />);
+    case "opinion":
+      return shell(<OpinionScale {...props} />);
     case "matrix":
       return shell(<MatrixField {...props} />);
     case "name":

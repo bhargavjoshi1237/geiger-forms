@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Lock, ShieldCheck } from "lucide-react";
 import { Input } from "@geiger/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@geiger/ui/tabs";
@@ -8,19 +8,20 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Switch } from "@geiger/ui/switch";
 import { Textarea } from "@geiger/ui/textarea";
 import { cn } from "@/lib/utils";
-import { FIELD_GROUPS, FIELD_TYPE_LIST, hasOptions, isInputField } from "@/lib/forms/field-types";
+import { AUTOFILL_OPTIONS, FIELD_GROUPS, FIELD_TYPE_LIST, autofillToken, hasOptions, isInputField, isLayoutField, isMultiChoice } from "@/lib/forms/field-types";
 import { ConditionsEditor } from "./conditions-editor";
 import { changeFieldType } from "./field-defaults";
 import { FormulaEditor } from "./formula-editor";
-import { FieldRow, FieldTypeIcon, NumberInput, SubtleNote, TextInput, ToggleRow } from "./builder-controls";
+import { FieldRow, FieldTokenMenu, FieldTypeIcon, NumberInput, SubtleNote, TextInput, ToggleRow } from "./builder-controls";
 import { renderTypeSettings } from "./type-settings";
 
 const PLACEHOLDER_TYPES = new Set(["text", "textarea", "email", "phone", "url", "number", "currency", "dropdown"]);
 const TEXT_TYPES = new Set(["text", "textarea", "email", "url", "phone"]);
 const MINMAX_TYPES = new Set(["number", "currency"]);
-const QUIZ_TEXT_TYPES = new Set(["text", "number", "email", "url", "dropdown", "select", "multiselect"]);
-const DEFAULT_TYPES = new Set(["text", "textarea", "email", "phone", "url", "number", "currency", "select", "dropdown", "checkbox", "date", "time", "datetime", "hidden", "rating", "scale", "nps"]);
-const LAYOUT_TYPES = new Set(["heading", "content"]);
+const QUIZ_TEXT_TYPES = new Set(["text", "number", "email", "url", "dropdown", "select", "multiselect", "picture", "multipicture"]);
+const DEFAULT_TYPES = new Set(["text", "textarea", "email", "phone", "url", "number", "currency", "select", "dropdown", "picture", "checkbox", "date", "time", "datetime", "hidden", "rating", "scale", "nps", "opinion"]);
+const LABEL_TEXT = { heading: "Heading", checkbox: "Statement", consent: "Consent text", statement: "Headline", video: "Video title" };
+const BODY_LABELS = { content: "Text", heading: "Subheading", statement: "Details", image: "Caption", video: "Caption" };
 const WIDTHS = [
   { value: "full", label: "Full" },
   { value: "half", label: "Half" },
@@ -57,7 +58,7 @@ function DefaultValueInput({ field, onChange }) {
   const value = field.defaultValue;
   const set = (v) => onChange({ defaultValue: v === "" || v === undefined ? undefined : v });
   if (field.type === "checkbox") return <Switch checked={Boolean(value)} onCheckedChange={(v) => set(v || undefined)} aria-label="Checked by default" />;
-  if (field.type === "select" || field.type === "dropdown") {
+  if (field.type === "select" || field.type === "dropdown" || field.type === "picture") {
     return (
       <Select value={value || "__none"} onValueChange={(v) => set(v === "__none" ? undefined : v)}>
         <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue /></SelectTrigger>
@@ -68,30 +69,56 @@ function DefaultValueInput({ field, onChange }) {
       </Select>
     );
   }
-  if (["number", "currency", "rating", "scale", "nps"].includes(field.type)) return <NumberInput value={value} onChange={set} />;
+  if (["number", "currency", "rating", "scale", "nps", "opinion"].includes(field.type)) return <NumberInput value={value} onChange={set} />;
   const type = field.type === "date" ? "date" : field.type === "time" ? "time" : field.type === "datetime" ? "datetime-local" : "text";
   return <Input type={type} value={value ?? ""} onChange={(e) => set(e.target.value)} className="h-8 bg-surface-card text-sm" />;
 }
 
-function QuestionTab({ field, onChange, allFields, scoring, quiz, currency }) {
-  const layout = LAYOUT_TYPES.has(field.type);
+function QuestionTab({ field, onChange, recallSources, allFields, formId, scoring, quiz, currency }) {
+  const layout = isLayoutField(field.type);
   const input = isInputField(field.type);
-  const labelText = field.type === "heading" ? "Heading" : field.type === "checkbox" ? "Statement" : "Question";
+  const labelText = LABEL_TEXT[field.type] || "Question";
+  const bodyLabel = BODY_LABELS[field.type];
+  const recallTarget = useRef(null);
+  const trackRecall = (e) => {
+    recallTarget.current = { key: e.currentTarget.dataset.recall, el: e.currentTarget };
+  };
+
+  // Inserts a recall token at the caret of the last focused text (the question by default, the body for text and image blocks).
+  const insertRecall = (token) => {
+    const { key, el } = recallTarget.current ?? { key: field.type === "content" || field.type === "image" ? "hint" : "label", el: null };
+    const current = field[key] || "";
+    const base = current || (key === "label" ? field.title || "" : "");
+    const start = current && el ? el.selectionStart ?? base.length : base.length;
+    const end = current && el ? el.selectionEnd ?? base.length : base.length;
+    onChange({ [key]: `${base.slice(0, start)}${token}${base.slice(end)}` });
+    requestAnimationFrame(() => {
+      if (!el?.isConnected) return;
+      el.focus();
+      el.setSelectionRange(start + token.length, start + token.length);
+    });
+  };
 
   return (
     <div className="space-y-3.5">
       <div className="grid gap-3 sm:grid-cols-2">
         <FieldRow label="Field type"><TypePicker field={field} onChange={onChange} /></FieldRow>
-        {field.type !== "content" ? (
+        {field.type !== "content" && field.type !== "image" && field.type !== "consent" ? (
           <FieldRow label={labelText} hint={field.type === "checkbox" ? "What the respondent ticks to agree." : undefined}>
-            <TextInput value={field.label} onChange={(label) => onChange({ label })} placeholder={field.title} />
+            <TextInput value={field.label} onChange={(label) => onChange({ label })} data-recall="label" onFocus={trackRecall} placeholder={field.title} />
           </FieldRow>
         ) : null}
       </div>
 
-      {field.type === "content" || field.type === "heading" ? (
-        <FieldRow label={field.type === "content" ? "Text" : "Subheading"}>
-          <Textarea value={field.hint || ""} onChange={(e) => onChange({ hint: e.target.value })} rows={field.type === "content" ? 4 : 2} className="min-h-14 resize-y bg-surface-card text-sm placeholder:text-text-tertiary" placeholder={field.type === "content" ? "Supports merge tags like {Field Title}." : "Optional"} />
+      {field.type === "consent" ? (
+        <FieldRow label={labelText} hint="Shown next to the checkbox. Each response records a hash of this wording and the policy link, so later edits are detectable.">
+          <Textarea value={field.label || ""} onChange={(e) => onChange({ label: e.target.value })} data-recall="label" onFocus={trackRecall} rows={3} className="min-h-14 resize-y bg-surface-card text-sm placeholder:text-text-tertiary" placeholder={field.title} />
+        </FieldRow>
+      ) : null}
+
+      {bodyLabel ? (
+        <FieldRow label={bodyLabel}>
+          <Textarea value={field.hint || ""} onChange={(e) => onChange({ hint: e.target.value })} data-recall="hint" onFocus={trackRecall} rows={field.type === "content" ? 4 : field.type === "statement" ? 3 : 2} className="min-h-14 resize-y bg-surface-card text-sm placeholder:text-text-tertiary" placeholder={field.type === "content" ? "Supports merge tags like {Field Title}." : "Optional"} />
         </FieldRow>
       ) : null}
 
@@ -100,24 +127,33 @@ function QuestionTab({ field, onChange, allFields, scoring, quiz, currency }) {
           {PLACEHOLDER_TYPES.has(field.type) ? (
             <FieldRow label="Placeholder"><TextInput value={field.placeholder} onChange={(placeholder) => onChange({ placeholder })} placeholder="Shown inside the empty input" /></FieldRow>
           ) : null}
-          <FieldRow label="Help text"><TextInput value={field.hint} onChange={(hint) => onChange({ hint })} placeholder="Shown under the question" /></FieldRow>
+          <FieldRow label="Help text"><TextInput value={field.hint} onChange={(hint) => onChange({ hint })} data-recall="hint" onFocus={trackRecall} placeholder="Shown under the question" /></FieldRow>
           <FieldRow label="Info tooltip" className={PLACEHOLDER_TYPES.has(field.type) ? "sm:col-span-2" : undefined}>
             <TextInput value={field.info} onChange={(info) => onChange({ info })} placeholder="Extra context behind an (i) icon" />
           </FieldRow>
         </div>
       ) : null}
 
+      {field.type !== "hidden" ? (
+        <div className="flex items-center justify-between gap-3">
+          <SubtleNote>Recall an earlier answer or hidden field here with a {"{Field name}"} token.</SubtleNote>
+          <FieldTokenMenu fields={recallSources} onInsert={insertRecall} label="Recall" heading="Recall an answer" emptyText="No earlier questions yet." />
+        </div>
+      ) : null}
+
       {input && field.type !== "hidden" ? (
         <div className="grid gap-x-6 sm:grid-cols-2">
           <ToggleRow label="Required" hint="Respondents can't continue without it." checked={field.required} onCheckedChange={(required) => onChange({ required })} />
-          <ToggleRow label="Read-only" hint="Shows the default / prefilled value." checked={field.readOnly} onCheckedChange={(readOnly) => onChange({ readOnly })} />
+          {field.type !== "consent" ? (
+            <ToggleRow label="Read-only" hint="Shows the default / prefilled value." checked={field.readOnly} onCheckedChange={(readOnly) => onChange({ readOnly })} />
+          ) : null}
         </div>
       ) : null}
 
       {field.type === "calculated" ? (
         <FormulaEditor field={field} fields={allFields} currency={currency} scoring={scoring} onChange={onChange} />
       ) : (
-        <TypeSettingsBlock field={field} onChange={onChange} scoring={scoring} quiz={quiz} currency={currency} />
+        <TypeSettingsBlock field={field} onChange={onChange} formId={formId} scoring={scoring} quiz={quiz} currency={currency} />
       )}
     </div>
   );
@@ -143,7 +179,7 @@ function ValidationTab({ field, onChange, quiz }) {
   }
   const showQuizAnswer = quiz && QUIZ_TEXT_TYPES.has(field.type) && !hasOptions(field.type);
   const showQuizPoints = quiz && QUIZ_TEXT_TYPES.has(field.type);
-  const rules = MINMAX_TYPES.has(field.type) || TEXT_TYPES.has(field.type) || field.type === "multiselect";
+  const rules = MINMAX_TYPES.has(field.type) || TEXT_TYPES.has(field.type) || isMultiChoice(field.type);
 
   return (
     <div className="space-y-3.5">
@@ -168,7 +204,7 @@ function ValidationTab({ field, onChange, quiz }) {
           {patternError ? <p className="text-[11px] text-red-600 dark:text-red-400">{patternError}</p> : null}
         </>
       ) : null}
-      {field.type === "multiselect" ? (
+      {isMultiChoice(field.type) ? (
         <div className="grid grid-cols-2 gap-3">
           <FieldRow label="Min selections"><NumberInput min={0} value={v.minSelect} onChange={(minSelect) => setRule({ minSelect })} placeholder="None" /></FieldRow>
           <FieldRow label="Max selections"><NumberInput min={1} value={v.maxSelect} onChange={(maxSelect) => setRule({ maxSelect })} placeholder="None" /></FieldRow>
@@ -192,6 +228,23 @@ function ValidationTab({ field, onChange, quiz }) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+// Which saved browser detail (name, company, city…) fills this short-text field; Auto infers it from the title.
+function AutofillSelect({ field, onChange }) {
+  const inferred = autofillToken({ ...field, config: undefined });
+  const inferredLabel = AUTOFILL_OPTIONS.find((o) => o.value === inferred)?.label;
+  return (
+    <FieldRow label="Browser autofill" hint="Lets browsers and password managers fill this from the respondent's saved details.">
+      <Select value={field.config?.autocomplete || "auto"} onValueChange={(v) => onChange({ config: { ...field.config, autocomplete: v === "auto" ? undefined : v } })}>
+        <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue /></SelectTrigger>
+        <SelectContent className="max-h-72">
+          <SelectItem value="auto">{inferredLabel ? `Auto (${inferredLabel})` : "Auto (none detected)"}</SelectItem>
+          {AUTOFILL_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </FieldRow>
   );
 }
 
@@ -221,6 +274,7 @@ function AdvancedTab({ field, onChange }) {
           <FieldRow label="Prefill key" hint={field.prefillKey ? `Prefilled from ?${field.prefillKey}=… in the form link.` : "URL parameter that prefills this field."}>
             <TextInput value={field.prefillKey} onChange={(prefillKey) => onChange({ prefillKey: prefillKey.replace(/[^a-zA-Z0-9_-]/g, "") || undefined })} placeholder="e.g. email" className="font-mono" />
           </FieldRow>
+          {field.type === "text" ? <AutofillSelect field={field} onChange={onChange} /> : null}
         </div>
       ) : null}
       {input ? (
@@ -247,7 +301,7 @@ function AdvancedTab({ field, onChange }) {
 }
 
 // Tabbed settings for one field: question, validation, logic and advanced.
-export function FieldSettings({ field, onChange, sources, allFields, scoring, quiz, currency }) {
+export function FieldSettings({ field, onChange, sources, recallSources, allFields, formId, scoring, quiz, currency }) {
   const [tab, setTab] = useState("question");
   const input = isInputField(field.type);
   const tabs = [
@@ -269,7 +323,7 @@ export function FieldSettings({ field, onChange, sources, allFields, scoring, qu
           ))}
         </TabsList>
       </Tabs>
-      {active === "question" ? <QuestionTab field={field} onChange={onChange} allFields={allFields} scoring={scoring} quiz={quiz} currency={currency} /> : null}
+      {active === "question" ? <QuestionTab field={field} onChange={onChange} recallSources={recallSources} allFields={allFields} formId={formId} scoring={scoring} quiz={quiz} currency={currency} /> : null}
       {active === "validation" ? <ValidationTab field={field} onChange={onChange} quiz={quiz} /> : null}
       {active === "logic" ? (
         <ConditionsEditor

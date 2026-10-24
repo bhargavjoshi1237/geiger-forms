@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
+import { ArrowDown, ArrowUp, ExternalLink, GripVertical } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@geiger/ui/radio-group";
 import { Checkbox } from "@geiger/ui/checkbox";
 import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
+import { safeHttpUrl } from "@/lib/forms/logic";
 import { choiceCardClass, fieldIds } from "./field-shell";
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-function KeyBadge({ index, selected }) {
+// Letter shortcut (A, B, C…) shown on options in the conversational view.
+export function KeyBadge({ index, selected }) {
   if (index >= LETTERS.length) return null;
   return (
     <span
@@ -25,11 +27,18 @@ function KeyBadge({ index, selected }) {
   );
 }
 
+// Conversational auto-advance on a pointer pick or Enter; Radix clicks the radio as arrow keys move focus, and those moves only select.
+export function advanceProps(onAdvance) {
+  if (!onAdvance) return {};
+  return { onClick: (e) => e.detail > 0 && onAdvance(), onKeyDown: (e) => e.key === "Enter" && onAdvance() };
+}
+
 // Single choice as radio cards (arrow keys move between options via Radix).
 export function SingleChoice({ field, value, onChange, disabled, aria, large, onAdvance }) {
   const options = field.options || [];
   const ids = fieldIds(field);
   const columns = options.length > 4 && !large ? "sm:grid-cols-2" : "";
+  const advance = advanceProps(onAdvance);
   return (
     <RadioGroup
       value={value ?? ""}
@@ -46,7 +55,7 @@ export function SingleChoice({ field, value, onChange, disabled, aria, large, on
           <label
             key={opt}
             htmlFor={optId}
-            onClick={onAdvance}
+            {...advance}
             className={choiceCardClass(selected, { disabled: disabled || field.readOnly, large })}
           >
             {large ? <KeyBadge index={i} selected={selected} /> : null}
@@ -102,7 +111,7 @@ export function ConsentCheckbox({ field, label, value, onChange, disabled, aria,
         className="mt-0.5"
         {...aria}
       />
-      <span className="min-w-0 flex-1 leading-relaxed text-foreground">
+      <span className="min-w-0 flex-1 whitespace-pre-line leading-relaxed text-foreground">
         {label}
         {field.required && (
           <span className="ml-1 text-red-500 dark:text-red-400" aria-hidden="true">
@@ -111,6 +120,27 @@ export function ConsentCheckbox({ field, label, value, onChange, disabled, aria,
         )}
       </span>
     </label>
+  );
+}
+
+// Consent: the statement as a checkbox card, then a link to the policy it refers to (outside the label, so it never toggles it).
+export function ConsentField({ field, tr, ...props }) {
+  const policyUrl = safeHttpUrl(field.config?.policyUrl);
+  return (
+    <div className="grid gap-2">
+      <ConsentCheckbox field={field} {...props} />
+      {policyUrl && (
+        <a
+          href={policyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 justify-self-start rounded-sm text-xs font-medium text-text-secondary underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/40"
+        >
+          {field.config?.policyLabel || tr("policyOpen")}
+          <ExternalLink className="size-3.5" aria-hidden="true" />
+        </a>
+      )}
+    </div>
   );
 }
 

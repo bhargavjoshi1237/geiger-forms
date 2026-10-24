@@ -50,7 +50,9 @@ import FilterDropdown from "@/components/internal/shared/filter_dropdown";
 import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import { ResponseDetailPanel } from "@/components/forms/response-detail-panel";
 import { ConfirmDeleteDialog } from "@/components/forms/response/response-dialogs";
+import { PersonChip } from "@/components/forms/response/members";
 import { useCan } from "@/context/rbac-context";
+import { resolvePerson, useMembers } from "@/lib/hooks/use-members";
 import { cn } from "@/lib/utils";
 import { withPrefix } from "@/lib/workspace/base-path";
 import { downloadResponses } from "@/lib/forms/export";
@@ -62,13 +64,14 @@ import {
   fieldLabel,
   filterResponses,
   isEncrypted,
+  namesMember,
   outcomeLabel,
   sortResponses,
 } from "@/lib/forms/response-utils";
 import { ErrorState } from "../screen-shell";
 import { KanbanBoard } from "./kanban_board";
 import { BulkBar } from "./bulk_bar";
-import { SaveViewButton, SavedViewsDropdown, useSavedViews } from "./saved_views_bar";
+import { MINE_VIEW, SaveViewButton, SavedViewsDropdown, useSavedViews } from "./saved_views_bar";
 import {
   DEFAULT_FILTERS,
   MENU_ITEM,
@@ -90,7 +93,7 @@ function pickFilters(source) {
   return Object.fromEntries(Object.keys(DEFAULT_FILTERS).map((k) => [k, source?.[k] ?? DEFAULT_FILTERS[k]]));
 }
 
-function MoreFilters({ filters, facets, onChange }) {
+function MoreFilters({ filters, facets, assigneeOptions, onChange }) {
   const count = ["priority", "tag", "assignee", "outcome"].filter((k) => filters[k] !== "all").length + (filters.from ? 1 : 0) + (filters.to ? 1 : 0);
   const select = (key, options, placeholder) => (
     <Select value={filters[key]} onValueChange={(v) => onChange({ [key]: v })}>
@@ -113,9 +116,7 @@ function MoreFilters({ filters, facets, onChange }) {
       <PopoverContent align="start" className="grid w-72 gap-3 border-border bg-surface-subtle p-3">
         <Field label="Priority">{select("priority", RESPONSE_PRIORITIES.map((p) => ({ value: p, label: p })), "Any priority")}</Field>
         <Field label="Tag">{select("tag", facets.tags.map((t) => ({ value: t, label: t })), "Any tag")}</Field>
-        <Field label="Assignee">
-          {select("assignee", [{ value: "__none", label: "Unassigned" }, ...facets.assignees.map((a) => ({ value: a, label: a }))], "Anyone")}
-        </Field>
+        <Field label="Assignee">{select("assignee", assigneeOptions, "Anyone")}</Field>
         <Field label="Outcome">{select("outcome", facets.outcomes.map((o) => ({ value: o, label: o })), "Any outcome")}</Field>
         <div className="grid grid-cols-2 gap-2">
           <Field label="From">
@@ -167,6 +168,8 @@ export function ResponseWorkspace({
   const [deleteIds, setDeleteIds] = useState(null);
   const canExport = useCan("forms.response.export");
   const canDelete = useCan("forms.response.delete");
+  const canAssign = useCan("forms.form.edit");
+  const people = useMembers();
 
   const fieldsByForm = useMemo(() => {
     const map = new Map();
@@ -176,10 +179,20 @@ export function ResponseWorkspace({
   }, [form, formsById]);
 
   const filtered = useMemo(
-    () => sortResponses(filterResponses(responses, filters, (id) => fieldsByForm.get(id)), sort),
-    [responses, filters, sort, fieldsByForm],
+    () => sortResponses(filterResponses(responses, filters, (id) => fieldsByForm.get(id), { me: people.me, byId: people.byId }), sort),
+    [responses, filters, sort, fieldsByForm, people.me, people.byId],
   );
   const facets = useMemo(() => facetValues(responses), [responses]);
+  // Members by id, then legacy name-only assignees that no member filter already covers.
+  const assigneeOptions = useMemo(
+    () => [
+      { value: "__me", label: "Assigned to me" },
+      { value: "__none", label: "Unassigned" },
+      ...people.members.map((m) => ({ value: m.id, label: m.name })),
+      ...facets.assignees.filter((a) => !people.members.some((m) => namesMember(a, m))).map((a) => ({ value: a, label: a })),
+    ],
+    [people.members, facets.assignees],
+  );
   const selectedRows = useMemo(() => filtered.filter((r) => selected.has(r.id)), [filtered, selected]);
   const openRow = openId ? responses.find((r) => r.id === openId) : null;
   const pager = usePagination(filtered, { resetKey: `${Object.values(filters).join("|")}|${sort}` });
@@ -210,6 +223,10 @@ export function ResponseWorkspace({
   const resetView = () => {
     clearFilters();
     setSort("newest");
+  };
+  const applyMine = () => {
+    setFilters({ ...DEFAULT_FILTERS, assignee: "__me" });
+    setViewId(MINE_VIEW);
   };
   const savedViews = useSavedViews({ projectId, formId: form?.id || null, activeId: viewId, onApply: applyView, onReset: resetView });
 
@@ -250,6 +267,30 @@ export function ResponseWorkspace({
       toast.success(`${message} · ${ids.length} response${ids.length === 1 ? "" : "s"}`);
     } catch {
       toast.error("Bulk update failed — reloading the latest data.");
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const assignOne = async (row, member) => {
+    try {
+      await store.assign([row.id], member);
+      toast.success(member ? `Assigned to ${member.name}` : "Unassigned");
+    } catch (err) {
+      toast.error(err.message || "Couldn't change the assignee.");
+    }
+  };
+
+  const bulkAssign = async (member) => {
+    const ids = selectedRows.map((r) => r.id);
+    if (!ids.length) return;
+    setBusy(true);
+    try {
+      await store.assign(ids, member);
+      toast.success(`${member ? `Assigned to ${member.name}` : "Unassigned"} · ${ids.length} response${ids.length === 1 ? "" : "s"}`);
+    } catch (err) {
+      toast.error(err.message || "Couldn't assign those responses.");
       refresh();
     } finally {
       setBusy(false);
@@ -385,7 +426,10 @@ export function ResponseWorkspace({
         header: "Assignee",
         className: "hidden py-3 xl:table-cell",
         headClassName: "hidden xl:table-cell",
-        render: (r) => <span className="block max-w-32 truncate text-xs text-text-secondary">{r.assignee || "—"}</span>,
+        render: (r) => {
+          const person = resolvePerson(r.assigneeId, r.assignee, people.byId);
+          return person ? <PersonChip person={person} className="max-w-36 text-xs text-text-secondary" /> : <span className="text-xs text-text-secondary">—</span>;
+        },
       },
       {
         key: "submitted",
@@ -463,8 +507,10 @@ export function ResponseWorkspace({
         <KanbanBoard
           rows={filtered}
           showForm={!form}
+          people={people}
           onOpen={(r) => setOpenId(r.id)}
           onMove={(row, status) => patchOne(row, { status }, `Moved to ${status}`)}
+          onAssign={canAssign ? assignOne : null}
         />
       );
     }
@@ -486,10 +532,10 @@ export function ResponseWorkspace({
       <div className="flex flex-col gap-4">
         <Toolbar>
           <div className="flex flex-wrap items-center gap-2">
-            <SavedViewsDropdown views={savedViews.views} activeId={viewId} onApply={applyView} onReset={resetView} onRemove={savedViews.remove} />
+            <SavedViewsDropdown views={savedViews.views} activeId={viewId} onApply={applyView} onReset={resetView} onMine={applyMine} onRemove={savedViews.remove} />
             {!form ? <FilterDropdown value={filters.formId} onValueChange={(v) => updateFilters({ formId: v })} options={formOptions} icon={FileText} height="h-9" /> : null}
             <FilterDropdown value={filters.status} onValueChange={(v) => updateFilters({ status: v })} options={STATUS_FILTER_OPTIONS} icon={CircleDot} height="h-9" />
-            <MoreFilters filters={filters} facets={facets} onChange={updateFilters} />
+            <MoreFilters filters={filters} facets={facets} assigneeOptions={assigneeOptions} onChange={updateFilters} />
             <FilterDropdown value={sort} onValueChange={(v) => { setSort(v); setViewId(null); }} options={SORT_OPTIONS} icon={ArrowUpDown} height="h-9" />
             {isFiltered ? (
               <Button variant="ghost" className="h-9 gap-1.5 px-3 text-xs text-text-secondary hover:text-foreground" onClick={clearFilters}>
@@ -532,11 +578,13 @@ export function ResponseWorkspace({
             busy={busy}
             canExport={canExport}
             canDelete={canDelete}
+            canAssign={canAssign}
             tagSuggestions={facets.tags}
-            assigneeSuggestions={facets.assignees}
+            people={people}
             onSelectAll={() => setSelected(new Set(filtered.map((r) => r.id)))}
             onClear={() => setSelected(new Set())}
             onUpdate={bulkUpdate}
+            onAssign={bulkAssign}
             onTag={bulkTag}
             onExport={(fmt) => exportRows(selectedRows, fmt)}
             onPrint={() => printRows(selectedRows)}
@@ -557,11 +605,11 @@ export function ResponseWorkspace({
             form={form && form.id === openRow.formId ? form : formsById[openRow.formId]}
             onClose={() => setOpenId(null)}
             onPatch={store.patch}
+            onAssign={store.assign}
             onReplace={(next) => store.setResponses((cur) => cur.map((r) => (r.id === next.id ? next : r)))}
             onDelete={store.remove}
             onOpenResponse={openDuplicate}
             tagSuggestions={facets.tags}
-            assigneeSuggestions={facets.assignees}
           />
         ) : null}
 

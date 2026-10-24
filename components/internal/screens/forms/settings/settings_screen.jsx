@@ -19,16 +19,20 @@ import {
   SettingsList,
 } from "@geiger/ui/screen-kit";
 import { Tabs, TabsList, TabsTrigger } from "@geiger/ui/tabs";
+import { DisabledHint } from "@/components/internal/shared/disabled_hint";
 import { useCan } from "@/context/rbac-context";
 import { callApi } from "@/lib/forms/api";
 import { useForms } from "@/lib/hooks/use-forms";
+import { useWorkspaceSettings } from "@/lib/hooks/use-workspace-settings";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/supabase/api_keys";
 import { cn } from "@/lib/utils";
 import { LOCALES } from "../forms/constants";
-import { ChipsInput, CopyField, DisabledHint, FIELD_CLS, Note, NumberInput, OUTLINE_BTN, TextInput, isEmail } from "../forms/sections/kit";
+import { ChipsInput, CopyField, FIELD_CLS, Note, NumberInput, OUTLINE_BTN, TextInput, isEmail } from "../forms/sections/kit";
+import { NoProjectNote } from "../no_project";
 import { ErrorState } from "../screen-shell";
-import { folderNames, useWorkspaceSettings } from "./use_workspace_settings";
+import { ConfigurationCard } from "./service_status";
+import { folderNames } from "./use_workspace_settings";
 
 const TIMEZONES = ["UTC", "America/Los_Angeles", "America/Denver", "America/Chicago", "America/New_York", "America/Sao_Paulo", "Europe/London", "Europe/Berlin", "Europe/Paris", "Africa/Johannesburg", "Asia/Dubai", "Asia/Kolkata", "Asia/Singapore", "Asia/Tokyo", "Australia/Sydney", "Pacific/Auckland"];
 const HEX_RE = /^#[0-9a-f]{6}$/i;
@@ -248,6 +252,7 @@ export function SettingsScreen() {
   const { forms } = useForms();
   const { setView } = useWorkspaceUrl();
   const canManage = useCan("forms.settings.manage");
+  const scoped = Boolean(workspace.projectId);
   const [draft, setDraft] = useState(workspace.settings);
   const [seed, setSeed] = useState(workspace.settings);
   const [saving, setSaving] = useState(false);
@@ -289,8 +294,8 @@ export function SettingsScreen() {
                 <RotateCcw className="h-4 w-4" /> Discard
               </Button>
             ) : null}
-            <DisabledHint when={!canManage} hint="Only workspace admins can change settings.">
-              <Button onClick={save} disabled={!canManage || !dirty || saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <DisabledHint when={!canManage || !scoped} hint={scoped ? "Only workspace admins can change settings." : "Workspace settings are saved to a project."}>
+              <Button onClick={save} disabled={!canManage || !scoped || !dirty || saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {dirty ? "Save settings" : "Saved"}
               </Button>
             </DisabledHint>
@@ -304,6 +309,7 @@ export function SettingsScreen() {
         <ErrorState title="Couldn't load settings" onRetry={workspace.refresh} />
       ) : (
         <fieldset disabled={!canManage} className="space-y-6">
+          {scoped ? null : <NoProjectNote />}
           {dirty ? <Note tone="warning">You have unsaved changes.</Note> : null}
 
           <SectionCard title="Workspace">
@@ -411,7 +417,8 @@ export function SettingsScreen() {
 
       {!workspace.loading && !workspace.error ? (
         <>
-          <ApiKeysCard projectId={workspace.projectId} canManage={canManage} />
+          <ConfigurationCard />
+          <ApiKeysCard projectId={workspace.projectId} canManage={canManage && scoped} />
           <EraseCard canManage={canManage} />
         </>
       ) : null}

@@ -1,9 +1,12 @@
 "use client";
 
-import { Download, Eye, Loader2, Lock, Paperclip } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Download, Eye, Loader2, Lock, Paperclip, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@geiger/ui/table";
 import { displayValue, formatMoney } from "@/lib/forms/logic";
+import { consentTextHash } from "@/lib/forms/consent";
+import { imageSource } from "@/lib/forms/media";
 import { answerText, isEmptyAnswer, isEncrypted, responseFileUrl } from "@/lib/forms/response-utils";
 
 function formatBytes(bytes) {
@@ -88,6 +91,51 @@ function RepeaterTable({ field, value }) {
   );
 }
 
+function PictureChips({ field, value }) {
+  const images = field.config?.images || {};
+  return (
+    <div className="mt-1 flex flex-wrap gap-1.5">
+      {(Array.isArray(value) ? value : [value]).map((v) => {
+        const src = imageSource(images[v]?.url);
+        return (
+          <span key={v} className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-card py-1 pr-2.5 pl-1 text-sm text-foreground">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {src ? <img src={src} alt="" className="size-8 rounded object-cover" /> : null}
+            {v}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+// When consent was given and the wording fingerprint, flagged if the form's consent text has changed since.
+function ConsentRecord({ field, record }) {
+  const [currentHash, setCurrentHash] = useState(null);
+  useEffect(() => {
+    if (record?.textHash) consentTextHash(field).then(setCurrentHash, () => {});
+  }, [field, record?.textHash]);
+  return (
+    <div className="space-y-1">
+      <span className="inline-flex items-center gap-1.5 text-foreground">
+        <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        {displayValue(field, true)}
+      </span>
+      {record?.acceptedAt ? (
+        <p className="text-xs text-text-tertiary">
+          {new Date(record.acceptedAt).toLocaleString()} · wording <span className="font-mono">{String(record.textHash || "").slice(0, 12)}</span>
+        </p>
+      ) : null}
+      {currentHash && record?.textHash && currentHash !== record.textHash ? (
+        <p className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+          <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+          The consent wording has changed since this was given.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 // One answer rendered per field type; sensitive answers stay masked until revealed.
 export function AnswerValue({ field, response, fields, revealed, onReveal, revealing, currency = "usd" }) {
   const encrypted = isEncrypted(field, response);
@@ -140,6 +188,11 @@ export function AnswerValue({ field, response, fields, revealed, onReveal, revea
       return <MatrixGrid field={field} value={value} />;
     case "repeater":
       return Array.isArray(value) && value.length ? <RepeaterTable field={field} value={value} /> : <Empty />;
+    case "picture":
+    case "multipicture":
+      return <PictureChips field={field} value={value} />;
+    case "consent":
+      return value === true ? <ConsentRecord field={field} record={response.metadata?.consents?.[field.id]} /> : <span>{displayValue(field, value)}</span>;
     case "multiselect":
       return (
         <div className="mt-1 flex flex-wrap gap-1">

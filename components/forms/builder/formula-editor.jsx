@@ -1,21 +1,20 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { AlertTriangle, Braces, CheckCircle2, Equal, FlaskConical } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Equal, FlaskConical } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@geiger/ui/toggle-group";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@geiger/ui/dropdown-menu";
 import { Input } from "@geiger/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import { Switch } from "@geiger/ui/switch";
 import { Textarea } from "@geiger/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@geiger/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { hasOptions } from "@/lib/forms/field-types";
+import { hasOptions, isLayoutField, isMultiChoice } from "@/lib/forms/field-types";
 import { checkFormula } from "@/lib/forms/formula";
 import { evaluateFormula, formatMoney } from "@/lib/forms/logic";
 import { formulaRefs } from "./doc-checks";
-import { ControlLabel, FieldTypeIcon, SubtleNote } from "./builder-controls";
+import { ControlLabel, FieldTokenMenu, SubtleNote } from "./builder-controls";
 
 const FUNCTIONS = [
   { name: "IF", snippet: "IF(, , )", help: "IF(condition, then, else) — e.g. IF({Age} >= 18, 1, 0)" },
@@ -29,15 +28,13 @@ const FUNCTIONS = [
   { name: "LEN", snippet: "LEN()", help: "LEN(value) — number of characters (or selected items)" },
 ];
 
-const NON_REFERENCEABLE = new Set(["heading", "content", "page"]);
-
 function resolveRef(fields, name) {
   const key = name.toLowerCase().trim();
   return fields.find((f) => String(f.id).toLowerCase() === key || f.title?.toLowerCase().trim() === key || String(f.label || "").toLowerCase().trim() === key);
 }
 
 function defaultSample(field) {
-  if (hasOptions(field.type)) return field.type === "multiselect" ? (field.options || []).slice(0, 1) : field.options?.[0] ?? "";
+  if (hasOptions(field.type)) return isMultiChoice(field.type) ? (field.options || []).slice(0, 1) : field.options?.[0] ?? "";
   if (field.type === "checkbox") return true;
   if (["date", "datetime", "time", "text", "textarea", "email", "url", "phone"].includes(field.type)) return "";
   if (field.type === "product") return field.config?.quantityMode === "fixed" ? true : 1;
@@ -45,7 +42,7 @@ function defaultSample(field) {
 }
 
 function SampleInput({ field, value, onChange }) {
-  if (hasOptions(field.type) && field.type !== "multiselect" && field.type !== "ranking" && field.type !== "matrix") {
+  if (hasOptions(field.type) && !isMultiChoice(field.type) && field.type !== "ranking" && field.type !== "matrix") {
     return (
       <Select value={value || undefined} onValueChange={onChange}>
         <SelectTrigger className="h-7 w-full bg-surface-card text-xs"><SelectValue placeholder="Choose…" /></SelectTrigger>
@@ -53,7 +50,7 @@ function SampleInput({ field, value, onChange }) {
       </Select>
     );
   }
-  if (field.type === "multiselect") {
+  if (isMultiChoice(field.type)) {
     const picked = Array.isArray(value) ? value : [];
     return (
       <ToggleGroup type="multiple" value={picked} onValueChange={onChange} spacing={1} className="flex-wrap">
@@ -90,7 +87,7 @@ export function FormulaEditor({ field, fields, currency, scoring, onChange }) {
   const formula = field.formula || "";
   const config = field.config || {};
 
-  const referenceable = useMemo(() => fields.filter((f) => f.id !== field.id && !NON_REFERENCEABLE.has(f.type)), [fields, field.id]);
+  const referenceable = useMemo(() => fields.filter((f) => f.id !== field.id && !isLayoutField(f.type)), [fields, field.id]);
   const refs = useMemo(() => [...new Set(formulaRefs(formula))], [formula]);
   const resolved = useMemo(() => refs.map((r) => ({ ref: r, field: resolveRef(fields, r) })), [refs, fields]);
   const unknown = resolved.filter((r) => !r.field).map((r) => r.ref);
@@ -128,21 +125,7 @@ export function FormulaEditor({ field, fields, currency, scoring, onChange }) {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2">
           <ControlLabel>Formula</ControlLabel>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="xs" className="gap-1"><Braces />Insert field</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-72 w-60 overflow-y-auto border-border bg-surface-subtle">
-              <DropdownMenuLabel className="text-xs text-text-tertiary">Reference a field</DropdownMenuLabel>
-              {referenceable.length === 0 ? <div className="px-2 py-1.5 text-xs text-text-tertiary">No other fields yet.</div> : null}
-              {referenceable.map((f) => (
-                <DropdownMenuItem key={f.id} onSelect={() => insert(`{${f.title}}`)}>
-                  <FieldTypeIcon type={f.type} className="h-3.5 w-3.5 text-text-secondary" />
-                  <span className="truncate">{f.title}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <FieldTokenMenu fields={referenceable} onInsert={insert} />
         </div>
         <div className="relative">
           <Equal className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-text-tertiary" />

@@ -10,10 +10,9 @@ import { RadioGroup, RadioGroupItem } from "@geiger/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import { Field, SectionCard, SettingRow, SettingsList } from "@geiger/ui/screen-kit";
 import { cn } from "@/lib/utils";
+import { ServiceNotice } from "../../settings/service_status";
 import { ACCESS_MODES, SHARE_ROLES } from "../constants";
 import { FIELD_CLS, NumberInput, OUTLINE_BTN, Stack, TextInput, isEmail, randomHex, sha256Hex } from "./kit";
-
-const CAPTCHA_READY = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
 function PasswordControl({ access, setGroup }) {
   const [password, setPassword] = useState("");
@@ -140,6 +139,7 @@ export function AccessSection({ settings, set, setGroup }) {
             <TextInput value={access.orgDomain} onChange={(v) => setGroup("access", { orgDomain: v.replace(/^@/, "").trim().toLowerCase() })} placeholder="company.com" />
           </Field>
         ) : null}
+        {mode === "signed" ? <ServiceNotice service="signedLinks" className="mt-4" /> : null}
         <SettingsList className="mt-4 border-t border-border pt-4">
           <SettingRow
             title="One response per person"
@@ -155,12 +155,13 @@ export function AccessSection({ settings, set, setGroup }) {
           <SettingRow title="Honeypot field" description="An invisible field that bots fill in. Invisible to people." checked={spam.honeypot !== false} onCheckedChange={(v) => setGroup("spam", { honeypot: v })} />
           <SettingRow
             title="CAPTCHA challenge"
-            description={CAPTCHA_READY ? "Cloudflare Turnstile check before submit." : "Needs NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY in the environment."}
+            description="Cloudflare Turnstile check before submit."
             checked={Boolean(spam.captcha)}
             onCheckedChange={(v) => setGroup("spam", { captcha: v })}
           />
           <SettingRow title="Rate limit" description="Maximum submissions per hour from one device / IP." control={<NumberInput value={spam.rateLimit} min={1} onChange={(v) => setGroup("spam", { rateLimit: v })} className="w-24" />} />
         </SettingsList>
+        {spam.captcha ? <ServiceNotice service="captcha" className="mt-4" /> : null}
       </SectionCard>
 
       <SectionCard title="Privacy">

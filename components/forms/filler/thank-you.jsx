@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Award, Check, CheckCircle2, Copy, Loader2, RotateCcw, XCircle } from "lucide-react";
+import { ArrowRight, Award, Check, CheckCircle2, Copy, Loader2, RotateCcw, XCircle } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { cn } from "@/lib/utils";
 import { callApi } from "@/lib/forms/api";
-import { interpolate } from "@/lib/forms/logic";
+import { interpolate, safeHttpUrl } from "@/lib/forms/logic";
 import { withPrefix } from "@/lib/workspace/base-path";
 import { absoluteUrl, publicApi } from "./session";
 
@@ -146,7 +146,7 @@ function PollResults({ slug, tr }) {
   );
 }
 
-// Post-submit screen: merge-tagged message, score/quiz, poll results, edit link, submit-another.
+// Post-submit screen: the resolved (outcome or default) ending with its CTA, score/quiz, poll results, edit link, submit-another.
 export function ThankYou({ result, form, answers, slug, tr, onSubmitAnother, redirecting }) {
   const settings = form.settings || {};
   const extras = {
@@ -154,8 +154,10 @@ export function ThankYou({ result, form, answers, slug, tr, onSubmitAnother, red
     outcome: typeof result?.outcome === "string" ? result.outcome : result?.outcome?.outcome || result?.outcome?.name || "",
   };
   const merge = (s) => interpolate(s, form, answers, extras);
-  const title = result?.thankYou?.title || merge(settings.thankYouTitle) || tr("thankYouTitle");
-  const text = result?.thankYou?.text || merge(settings.thankYouText) || tr("thankYouText");
+  const ending = result?.thankYou || {};
+  const title = ending.title || merge(settings.thankYouTitle) || tr("thankYouTitle");
+  const text = ending.text || merge(settings.thankYouText) || tr("thankYouText");
+  const ctaUrl = ending.button?.label ? safeHttpUrl(ending.button.url) : "";
   const quiz = result?.quiz && settings.quiz?.enabled ? result.quiz : null;
   const showScore = settings.showScore && !quiz && result?.score != null;
   const editUrl = result?.editUrl ? absoluteUrl(result.editUrl, withPrefix) : "";
@@ -169,7 +171,15 @@ export function ThankYou({ result, form, answers, slug, tr, onSubmitAnother, red
       <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{redirecting ? tr("redirecting") : text}</p>
 
       <div className="mt-7 flex flex-col items-center gap-4">
-        {extras.outcome && (
+        {ctaUrl && !redirecting && (
+          <Button asChild size="lg" className="min-w-32">
+            <a href={ctaUrl} target="_top">
+              {ending.button.label}
+              <ArrowRight className="rtl:rotate-180" />
+            </a>
+          </Button>
+        )}
+        {extras.outcome && !ending.custom && (
           <div className="w-full rounded-xl border border-border bg-surface-card px-5 py-4 text-left">
             <p className="text-xs uppercase tracking-wide text-text-tertiary">{tr("outcome")}</p>
             <p className="mt-1 text-lg font-semibold text-foreground">{extras.outcome}</p>

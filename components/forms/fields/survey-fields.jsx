@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Star } from "lucide-react";
+import { Angry, Annoyed, Frown, Laugh, Meh, Smile, SmilePlus, Star } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { RadioGroup, RadioGroupItem } from "@geiger/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@geiger/ui/table";
 import { cn } from "@/lib/utils";
+import { opinionLabel, opinionSteps } from "@/lib/forms/field-types";
 import { fieldIds } from "./field-shell";
 
 function range(min, max) {
@@ -157,6 +158,72 @@ export function NpsField({ field, tr, ...props }) {
       maxLabel={field.config?.maxLabel || tr("veryLikely")}
       {...props}
     />
+  );
+}
+
+const FACES = {
+  3: [Frown, Meh, Smile],
+  4: [Frown, Annoyed, Smile, Laugh],
+  5: [Angry, Frown, Meh, Smile, Laugh],
+  6: [Angry, Frown, Annoyed, Smile, SmilePlus, Laugh],
+  7: [Angry, Frown, Annoyed, Meh, Smile, SmilePlus, Laugh],
+};
+const FACE_COLUMNS = { 3: "grid-cols-3", 4: "grid-cols-4", 5: "grid-cols-5", 6: "grid-cols-6", 7: "grid-cols-7" };
+const LABEL_COLUMNS = { 3: "sm:grid-cols-3", 4: "sm:grid-cols-4", 5: "sm:grid-cols-5", 6: "sm:grid-cols-6", 7: "sm:grid-cols-7" };
+
+// Opinion scale 1..steps as faces (default) or labelled steps (config.style "labels"); the step number is stored.
+export function OpinionScale({ field, value, onChange, disabled, aria, large }) {
+  const steps = opinionSteps(field);
+  const values = range(1, steps);
+  const faces = field.config?.style !== "labels";
+  const locked = disabled || field.readOnly;
+  const current = Number(value) || null;
+  const { refs, focusIndex, onKeyDown } = useRoving(values, current, (v) => !locked && onChange(v));
+  const ids = fieldIds(field);
+  const first = opinionLabel(field, 1);
+  const last = opinionLabel(field, steps);
+  return (
+    <div>
+      <div role="radiogroup" aria-labelledby={ids.label} className={cn("grid gap-1.5", faces ? FACE_COLUMNS[steps] : LABEL_COLUMNS[steps])} {...aria}>
+        {values.map((n, i) => {
+          const selected = current === n;
+          const label = opinionLabel(field, n);
+          const Face = FACES[steps][i];
+          return (
+            <Button
+              key={n}
+              ref={(el) => {
+                refs.current[i] = el;
+              }}
+              type="button"
+              variant="outline"
+              role="radio"
+              aria-checked={selected}
+              aria-label={label ? `${label} (${n} / ${steps})` : `${n} / ${steps}`}
+              tabIndex={i === focusIndex ? 0 : -1}
+              disabled={locked}
+              onClick={() => onChange(selected && !field.required ? undefined : n)}
+              onKeyDown={(e) => onKeyDown(e, i)}
+              className={cn(
+                "h-auto w-full min-w-0 whitespace-normal border shadow-none disabled:opacity-60",
+                faces ? "px-0 py-2.5" : cn("px-2 text-center text-xs leading-snug", large ? "py-4 text-sm" : "py-3"),
+                selected
+                  ? "border-primary bg-primary/10 text-foreground shadow-[inset_0_0_0_1px_var(--primary)] hover:bg-primary/10"
+                  : "border-border bg-surface-card text-text-secondary hover:border-border-strong hover:bg-surface-hover hover:text-foreground",
+              )}
+            >
+              {faces ? <Face className={cn("transition-transform duration-150", large ? "size-9" : "size-7", selected ? "scale-110 text-primary" : "")} aria-hidden="true" /> : label || n}
+            </Button>
+          );
+        })}
+      </div>
+      {faces && (first || last) && (
+        <div className="mt-2 flex justify-between gap-4 text-xs text-text-tertiary">
+          <span>{first}</span>
+          <span className="text-right">{last}</span>
+        </div>
+      )}
+    </div>
   );
 }
 

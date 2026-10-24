@@ -7,9 +7,14 @@ import { Input } from "@geiger/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import { Switch } from "@geiger/ui/switch";
 import { Textarea } from "@geiger/ui/textarea";
-import { REPEATER_SUBTYPES, getFieldType } from "@/lib/forms/field-types";
+import { cn } from "@/lib/utils";
+import { REPEATER_SUBTYPES, getFieldType, opinionSteps } from "@/lib/forms/field-types";
+import { safeHttpUrl } from "@/lib/forms/logic";
+import { videoSource } from "@/lib/forms/media";
 import { makeFieldId } from "@/lib/forms/schema";
-import { ControlLabel, FieldRow, NumberInput, StringListEditor, SubtleNote, TextInput } from "./builder-controls";
+import { ImageInput } from "@/components/forms/image-input";
+import { ControlLabel, FieldRow, NumberInput, Segmented, StringListEditor, SubtleNote, TextInput, ToggleRow } from "./builder-controls";
+import { opinionPreset } from "./field-defaults";
 import { OptionsEditor } from "./options-editor";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -58,6 +63,36 @@ function BookingSettings({ config, setConfig, fieldId }) {
           {timezones().map((tz) => <option key={tz} value={tz} />)}
         </datalist>
       </FieldRow>
+    </div>
+  );
+}
+
+function OpinionSettings({ field, config, setConfig }) {
+  const steps = opinionSteps(field);
+  const labels = Array.from({ length: steps }, (_, i) => config.labels?.[i] ?? "");
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <FieldRow label="Steps" hint="Changing it resets the labels.">
+          <Select value={String(steps)} onValueChange={(v) => setConfig({ steps: Number(v), labels: opinionPreset(Number(v)) })}>
+            <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>{[3, 4, 5, 6, 7].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
+          </Select>
+        </FieldRow>
+        <div className="space-y-1.5">
+          <ControlLabel hint="Faces or worded steps.">Style</ControlLabel>
+          <Segmented value={config.style === "labels" ? "labels" : "emoji"} options={[{ value: "emoji", label: "Faces" }, { value: "labels", label: "Labels" }]} onChange={(style) => setConfig({ style })} />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <ControlLabel hint={config.style === "labels" ? "Shown on each step." : "Read out by screen readers; the first and last also show under the faces."}>Step labels</ControlLabel>
+        {labels.map((label, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="w-4 shrink-0 text-right text-xs tabular-nums text-text-tertiary">{i + 1}</span>
+            <TextInput value={label} onChange={(v) => setConfig({ labels: labels.map((l, j) => (j === i ? v : l)) })} placeholder={`Step ${i + 1}`} aria-label={`Label for step ${i + 1}`} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -118,7 +153,7 @@ function RepeaterSettings({ config, setConfig }) {
 }
 
 // Type-specific configuration for a field — returns JSX or null so callers can skip the wrapper (choices, scales, bookings, products, repeaters…).
-export function renderTypeSettings({ field, onChange, scoring, quiz, currency }) {
+export function renderTypeSettings({ field, onChange, formId, scoring, quiz, currency }) {
   const config = field.config || {};
   const setConfig = (patch) => onChange({ config: { ...config, ...patch } });
 
@@ -128,6 +163,64 @@ export function renderTypeSettings({ field, onChange, scoring, quiz, currency })
     case "multiselect":
     case "ranking":
       return <OptionsEditor field={field} onChange={onChange} scoring={scoring} quiz={quiz} />;
+    case "picture":
+    case "multipicture":
+      return (
+        <div className="space-y-4">
+          <OptionsEditor field={field} onChange={onChange} scoring={scoring} quiz={quiz} formId={formId} />
+          <div className="grid items-end gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <ControlLabel hint="Phones always show two.">Columns</ControlLabel>
+              <Segmented value={String(config.columns ?? 3)} options={["2", "3", "4"]} onChange={(v) => setConfig({ columns: Number(v) })} />
+            </div>
+            <ToggleRow label="Hide labels" hint="Pictures only; screen readers still hear the labels." checked={config.hideLabels} onCheckedChange={(hideLabels) => setConfig({ hideLabels })} />
+          </div>
+        </div>
+      );
+    case "opinion":
+      return <OpinionSettings field={field} config={config} setConfig={setConfig} />;
+    case "consent":
+      return (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FieldRow label="Policy link" hint="Opens in a new tab under the checkbox.">
+            <TextInput type="url" value={config.policyUrl} onChange={(v) => setConfig({ policyUrl: v.trim() })} placeholder="https://example.com/privacy" className={cn(config.policyUrl && !safeHttpUrl(config.policyUrl) && "border-red-500/40")} />
+          </FieldRow>
+          <FieldRow label="Link text">
+            <TextInput value={config.policyLabel} onChange={(v) => setConfig({ policyLabel: v })} placeholder="Open full document" />
+          </FieldRow>
+        </div>
+      );
+    case "statement":
+      return (
+        <FieldRow label="Button label" hint="Conversational forms show the statement on its own screen with this button." className="max-w-xs">
+          <TextInput value={config.buttonLabel} onChange={(v) => setConfig({ buttonLabel: v })} placeholder="Continue" />
+        </FieldRow>
+      );
+    case "image":
+      return (
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <ControlLabel>Image</ControlLabel>
+            <ImageInput formId={formId} value={config.url || ""} onChange={(url) => setConfig({ url })} label="image" fit="contain" />
+          </div>
+          <FieldRow label="Alt text" hint="Describes the image for screen readers; leave empty when it's purely decorative.">
+            <TextInput value={config.alt} onChange={(alt) => setConfig({ alt })} placeholder="e.g. Floor plan of the venue" />
+          </FieldRow>
+        </div>
+      );
+    case "video": {
+      const source = videoSource(config.url);
+      const hint = config.url && !source
+        ? "Use a YouTube or Vimeo link, or an https link to an .mp4 or .webm file."
+        : source?.kind === "embed"
+          ? `Plays in ${source.provider}'s privacy-enhanced player.`
+          : "YouTube, Vimeo or a direct .mp4 / .webm link. Embed code isn't accepted.";
+      return (
+        <FieldRow label="Video link" hint={hint}>
+          <TextInput type="url" value={config.url} onChange={(url) => setConfig({ url: url.trim() })} placeholder="https://www.youtube.com/watch?v=…" className={cn(config.url && !source && "border-red-500/40")} />
+        </FieldRow>
+      );
+    }
     case "matrix":
       return (
         <div className="space-y-4">

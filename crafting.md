@@ -1,19 +1,20 @@
 # Crafting Guide — Building High-Quality Workspace Screens
 
 This is the playbook for taking a screen from "basic table" to a polished,
-fully-interactive surface that feels native to the Geiger suite. The **events
+fully-interactive surface that feels native to the Geiger suite. The **forms
 area** is the reference build — when in doubt, open these files and copy the
 pattern:
 
 - Shared primitives: `@geiger/ui/screen-kit` (`ScreenHeader`, `DataTable`, `LoadingArea`…),
   `components/internal/shared/screen_wrappers.jsx`
-- List screen: `components/internal/screens/events/all_events.jsx`
-- Overview screen: `components/internal/screens/overview/events_overview.jsx`
-- Detail editor (tabbed): `components/internal/screens/events/event_detail.jsx`
-- Data layer (source of truth): `lib/supabase/events.js`
-- Constants & lookups: `components/internal/screens/events/constants.js`
-- Nav wiring: `components/internal/screens/registry.jsx`
-- Permissions: `lib/rbac.js`
+- List screen: `components/internal/screens/forms/forms/forms_screen.jsx`
+- Overview screen: `components/internal/screens/forms/overview/overview_screen.jsx`
+- Detail editor (sectioned): `components/internal/screens/forms/forms/form_detail.jsx`
+  + `form_sections.jsx`
+- Data layer (source of truth): `lib/supabase/forms.js` via `lib/hooks/use-forms.js`
+- Constants & lookups: `components/internal/screens/forms/forms/constants.js`
+- Nav wiring: `components/forms/forms-workspace.jsx` + `components/internal/sidebar/sidebar_nav.js`
+- Permissions: `geiger-rbac.config.js` (re-exported by `lib/rbac.js`)
 
 Read `MODULE_CONVENTIONS.md` first — this guide layers craft and UX on top of
 those structural rules; it does not replace them.
@@ -44,7 +45,7 @@ Scale effort to the request, but for anything described as "proper", "complete",
 
 1. **Ask before you build a module.** A new screen/module carries decisions you
    can't read off the reference — entity fields and types, the status set and
-   colors, filters/search/sort, the stat-bar KPIs, detail tabs, create-dialog
+   colors, filters/search/sort, the stat-bar KPIs, detail sections, create-dialog
    required fields + defaults, row actions, whether it's permission-gated, and
    the persistence shape (table columns + storage + RLS — the screen always reads
    through the data layer, never a static array). **Ask the user about all of
@@ -52,7 +53,7 @@ Scale effort to the request, but for anything described as "proper", "complete",
    speed. (Step 2's "don't over-ask" governs *implementation trivia* once scope
    is agreed, not the module's shape.)
 2. **Explore before touching anything.** Read the target screen *and* the
-   reference (All Events / Events Overview) so new code matches existing naming,
+   reference (All Forms / Overview) so new code matches existing naming,
    file layout, and idioms. Use a search agent for breadth.
 3. **Plan briefly, then implement.** State a short ordered plan, then build it in
    one pass per file. Don't over-ask on trivia; pick the obvious option and note it.
@@ -73,25 +74,26 @@ Screens are **data-layer-first**: the per-area module in `lib/supabase/<area>.js
 owns the rows; the screen fetches them. **Never seed state from a static in-file
 array or keep mock row data in the component.**
 
-- **Fetch, don't seed.** Start empty (`const [events, setEvents] = useState([])`)
-  with a `loading` flag, then load in a mount effect:
-  `useEffect(() => { listEvents().then(r => { setEvents(r ?? []); setLoading(false); }); }, [])`.
-  Render a loading state first, then rows or an `EmptyState`.
+- **Fetch, don't seed.** Start empty (`const [forms, setForms] = useState([])`)
+  with a `loading` flag, then load in a mount effect — in this repo that lives in
+  the area's hook (`useForms()` returns `{ forms, loading, error, refresh, … }`).
+  Render a loading state first, then rows, an `ErrorState`, or an `EmptyState`.
 - **Derive, don't duplicate.** Compute `filtered`, KPI `stats`, and any grouped
   views with `useMemo` keyed on `(data, search, filters)`. Don't keep derived
   arrays in their own state.
 - **Mutations are optimistic + persisted.** `handleCreate`/`handleDelete`/
-  `handleDuplicate` update the array via `setEvents(prev => …)`, mint a real UUID
-  (`crypto.randomUUID()`) and pass it to `createEvent` so the optimistic and
+  `handleDuplicate` update the array via `setForms(prev => …)`, mint a real UUID
+  (`crypto.randomUUID()`) and pass it to `create*` so the optimistic and
   inserted rows match, then `toast`. On a falsy write result, `toast.error` and
   reconcile (re-fetch or roll back). New rows default to a sensible status
   (e.g. `"Draft"`).
 - **Lift detail edits.** A list screen swaps to its detail via the URL
-  (`?event=<id>`, `useWorkspaceUrl()`) and an early
-  `return <EventDetailScreen … onBack={…} />`. Keep list and detail in sync
+  (`?form=<id>`, `useWorkspaceUrl()`) and an early
+  `return <FormDetailScreen … onBack={…} />`. Keep list and detail in sync
   through callbacks, not duplicate fetches.
 - **Data access goes through the layer, not the screen.** Reach Supabase only via
-  `createClient()` from `@/lib/supabase/client`; map snake_case ↔ camelCase inside
+  `createClient()` from `@/lib/supabase/client` (or its `forms`-scoped
+  `schemaClient()` from `@/supabase/components/forms-client`); map snake_case ↔ camelCase inside
   `lib/supabase/<area>.js`; keep that layer pure and let the screen own toasts.
   (See `MODULE_CONVENTIONS.md` → Persistence.)
 
@@ -101,11 +103,12 @@ Keep value/label/colour lookups as plain data in the area's `constants.js` (thes
 are config, not row data — never put fetched-entity data here) and let components
 own JSX:
 
-- Status/format maps (`EVENT_STATUS_MAP`, `EVENT_TYPE_MAP`) carry `{ label,
+- Status/format maps (`FORM_STATUS_MAP`, `RESPONSE_STATUS_MAP`) carry `{ label,
   variant, dotClass }` and feed `StatusPill` / `Badge`.
-- Filter option lists (`STATUS_FILTER_OPTIONS`, `TYPE_FILTER_OPTIONS`) are arrays
-  of `{ value, label }` with an `"all"` sentinel first.
-- Formatters (`formatDate`, `currency`) live beside the lookups and are imported,
+- Filter option lists (`STATUS_FILTER_OPTIONS`) are arrays of `{ value, label }`
+  with an all-statuses sentinel (`"all"` first in responses; All Forms leads with
+  `"Active"`, then `"All"`).
+- Formatters (`formatRate`, `formatCount`) live beside the lookups and are imported,
   not re-implemented per screen.
 
 ---
@@ -114,7 +117,7 @@ own JSX:
 
 ### 4.1 Colour & elevation hierarchy (the #1 polish lever)
 
-The suite is a dark theme on an `#161616`-ish canvas. Establish depth with
+The suite ships light and dark themes (dark on an `#161616`-ish canvas). Establish depth with
 semantic tokens, lightest-needed surface per layer:
 
 - **Canvas / shell:** `bg-background`.
@@ -145,7 +148,7 @@ Before writing anything visual, reach for the shared kit
   `{ label, value, delta?, trend?, footer? }`.
 - **Sections:** `SectionCard` (titled, optional action, bordered header).
 - **Toolbar:** `Toolbar` + `SearchInput` + `FilterDropdown`
-  (`@/components/internal/screens/overview/filter_dropdown`).
+  (`@/components/internal/shared/filter_dropdown`).
 - **Lists:** `DataTable` (columns: `{ key, header, align?, className?, render }`,
   with `getRowKey` and `onRowClick`), `StatusPill`, `EmptyState`.
 - **Settings:** `SettingsList` + `SettingRow` (auto-renders a `Switch`, or takes a
@@ -157,7 +160,7 @@ screen.
 
 ### 4.3 Screen anatomy (list view)
 
-`AllEventsScreen` is the template:
+`FormsScreen` (All Forms) is the template:
 
 - `MainScreenWrapper` root with `ScreenHeader` (title, description, primary
   Create action that opens a `Dialog`).
@@ -165,22 +168,24 @@ screen.
 - `Toolbar`: `FilterDropdown`s on the left, `SearchInput` on the right. Compute
   `filtered` with a single `useMemo` over (search, filters).
 - `DataTable` with a `columns` array; rich cells via `render` (name + meta line,
-  `StatusPill`, sell-through bar, right-aligned revenue, a row-actions
+  `StatusPill`, right-aligned response count, a row-actions
   `DropdownMenu`). Wrap the actions cell in a `stopPropagation` div so the menu
   doesn't trigger `onRowClick`.
 - Three states: loading (until the first fetch resolves), data, and filtered-empty
   (`EmptyState` with create + clear-filters) / empty (no rows yet).
-- Row click opens the entity in the URL (`?event=<id>`) → render the detail editor.
+- Row click opens the entity in the URL (`?form=<id>`) → render the detail editor.
 
 ### 4.4 Detail surface (the interactive editor)
 
-`event_detail.jsx` is the tabbed editor pattern:
+`form_detail.jsx` is the sectioned editor pattern:
 
 - A back affordance (`onBack`) returns to the list.
-- Per-entity concerns are **tabs** (cover media, location/time, tickets, page
-  design, publishing…), not separate registered screens.
-- Properties are inline-editable controls that persist immediately into local
-  state and reflect back to the list via lifted callbacks.
+- Per-entity concerns are **sections** (access, payments, notifications,
+  sharing, workflow…) grouped in `form_sections.jsx` and deep-linked with
+  `?section=<key>`, not separate registered screens.
+- Sections edit a draft; Save persists only the changed keys (details through
+  `update`, settings through the `merge_settings` shallow merge) and reflects back
+  to the list via lifted callbacks. Leaving with unsaved edits asks first.
 
 ### 4.5 Interaction recipes
 
@@ -202,7 +207,7 @@ propagation so it doesn't open the row.
 digits on mount. Don't reinvent counters.
 
 **Status rendering** — never inline a colour; render `<StatusPill status={…}
-map={EVENT_STATUS_MAP} />` and add new statuses to the map.
+map={FORM_STATUS_MAP} />` and add new statuses to the map.
 
 ### 4.6 Feedback, states, a11y
 
@@ -217,23 +222,24 @@ map={EVENT_STATUS_MAP} />` and add new statuses to the map.
 
 ## 5. New / upgraded screen checklist
 
-1. **Component:** `components/internal/screens/<area>/<name>.jsx`, `"use client"`,
+1. **Component:** `components/internal/screens/forms/<area>/<name>_screen.jsx`, `"use client"`,
    `*Screen` export, wrapped in `MainScreenWrapper`/`SecondaryScreenWrapper`.
-2. **Wiring:** register in `registry.jsx` under the exact `sidebar_nav.jsx` title
-   (add the nav entry if new). Per-entity features become tabs in the editor, not
-   new registry entries.
+2. **Wiring:** add a `case` for its nav `id` to `renderActiveScreen` in
+   `forms-workspace.jsx` (add the entry to `sidebar_nav.js` if new). Per-entity
+   features become sections in the editor, not new switch cases.
 3. **Data:** fetch from `lib/supabase/<area>.js` (empty + loading, no static
    seed); keep lookups/formatters in `constants.js`; derive lists/stats with
    `useMemo`; mutate optimistically + persist + `toast` (real `crypto.randomUUID()`
    ids).
 4. **UI:** build from the shared kit — header, stats, toolbar, table — with three
    list states and semantic colour tokens only.
-5. **Detail:** tabbed editor with inline-editable, immediately-persisting
-   controls; sync back to the list via lifted callbacks.
-6. **Permissions:** if gated, add a `view.*` key to `WORKSPACE_PERMISSIONS` and
-   check it where the nav/control renders (advisory only).
+5. **Detail:** sectioned editor whose saves persist only what changed; sync back
+   to the list via lifted callbacks.
+6. **Permissions:** if gated, add the view to `NAV_SECTIONS` in
+   `geiger-rbac.config.js` (key `forms.<slug>.view`) and check it with `useCan`
+   where the nav/control renders (advisory; RLS and server routes secure the data).
 7. **Lint clean** (`npx eslint`), then tell the user what (if anything) they need
    to do next.
 
-If you follow this, the result will look and feel like the events area — which is
+If you follow this, the result will look and feel like the forms area — which is
 the bar for this codebase.

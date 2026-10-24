@@ -1,5 +1,5 @@
 import { fail, json, readJson } from "@/lib/server/http";
-import { postSignedWebhook } from "@/lib/server/webhooks";
+import { sendTestWebhook } from "@/lib/server/webhooks";
 import { requireForm } from "@/lib/server/workspace";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +18,6 @@ export async function POST(request, { params }) {
     form: { id: form.id, slug: form.slug, title: form.title },
     response: { id: "00000000-0000-0000-0000-000000000000", status: "Complete", answers: { example: "This is a test delivery from Geiger Forms." }, submittedAt: new Date().toISOString() },
   };
-  const result = await postSignedWebhook({ url: body.url, secret: body.secret, event: "test", payload, formId: form.id });
-  return json({ ok: result.ok, status: result.status, error: result.ok ? undefined : result.error === "invalid_url" ? "That URL isn't allowed." : result.error });
+  const result = await sendTestWebhook({ form, url: body.url, secret: body.secret, payload });
+  return json({ ok: result.ok, status: result.status, error: result.ok ? undefined : result.error });
 }

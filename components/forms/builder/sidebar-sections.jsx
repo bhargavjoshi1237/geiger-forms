@@ -11,6 +11,7 @@ import { Textarea } from "@geiger/ui/textarea";
 import { hasOptions } from "@/lib/forms/field-types";
 import { RESPONSE_PRIORITIES, RESPONSE_STATUSES, makeFieldId } from "@/lib/forms/schema";
 import { ConditionsEditor } from "./conditions-editor";
+import { isInvalidUrlTemplate, offeredMetrics } from "./doc-checks";
 import { ControlLabel, FieldRow, NumberInput, Segmented, SubtleNote, ToggleRow } from "./builder-controls";
 
 const dateInput = "h-8 bg-surface-card pl-8 pr-2 text-xs text-muted-foreground dark:[color-scheme:dark]";
@@ -171,8 +172,44 @@ export const TriageSection = memo(function TriageSection({ settings, fields, onC
 
 const NONE = "__none";
 
+// A branch's own ending, replacing the default thank-you screen for respondents who land on this outcome.
+function BranchEnding({ branch, settings, onChange }) {
+  const ending = branch.ending || {};
+  const set = (patch, key) => onChange({ ending: { ...ending, ...patch } }, key && `branch:${branch.id}:ending:${key}`);
+  const input = "h-7 bg-surface-subtle text-xs";
+  return (
+    <div className="space-y-2.5 border-t border-border pt-2">
+      <ToggleRow label="Custom ending" hint="Show this outcome its own thank-you screen." checked={ending.enabled} onCheckedChange={(enabled) => set({ enabled })} />
+      {ending.enabled ? (
+        <>
+          <FieldRow label="Title">
+            <Input value={ending.title || ""} onChange={(e) => set({ title: e.target.value }, "title")} placeholder={settings.thankYouTitle || "Response submitted"} className={input} />
+          </FieldRow>
+          <FieldRow label="Message">
+            <Textarea value={ending.text || ""} onChange={(e) => set({ text: e.target.value }, "text")} rows={3} placeholder="Defaults to the thank-you message. Merge tags work." className="min-h-16 resize-none bg-surface-subtle text-xs" />
+          </FieldRow>
+          <div className="grid grid-cols-2 gap-2">
+            <FieldRow label="Button label">
+              <Input value={ending.buttonLabel || ""} onChange={(e) => set({ buttonLabel: e.target.value }, "button")} placeholder="Optional" className={input} />
+            </FieldRow>
+            <FieldRow label="Button link">
+              <Input type="url" value={ending.buttonUrl || ""} onChange={(e) => set({ buttonUrl: e.target.value }, "link")} placeholder="https://…" aria-invalid={isInvalidUrlTemplate(ending.buttonUrl) || undefined} className={input} />
+            </FieldRow>
+          </div>
+          <FieldRow label="Redirect URL" hint="Optional. Merge tags are URL-encoded, e.g. ?score={score}.">
+            <Input type="url" value={ending.redirectUrl || ""} onChange={(e) => set({ redirectUrl: e.target.value }, "redirect")} placeholder="https://…" aria-invalid={isInvalidUrlTemplate(ending.redirectUrl) || undefined} className={input} />
+          </FieldRow>
+          {isInvalidUrlTemplate(ending.buttonUrl) || isInvalidUrlTemplate(ending.redirectUrl) ? <p className="text-[11px] text-red-600 dark:text-red-400">Links must start with http:// or https://.</p> : null}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export const BranchesSection = memo(function BranchesSection({ settings, sources, onChange }) {
   const branches = Array.isArray(settings.branches) ? settings.branches : [];
+  // Branches can also test the response score and quiz result, so quizzes route to their own endings.
+  const branchSources = useMemo(() => [...sources, ...offeredMetrics(settings)], [sources, settings]);
   const setBranches = (next, key) => onChange({ branches: next }, key);
   const update = (id, patch, key) => setBranches(branches.map((b) => (b.id === id ? { ...b, ...patch } : b)), key);
   const add = () =>
@@ -202,7 +239,7 @@ export const BranchesSection = memo(function BranchesSection({ settings, sources
                 compact
                 conditions={b.conditions || []}
                 logic={b.conditionLogic}
-                sources={sources}
+                sources={branchSources}
                 onChange={(patch) => update(b.id, patch, patch.conditions ? `branch:${b.id}:cond` : undefined)}
                 title="Matches when"
                 emptyText="Add a condition — branches without one never match."
@@ -230,10 +267,11 @@ export const BranchesSection = memo(function BranchesSection({ settings, sources
                   </Select>
                 </FieldRow>
               </div>
+              <BranchEnding branch={b} settings={settings} onChange={(patch, key) => update(b.id, patch, key)} />
             </div>
           ))}
           <Button type="button" variant="outline" className="h-8 w-full text-xs" onClick={add}><Plus className="h-3.5 w-3.5" />Add branch</Button>
-          <SubtleNote>Branches are checked top to bottom; the first match sets the response&apos;s outcome (and optional priority / status). Outcomes appear in the inbox and analytics.</SubtleNote>
+          <SubtleNote>Branches are checked top to bottom; the first match sets the response&apos;s outcome (and optional priority, status and ending). Outcomes appear in the inbox and analytics.</SubtleNote>
         </>
       ) : null}
     </div>

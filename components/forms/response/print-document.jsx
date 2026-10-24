@@ -270,6 +270,7 @@ function ResponseDocument({ response, form }) {
               ["Submitted on behalf", m.delegate ? `${m.delegate.byName || m.delegate.byEmail} for ${m.delegate.forName || m.delegate.forEmail}` : ""],
               ["Attestation", m.attestation ? `“${m.attestation.statement}” accepted ${fmt(m.attestation.acceptedAt)}` : ""],
               ["Policy acknowledged", m.policy ? `${fmt(m.policy.acknowledgedAt)}${m.policy.typedName ? ` · signed “${m.policy.typedName}”` : ""}` : ""],
+              ...Object.entries(m.consents || {}).map(([id, c]) => [`Consent · ${fieldLabel(fields.find((f) => f.id === id) || { id })}`, `${fmt(c.acceptedAt)} · wording SHA-256 ${c.textHash}`]),
               ["Countersigned", m.countersign ? `${m.countersign.name} · ${fmt(m.countersign.at)}` : ""],
             ]}
           />

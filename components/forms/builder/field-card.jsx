@@ -15,6 +15,10 @@ function Summary({ field }) {
   const meta = getFieldType(field.type);
   if (field.type === "heading") return <p className="truncate text-xs text-text-secondary">{field.label || "Section heading"}</p>;
   if (field.type === "content") return <p className="line-clamp-2 text-xs text-text-secondary">{field.hint || "Empty text block"}</p>;
+  if (field.type === "statement") return <p className="truncate text-xs text-text-secondary">{field.label || field.hint || "Empty statement"}</p>;
+  if (field.type === "image" || field.type === "video") {
+    return <p className="truncate text-xs text-text-tertiary">{meta.label} · {field.config?.url || (field.type === "image" ? "no image yet" : "no video link yet")}</p>;
+  }
   if (field.type === "calculated") return <p className="truncate font-mono text-xs text-sky-600 dark:text-sky-400">= {field.formula || "no formula yet"}</p>;
   const options = (field.options || []).filter(Boolean);
   return (
@@ -35,7 +39,9 @@ export const FieldCard = memo(function FieldCard({
   number,
   selected,
   sources,
+  sourcesBefore,
   allFields,
+  formId,
   scoring,
   quiz,
   currency,
@@ -145,7 +151,9 @@ export const FieldCard = memo(function FieldCard({
             field={field}
             onChange={change}
             sources={sources.filter((s) => s.id !== field.id)}
+            recallSources={sources.filter((s, i) => i < sourcesBefore || s.type === "hidden")}
             allFields={allFields}
+            formId={formId}
             scoring={scoring}
             quiz={quiz}
             currency={currency}

@@ -4,7 +4,8 @@ import { callApi } from "@/lib/forms/api";
 import { slugify } from "@/lib/forms/schema";
 import { isInputField } from "@/lib/forms/field-types";
 
-const RESERVED = new Set(["t", "resume", "edit", "paid", "r", "embed", "solid", "variant", "ref", "preview"]);
+// Filler control params, never prefilled into visible fields (public/embed.js mirrors this list).
+const RESERVED = new Set(["t", "resume", "edit", "paid", "r", "embed", "embed_origin", "solid", "variant", "ref", "preview"]);
 const UTM_KEYS = ["source", "medium", "campaign", "term", "content"];
 
 function first(v) {
@@ -28,6 +29,7 @@ export function parseFillerParams(searchParams = {}) {
     paid: first(sp.paid) || null,
     responseId: first(sp.r) || null,
     embed: first(sp.embed) === "1" || first(sp.embed) === "true",
+    embedOrigin: first(sp.embed_origin) || null,
     solid: first(sp.solid) === "1",
     variant: first(sp.variant) || null,
     ref: first(sp.ref) || null,
@@ -48,12 +50,14 @@ export function coercePrefill(field, value) {
   const text = Array.isArray(value) ? String(value[0] ?? "") : value;
   switch (field.type) {
     case "multiselect":
+    case "multipicture":
     case "ranking": {
       const picked = list.map((v) => matchOption(field, v)).filter(Boolean);
       return picked.length ? picked : undefined;
     }
     case "select":
     case "dropdown":
+    case "picture":
       return matchOption(field, text);
     case "checkbox":
       return typeof text === "boolean" ? text : /^(1|true|yes|on|y)$/i.test(String(text).trim()) || undefined;
@@ -62,6 +66,7 @@ export function coercePrefill(field, value) {
     case "rating":
     case "scale":
     case "nps":
+    case "opinion":
     case "product": {
       const n = Number(text);
       return Number.isFinite(n) ? n : undefined;
@@ -75,6 +80,8 @@ export function coercePrefill(field, value) {
     case "matrix":
     case "repeater":
       return typeof value === "object" && !Array.isArray(value) ? value : undefined;
+    // Consent must be an affirmative tick by the respondent, never a link or default.
+    case "consent":
     case "file":
     case "signature":
     case "booking":
@@ -101,7 +108,7 @@ export function buildInitialAnswers(fields, settings, params, user) {
     if (def !== undefined) answers[field.id] = def;
     if (field.type !== "hidden" && !allowUrl) continue;
     for (const key of prefillKeys(field)) {
-      if (!(key in raw)) continue;
+      if (!Object.hasOwn(raw, key)) continue;
       if (field.type !== "hidden" && RESERVED.has(key)) continue;
       const v = coercePrefill(field, raw[key]);
       if (v !== undefined) {
@@ -136,6 +143,18 @@ export function partialAnswers(answers) {
 
 export function publicApi(slug, path = "") {
   return `/api/public/forms/${encodeURIComponent(slug)}${path}`;
+}
+
+// "Start over" path for this form; embeds keep their host origin and solid backdrop across the in-frame navigation.
+export function restartPath(slug, params) {
+  const qs = new URLSearchParams();
+  if (params.embed) {
+    qs.set("embed", "1");
+    if (params.embedOrigin) qs.set("embed_origin", params.embedOrigin);
+    if (params.solid) qs.set("solid", "1");
+  }
+  const query = qs.toString();
+  return `/form/${encodeURIComponent(slug)}${query ? `?${query}` : ""}`;
 }
 
 // Absolute URL for an app path (prefix-aware) or an already absolute URL.

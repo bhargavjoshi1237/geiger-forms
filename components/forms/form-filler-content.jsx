@@ -12,7 +12,7 @@ import { withPrefix } from "@/lib/workspace/base-path";
 import { FillerHeader, FillerShell, PoweredBy, StatusScreen } from "@/components/forms/filler/filler-shell";
 import { GateScreen } from "@/components/forms/filler/gates";
 import { FormRunner } from "@/components/forms/filler/form-runner";
-import { parseFillerParams, publicApi } from "@/components/forms/filler/session";
+import { parseFillerParams, publicApi, restartPath } from "@/components/forms/filler/session";
 import { useEmbedBridge } from "@/components/forms/filler/use-embed-bridge";
 
 // Canonicalises the public payload's form (fields + settings) once.
@@ -122,7 +122,7 @@ export function FormFillerContent({ formId, slug: slugProp, initialPayload = nul
     body = (
       <StatusScreen icon={CircleSlash} tone="warning" title={tr("paidCancelTitle")} description={tr("paidCancelBody")}>
         <Button asChild variant="outline">
-          <a href={withPrefix(`/form/${encodeURIComponent(slug)}${params.embed ? "?embed=1" : ""}`)}>
+          <a href={withPrefix(restartPath(slug, params))}>
             <RotateCcw />
             {tr("startOver")}
           </a>

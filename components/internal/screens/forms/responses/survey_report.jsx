@@ -79,6 +79,17 @@ function FieldReport({ agg, currency }) {
           <Columns counts={agg.counts} />
         </div>
       );
+    case "opinion":
+      return (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2">
+            <Metric label="Average" value={agg.avg == null ? null : `${agg.avg} / ${agg.steps}`} />
+            <Metric label="Lowest" value={agg.min} />
+            <Metric label="Highest" value={agg.max} />
+          </div>
+          <Distribution counts={agg.counts} base={agg.answered} />
+        </div>
+      );
     case "nps": {
       const n = agg.promoters + agg.passives + agg.detractors;
       return (

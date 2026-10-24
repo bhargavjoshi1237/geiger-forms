@@ -11,7 +11,8 @@ import { hasOptions, isInputField } from "@/lib/forms/field-types";
 import { CONDITION_OPERATORS, normalizeOperator, operatorNeedsValue } from "@/lib/forms/logic";
 import { makeFieldId } from "@/lib/forms/schema";
 
-const NUMERIC_TYPES = new Set(["number", "currency", "rating", "scale", "nps", "product"]);
+const NUMERIC_TYPES = new Set(["number", "currency", "rating", "scale", "nps", "opinion", "product"]);
+const BOOLEAN_TYPES = new Set(["checkbox", "consent"]);
 const NUMERIC_OPS = new Set(["gt", "gte", "lt", "lte"]);
 const TEXT_ONLY_OPS = new Set(["starts_with"]);
 
@@ -19,7 +20,7 @@ function operatorsFor(source) {
   if (!source) return CONDITION_OPERATORS;
   if (NUMERIC_TYPES.has(source.type)) return CONDITION_OPERATORS.filter((o) => !TEXT_ONLY_OPS.has(o.value) && !o.value.includes("contains"));
   if (["date", "time", "datetime"].includes(source.type)) return CONDITION_OPERATORS.filter((o) => !o.value.includes("contains"));
-  if (hasOptions(source.type) || source.type === "checkbox") return CONDITION_OPERATORS.filter((o) => !NUMERIC_OPS.has(o.value) && !TEXT_ONLY_OPS.has(o.value));
+  if (hasOptions(source.type) || BOOLEAN_TYPES.has(source.type)) return CONDITION_OPERATORS.filter((o) => !NUMERIC_OPS.has(o.value) && !TEXT_ONLY_OPS.has(o.value));
   return CONDITION_OPERATORS.filter((o) => !NUMERIC_OPS.has(o.value));
 }
 
@@ -29,7 +30,7 @@ export function conditionSources(fields, excludeId) {
 }
 
 function ValueInput({ source, value, onChange }) {
-  if (source?.type === "checkbox") {
+  if (BOOLEAN_TYPES.has(source?.type)) {
     return (
       <Select value={value || undefined} onValueChange={onChange}>
         <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue placeholder="Choose…" /></SelectTrigger>

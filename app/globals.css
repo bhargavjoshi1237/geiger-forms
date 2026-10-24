@@ -196,6 +196,12 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+
+  /* Form themes (lib/forms/theme.js): titles use the heading font; single-weight display faces aren't faux-bolded. */
+  .gf-theme :is(h1, h2) {
+    font-family: var(--gf-font-heading);
+    font-synthesis-weight: none;
+  }
 }
 
 .scrollbar-subtle {

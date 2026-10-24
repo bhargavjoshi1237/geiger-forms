@@ -37,7 +37,7 @@ const NAV_SECTIONS = [
   ["security.spam", "Spam & Abuse"],
   ["security.gdpr", "Data Protection & GDPR"],
   ["security.access", "Access Control"],
-  ["security.hipaa", "HIPAA & Certifications"],
+  ["security.hipaa", "HIPAA Readiness"],
   ["integ.api", "REST / API"],
   ["integ.webhooks", "Webhooks"],
   ["dev.hooks", "Hooks & Events"],

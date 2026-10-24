@@ -3,12 +3,13 @@
 import { ArrowLeft, ArrowRight, BookmarkPlus, Loader2, Send, Timer } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
+import { isLayoutField } from "@/lib/forms/field-types";
 import { FormHero } from "./form-hero";
 import { PageProgress } from "./progress";
 import { Banner } from "./banners";
 
 function widthClass(field) {
-  if (field.type === "heading" || field.type === "content") return "col-span-6";
+  if (isLayoutField(field.type)) return "col-span-6";
   if (field.width === "half") return "col-span-6 sm:col-span-3";
   if (field.width === "third") return "col-span-6 sm:col-span-2";
   return "col-span-6";

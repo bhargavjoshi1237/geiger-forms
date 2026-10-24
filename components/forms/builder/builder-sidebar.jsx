@@ -104,6 +104,7 @@ const trigger = "py-3.5 text-sm font-semibold text-foreground hover:no-underline
 // Right-hand builder sidebar: insert palette, field list, pages and the light-weight form sections.
 export function BuilderSidebar({
   doc,
+  form,
   selectedId,
   sources,
   onInsert,
@@ -154,7 +155,7 @@ export function BuilderSidebar({
 
           <AccordionItem value="design" className="border-border">
             <AccordionTrigger className={trigger}><SectionTitle icon={Palette}>Design</SectionTitle></AccordionTrigger>
-            <AccordionContent className="pb-4"><DesignSection settings={settings} title={doc.title} onChange={onSettingsChange} /></AccordionContent>
+            <AccordionContent className="pb-4"><DesignSection settings={settings} title={doc.title} formId={form.id} projectId={form.projectId} onChange={onSettingsChange} /></AccordionContent>
           </AccordionItem>
 
           <AccordionItem value="schedule" className="border-border">

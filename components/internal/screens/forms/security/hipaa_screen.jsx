@@ -18,6 +18,7 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import { ErrorState } from "../screen-shell";
 import { useForms } from "@/lib/hooks/use-forms";
+import { useServiceStatus } from "@/lib/hooks/use-service-status";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { ChecklistItem, OnOff, COMPLIANCE_SECTION } from "./security_shared";
 
@@ -29,10 +30,11 @@ function hasRetention(form) {
   return parseInt(form.settings?.retentionDays, 10) > 0;
 }
 
-// HIPAA & certifications: which forms carry ePHI and whether the safeguards around them are in place.
+// HIPAA readiness: which forms carry ePHI and whether the safeguards around them are in place.
 export function HipaaScreen() {
   const { forms, loading, error, refresh } = useForms();
   const { openForm, setView } = useWorkspaceUrl();
+  const { services } = useServiceStatus();
   const [search, setSearch] = useState("");
 
   const phiForms = useMemo(() => forms.filter((f) => sensitiveCount(f) > 0), [forms]);
@@ -44,7 +46,7 @@ export function HipaaScreen() {
   const stats = useMemo(
     () => [
       { label: "Forms with ePHI", value: String(phiForms.length), footer: "Have fields marked sensitive" },
-      { label: "Sensitive fields", value: String(phiForms.reduce((s, f) => s + sensitiveCount(f), 0)), footer: "Encrypted at rest, masked in UI" },
+      { label: "Sensitive fields", value: String(phiForms.reduce((s, f) => s + sensitiveCount(f), 0)), footer: "Masked; encrypted if the key is set" },
       { label: "With retention", value: `${phiForms.filter(hasRetention).length}/${phiForms.length}`, footer: "ePHI forms auto-deleting" },
       { label: "Login required", value: `${phiForms.filter((f) => f.settings?.access?.mode === "login").length}/${phiForms.length}`, footer: "ePHI forms behind suite login" },
     ],
@@ -75,7 +77,7 @@ export function HipaaScreen() {
 
   const header = (
     <ScreenHeader
-      title="HIPAA & Certifications"
+      title="HIPAA Readiness"
       description="Safeguards for protected health information: field encryption, access logging, retention, and least-privilege roles."
       actions={
         <Button variant="outline" onClick={() => setView("collab.activity")}>
@@ -131,7 +133,7 @@ export function HipaaScreen() {
                 <EmptyState
                   icon={forms.length ? FileLock2 : FileText}
                   title="No sensitive fields yet"
-                  description="Mark a field as Sensitive in the builder's field settings to encrypt it at rest and mask it in the inbox."
+                  description="Mark a field as Sensitive in the builder's field settings to mask it in the inbox and, once the server encryption key is set, encrypt it at rest."
                 />
               )}
             </div>
@@ -142,8 +144,9 @@ export function HipaaScreen() {
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title="Safeguards checklist">
           <ul className="space-y-4">
-            <ChecklistItem done={false} title="Field-level encryption (verify server key)">
-              Sensitive answers are encrypted server-side before storage. Requires FORMS_ENCRYPTION_KEY (base64, 32 bytes) on the server; the browser can&apos;t verify it, so confirm it in your deployment&apos;s environment.
+            <ChecklistItem done={services ? Boolean(services.encryption) : null} title="Field-level encryption">
+              Sensitive answers are encrypted server-side before storage. Requires FORMS_ENCRYPTION_KEY (base64, 32 bytes) on the server;{" "}
+              {services ? "Settings → Configuration shows whether this deployment has it." : "this deployment couldn't be checked, so verify it's set."}
             </ChecklistItem>
             <ChecklistItem done title="Masking & reveal logging">
               Sensitive values show masked in the inbox; revealing, exporting, or printing a response is written to the access log with who and when.

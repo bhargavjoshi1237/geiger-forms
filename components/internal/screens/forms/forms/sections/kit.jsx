@@ -7,9 +7,9 @@ import { toast } from "sonner";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@geiger/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { withPrefix } from "@/lib/workspace/base-path";
+import { isLayoutField } from "@/lib/forms/field-types";
 
 // Small building blocks shared by the form editor sections.
 
@@ -229,7 +229,7 @@ export function Detail({ label, value, className }) {
 
 // Compact merge-tag reference for respondent-facing text.
 export function MergeTagHelp({ fields = [], extras = ["score", "outcome", "total"] }) {
-  const names = fields.filter((f) => !["page", "heading", "content"].includes(f.type)).slice(0, 8).map((f) => f.title);
+  const names = fields.filter((f) => !isLayoutField(f.type)).slice(0, 8).map((f) => f.title);
   return (
     <p className="text-xs leading-5 text-text-tertiary">
       Merge tags: {names.map((n) => <code key={n} className="mx-0.5 rounded bg-surface-card px-1 text-text-secondary">{`{${n}}`}</code>)}
@@ -240,22 +240,5 @@ export function MergeTagHelp({ fields = [], extras = ["score", "outcome", "total
 
 // Fields that collect input, for pickers (automations, duplicates…).
 export function inputFields(fieldDefs = []) {
-  return fieldDefs.filter((f) => f.included !== false && !["page", "heading", "content", "total"].includes(f.type));
-}
-
-// Wraps a disabled control with an explanatory tooltip (advisory RBAC gating).
-export function DisabledHint({ when, hint, children }) {
-  if (!when) return children;
-  return (
-    <TooltipProvider delayDuration={150}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span tabIndex={0} className="inline-flex">
-            {children}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>{hint}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
+  return fieldDefs.filter((f) => f.included !== false && !isLayoutField(f.type) && f.type !== "total");
 }

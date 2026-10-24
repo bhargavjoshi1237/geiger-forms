@@ -7,8 +7,10 @@ import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { SectionCard, StatsBar } from "@geiger/ui/screen-kit";
 import { listAccess } from "@/lib/supabase/audit";
+import { useServiceStatus } from "@/lib/hooks/use-service-status";
 import { fieldTypeLabel } from "@/lib/forms/logic";
 import { cn } from "@/lib/utils";
+import { ServiceNotice } from "../../settings/service_status";
 import { BuilderLink, Stack, inputFields } from "./kit";
 
 const ACTION_LABELS = { view: "Viewed", reveal: "Revealed", export: "Exported", print: "Printed", edit: "Edited" };
@@ -29,6 +31,7 @@ function CheckItem({ state, title, hint }) {
 // Sensitive (ePHI) fields, access log, residency and a HIPAA readiness checklist.
 export function SecuritySection({ form, settings, openBuilder, navigate }) {
   const sensitive = inputFields(form.fieldDefs).filter((f) => f.sensitive);
+  const { services } = useServiceStatus();
   const [log, setLog] = useState(null);
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export function SecuritySection({ form, settings, openBuilder, navigate }) {
   const access = settings.access || {};
   const checklist = [
     { state: sensitive.length ? "on" : "off", title: "Sensitive fields marked", hint: sensitive.length ? `${sensitive.length} field(s) encrypted and masked.` : "Mark health or financial fields as sensitive in the builder." },
-    { state: "manual", title: "Encryption key configured", hint: "Set FORMS_ENCRYPTION_KEY (32 random bytes, base64) on the server — without it sensitive answers are stored unencrypted." },
+    { state: services ? (services.encryption ? "on" : "off") : "manual", title: "Encryption key configured", hint: "Set FORMS_ENCRYPTION_KEY (32 random bytes, base64) on the server — without it sensitive answers are stored unencrypted." },
     { state: access.mode && access.mode !== "public" ? "on" : "off", title: "Restricted access", hint: "Use sign-in, domain or signed-link access for patient forms." },
     { state: settings.retentionDays ? "on" : "off", title: "Retention policy", hint: settings.retentionDays ? `Responses are erased after ${settings.retentionDays} days.` : "Set “Delete responses after” in Access & Sharing." },
     { state: (settings.notifyEmails || []).length === 0 && !settings.slackWebhookUrl ? "on" : "off", title: "No answers in plain-text alerts", hint: "Email and Slack alerts mask sensitive fields, but keep the recipient list minimal." },
@@ -66,12 +69,15 @@ export function SecuritySection({ form, settings, openBuilder, navigate }) {
 
       <SectionCard title="Sensitive fields" description="Answers are encrypted with AES-256-GCM before they're stored, masked in the inbox, and only revealed on request (which is logged).">
         {sensitive.length ? (
-          <div className="flex flex-wrap gap-2">
-            {sensitive.map((f) => (
-              <Badge key={f.id} variant="warning">
-                <Lock /> {f.label || f.title} · {fieldTypeLabel(f.type)}
-              </Badge>
-            ))}
+          <div className="grid gap-3">
+            <div className="flex flex-wrap gap-2">
+              {sensitive.map((f) => (
+                <Badge key={f.id} variant="warning">
+                  <Lock /> {f.label || f.title} · {fieldTypeLabel(f.type)}
+                </Badge>
+              ))}
+            </div>
+            <ServiceNotice service="encryption" />
           </div>
         ) : (
           <BuilderLink onOpenBuilder={openBuilder}>No sensitive fields. Toggle “Sensitive” on a field in the builder to encrypt and mask it.</BuilderLink>

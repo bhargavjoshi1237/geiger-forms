@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSepa
 import { Field } from "@geiger/ui/screen-kit";
 import { TEMPLATE_CATEGORIES, TEMPLATES, getTemplate, templateToFormInput } from "@/lib/forms/templates";
 import { defaultSettings } from "@/lib/forms/schema";
+import { isLayoutField } from "@/lib/forms/field-types";
 import { cn } from "@/lib/utils";
 import { FIELD_CLS, TextInput } from "./sections/kit";
 
@@ -29,7 +30,7 @@ export function NewFormDialog({ open, onClose, folders = [], userTemplates = [],
       return t ? { title: t.title, description: t.description || "One of your saved templates.", fields: t.fields } : null;
     }
     const t = getTemplate(start);
-    return t ? { title: t.title, description: t.description, fields: t.fields.filter((f) => !["page", "heading", "content"].includes(f.type)).length } : null;
+    return t ? { title: t.title, description: t.description, fields: t.fields.filter((f) => !isLayoutField(f.type)).length } : null;
   }, [start, userTemplates]);
 
   const reset = () => {

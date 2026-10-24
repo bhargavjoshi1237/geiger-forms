@@ -1,6 +1,7 @@
 "use client";
 
 import { Field, SectionCard, SettingRow, SettingsList } from "@geiger/ui/screen-kit";
+import { ServiceNotice } from "../../settings/service_status";
 import { AddButton, ChipsInput, ItemCard, MergeTagHelp, Note, NumberInput, Stack, TextArea, TextInput, uid } from "./kit";
 
 // Respondent confirmation, team alerts, drip follow-ups and weekly digests.
@@ -12,6 +13,8 @@ export function NotificationsSection({ form, settings, set }) {
 
   return (
     <Stack>
+      <ServiceNotice service="email" />
+      {followUps.length || (settings.reportEmails || []).length ? <ServiceNotice service="cron" /> : null}
       <SectionCard title="Confirmation email" description="Sent to the respondent right after they submit.">
         <SettingsList>
           <SettingRow title="Email respondents a confirmation" checked={Boolean(settings.confirmEmail)} onCheckedChange={(v) => set("confirmEmail", v)} />

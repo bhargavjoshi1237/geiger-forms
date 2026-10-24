@@ -75,6 +75,13 @@ export const WEBHOOK_EVENTS = [
   { value: "response.approved", label: "Response approved" },
 ];
 
+// Webhook delivery state → StatusPill meta.
+export const DELIVERY_STATE_MAP = {
+  delivered: { label: "Delivered", variant: "success", dotClass: "bg-emerald-400" },
+  retrying: { label: "Retrying", variant: "warning", dotClass: "bg-amber-400" },
+  failed: { label: "Failed", variant: "danger", dotClass: "bg-red-400" },
+};
+
 export const AUTOMATION_ACTIONS = [
   { value: "set_status", label: "Set status", input: "status" },
   { value: "set_priority", label: "Set priority", input: "priority" },

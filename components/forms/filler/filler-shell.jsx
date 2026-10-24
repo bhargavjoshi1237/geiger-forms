@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { backgroundStyle, cssVariables } from "@/lib/forms/theme";
 import { withPrefix } from "@/lib/workspace/base-path";
 
-// Mirrors the form theme onto <body> so portalled popovers/dialogs match, and makes embeds transparent.
+// Mirrors the form theme (tokens and body font) onto <body> so portalled popovers/dialogs match, and makes embeds transparent.
 function useBodyTheme(theme, transparent) {
   useEffect(() => {
     const body = document.body;
@@ -17,6 +17,8 @@ function useBodyTheme(theme, transparent) {
     for (const [key, value] of vars) body.style.setProperty(key, value);
     const prevBg = body.style.background;
     const prevHtmlBg = html.style.background;
+    const prevFont = body.style.fontFamily;
+    if (theme?.fontFamily) body.style.fontFamily = theme.fontFamily;
     if (transparent) {
       body.style.background = "transparent";
       html.style.background = "transparent";
@@ -28,6 +30,7 @@ function useBodyTheme(theme, transparent) {
       }
       body.style.background = prevBg;
       html.style.background = prevHtmlBg;
+      body.style.fontFamily = prevFont;
     };
   }, [theme, transparent]);
 }
@@ -43,6 +46,7 @@ export function FillerShell({ theme, embed = false, transparent = false, dir = "
       className={cn(theme?.className, "text-foreground antialiased", transparent ? "bg-transparent" : "bg-background", !embed && "min-h-[100dvh]")}
       style={{ ...(theme?.style || {}), ...backgroundStyle(theme) }}
     >
+      {theme?.fontUrl ? <link rel="stylesheet" href={theme.fontUrl} /> : null}
       {!embed && header}
       <main className={cn("mx-auto w-full", embed ? (transparent ? "px-1 py-2" : "px-4 py-6 sm:px-6") : "px-4 pb-16 pt-6 sm:px-6 sm:pt-10")}>{children}</main>
     </div>

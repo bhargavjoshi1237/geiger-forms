@@ -1,5 +1,4 @@
 -- Imported from 02_collaboration.sql by geiger-orm.
--- No @down section — this migration cannot be rolled back.
 
 -- @up
 -- ===========================================================================
@@ -57,3 +56,8 @@ create policy versions_all on forms.versions
 drop policy if exists comments_all on forms.comments;
 create policy comments_all on forms.comments
   for all to anon, authenticated using (true) with check (true);
+
+-- @down
+drop table if exists forms.comments cascade;
+drop table if exists forms.versions cascade;
+alter table forms.responses drop column if exists completion_ms;

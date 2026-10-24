@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 import { fieldIds } from "./field-shell";
 import { controlSize } from "./basic-inputs";
 
-function Part({ id, label, value, onChange, disabled, readOnly, autoComplete, aria, large, className, autoFocus }) {
+// One named part of a composite answer; names and places autofill, capitalise per word and skip spellcheck.
+function Part({ id, label, value, onChange, disabled, readOnly, autoComplete, autoCapitalize = "words", aria, large, className, autoFocus }) {
   return (
     <div className={cn("grid gap-1.5", className)}>
       <Label htmlFor={id} className="text-xs font-normal text-text-secondary">
@@ -14,8 +15,11 @@ function Part({ id, label, value, onChange, disabled, readOnly, autoComplete, ar
       </Label>
       <Input
         id={id}
+        type="text"
         value={value ?? ""}
         autoComplete={autoComplete}
+        autoCapitalize={autoCapitalize}
+        spellCheck={false}
         disabled={disabled}
         readOnly={readOnly || undefined}
         autoFocus={autoFocus}
@@ -50,7 +54,7 @@ export function AddressField({ field, value, onChange, disabled, aria, large, tr
       <Part id={`${ids.control}-line2`} label={tr("address2")} value={current.line2} onChange={set("line2")} autoComplete="address-line2" className="sm:col-span-6" {...common} />
       <Part id={`${ids.control}-city`} label={tr("city")} value={current.city} onChange={set("city")} autoComplete="address-level2" className="sm:col-span-3" {...common} />
       <Part id={`${ids.control}-state`} label={tr("state")} value={current.state} onChange={set("state")} autoComplete="address-level1" className="sm:col-span-3" {...common} />
-      <Part id={`${ids.control}-zip`} label={tr("zip")} value={current.zip} onChange={set("zip")} autoComplete="postal-code" className="sm:col-span-2" {...common} />
+      <Part id={`${ids.control}-zip`} label={tr("zip")} value={current.zip} onChange={set("zip")} autoComplete="postal-code" autoCapitalize="characters" className="sm:col-span-2" {...common} />
       <Part id={`${ids.control}-country`} label={tr("country")} value={current.country} onChange={set("country")} autoComplete="country-name" className="sm:col-span-4" {...common} />
     </div>
   );

@@ -13,11 +13,26 @@ function browserTimezone() {
 
 const CHOICES = ["Option 1", "Option 2", "Option 3"];
 
+const OPINION_LABELS = {
+  3: ["Unhappy", "Neutral", "Happy"],
+  4: ["Very unhappy", "Unhappy", "Happy", "Very happy"],
+  5: ["Very unhappy", "Unhappy", "Neutral", "Happy", "Very happy"],
+  6: ["Very unhappy", "Unhappy", "Somewhat unhappy", "Somewhat happy", "Happy", "Very happy"],
+  7: ["Very unhappy", "Unhappy", "Somewhat unhappy", "Neutral", "Somewhat happy", "Happy", "Very happy"],
+};
+
+// Starter step labels for an opinion scale of `steps` (3–7).
+export function opinionPreset(steps) {
+  return [...(OPINION_LABELS[steps] || OPINION_LABELS[5])];
+}
+
 function typeDefaults(type) {
   switch (type) {
     case "select":
     case "dropdown":
     case "multiselect":
+    case "picture":
+    case "multipicture":
       return { options: [...CHOICES] };
     case "ranking":
       return { options: ["First choice", "Second choice", "Third choice"] };
@@ -25,6 +40,10 @@ function typeDefaults(type) {
       return { options: ["Poor", "Fair", "Good", "Excellent"], config: { rows: ["Quality", "Speed", "Support"] } };
     case "checkbox":
       return { label: "I agree to the terms and conditions" };
+    case "consent":
+      return { label: "I agree to the processing of my personal data as described in the privacy policy." };
+    case "opinion":
+      return { config: { steps: 5, style: "emoji", labels: opinionPreset(5) } };
     case "rating":
       return { config: { max: 5 } };
     case "scale":
@@ -52,6 +71,8 @@ function typeDefaults(type) {
       return { label: "Section heading", hint: "" };
     case "content":
       return { label: "", hint: "Add some context for respondents here." };
+    case "statement":
+      return { label: "Before you start", hint: "Add a short message for respondents here." };
     case "page":
       return {};
     default:
@@ -102,7 +123,8 @@ export function changeFieldType(field, type) {
     options: hasOptions(type) ? (keepOptions ? field.options : defaults.options ?? [...CHOICES]) : [],
     optionPoints: hasOptions(type) ? field.optionPoints : undefined,
     correctAnswer: undefined,
-    config: defaults.config,
+    // Same renderer family (single ↔ multiple picture choice) keeps its images and layout.
+    config: getFieldType(field.type).input === getFieldType(type).input ? field.config : defaults.config,
     validation: undefined,
     defaultValue: undefined,
     formula: type === "calculated" ? field.formula || "" : "",

@@ -9,13 +9,14 @@ import { EditorShell } from "@/components/internal/shared/editor_shell";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@geiger/ui/dialog";
+import { DisabledHint } from "@/components/internal/shared/disabled_hint";
 import { useCan } from "@/context/rbac-context";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { withPrefix } from "@/lib/workspace/base-path";
 
 import { FORM_STATUS_MAP } from "./constants";
 import { NAV_GROUPS, SECTIONS } from "./form_sections";
-import { DisabledHint, OUTLINE_BTN } from "./sections/kit";
+import { OUTLINE_BTN } from "./sections/kit";
 
 const DETAIL_KEYS = ["title", "description", "category", "tags"];
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);

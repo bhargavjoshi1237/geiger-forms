@@ -26,6 +26,12 @@ export const WEBHOOK_EVENTS = [
   { event: "response.approved", when: "The final approval step approves a response." },
 ];
 
+const WEBHOOK_HEADERS = [
+  { header: "X-Geiger-Event", meaning: "The event name, e.g. response.created." },
+  { header: "X-Geiger-Delivery", meaning: "Stable delivery id, identical on every retry and replay. Store it and skip ids you have already processed." },
+  { header: "X-Geiger-Signature", meaning: "sha256=<hex HMAC-SHA256 of the raw body> with the endpoint's secret. Each attempt is re-signed with a fresh createdAt, so you can reject stale timestamps." },
+];
+
 function EndpointTable() {
   const columns = [
     { key: "method", header: "Method", render: (e) => <Badge variant={METHOD_VARIANT[e.method]}>{e.method}</Badge> },
@@ -83,20 +89,25 @@ app.post("/hooks/forms", express.raw({ type: "application/json" }), (req, res) =
   if (!verify(req.body, req.get("X-Geiger-Signature"), process.env.FORMS_WEBHOOK_SECRET)) {
     return res.status(401).end();
   }
-  const { event, response } = JSON.parse(req.body);
+  // Retries and replays reuse the delivery id: acknowledge duplicates without reprocessing.
+  if (alreadyProcessed(req.get("X-Geiger-Delivery"))) return res.status(200).end();
+  const { event, data } = JSON.parse(req.body);
   res.status(200).end();
 });`;
 
 const PAYLOAD_SNIPPET = `{
   "event": "response.created",
-  "form": { "id": "…", "slug": "customer-onboarding", "title": "Customer Onboarding" },
-  "response": {
-    "id": "…",
-    "status": "Complete",
-    "answers": { "FIELD_ID": "value" },
-    "labeled": { "Email": "ada@example.com" },
-    "score": 82,
-    "submittedAt": "2026-10-08T12:00:00Z"
+  "createdAt": "2026-10-08T12:00:01Z",
+  "data": {
+    "form": { "id": "…", "slug": "customer-onboarding", "title": "Customer Onboarding" },
+    "response": {
+      "id": "…",
+      "status": "Complete",
+      "answers": { "FIELD_ID": "value" },
+      "respondent": { "name": "Ada Lovelace", "email": "ada@example.com" },
+      "score": 82,
+      "submittedAt": "2026-10-08T12:00:00Z"
+    }
   }
 }`;
 
@@ -110,20 +121,25 @@ export function WebhooksTab({ forms, onConfigure }) {
     return withHooks.filter((f) => [f.name, ...f.settings.webhooks.map((w) => w.url)].some((v) => String(v || "").toLowerCase().includes(q)));
   }, [withHooks, search]);
   const pager = usePagination(filtered, { resetKey: search });
-  const columns = [
+  const eventColumns = [
     { key: "event", header: "Event", render: (e) => <code className="font-mono text-xs text-foreground">{e.event}</code> },
     { key: "when", header: "Fires when", render: (e) => <span className="text-xs text-text-secondary">{e.when}</span> },
   ];
+  const headerColumns = [
+    { key: "header", header: "Header", render: (h) => <code className="whitespace-nowrap font-mono text-xs text-foreground">{h.header}</code> },
+    { key: "meaning", header: "Meaning", render: (h) => <span className="text-xs text-text-secondary">{h.meaning}</span> },
+  ];
   return (
     <div className="space-y-4">
-      <DataTable columns={columns} data={WEBHOOK_EVENTS} getRowKey={(e) => e.event} />
+      <DataTable columns={eventColumns} data={WEBHOOK_EVENTS} getRowKey={(e) => e.event} />
+      <DataTable columns={headerColumns} data={WEBHOOK_HEADERS} getRowKey={(h) => h.header} />
       <div className="grid gap-4 lg:grid-cols-2">
         <CodeBlock label="Payload (example)" code={PAYLOAD_SNIPPET} />
         <CodeBlock label="Verify the signature (Node)" code={VERIFY_SNIPPET} />
       </div>
       <SectionCard
-        title="Delivery & signing"
-        description="Webhooks POST JSON with an X-Geiger-Signature: sha256=<hex HMAC of the raw body> header using the endpoint's secret. Every attempt and its status code is logged under Deliveries."
+        title="Delivery & retries"
+        description="Answer with any 2xx within 8 seconds. Timeouts, network errors, 408, 425, 429 and 5xx responses are retried twice within seconds, then with exponential backoff from 5 minutes to a day (honoring Retry-After) for up to 8 attempts; other responses fail at once. Backoff retries run at the first background sweep after they fall due: within minutes while webhooks are flowing, otherwise daily. Every attempt is logged under Deliveries, where deliveries can be replayed for 30 days, and the form owner is alerted when one fails for good."
         action={withHooks.length ? <SearchInput value={search} onChange={setSearch} placeholder="Search forms or endpoints…" /> : null}
         bodyPadding={false}
       >
@@ -168,13 +184,52 @@ export function WebhooksTab({ forms, onConfigure }) {
   );
 }
 
+const EMBED_OPTIONS = [
+  { attr: "data-mode", modes: "All", desc: "inline (default), popup, slider, side-tab, popover or fullscreen." },
+  { attr: "data-trigger", modes: "Dialogs", desc: "click (default), delay, scroll or exit; combine with commas, e.g. click,exit. Exit intent is desktop-only." },
+  { attr: "data-delay · data-scroll", modes: "Dialogs", desc: "Seconds before a delay trigger (5) and the scroll depth % for a scroll trigger (50)." },
+  { attr: "data-frequency", modes: "Dialogs", desc: "Caps automatic opens: always (default), session, or days with data-frequency-days (7)." },
+  { attr: "data-hide-after-submit", modes: "Dialogs", desc: "After a response, stops automatic opens and hides the side tab or bubble." },
+  { attr: "data-auto-close", modes: "Dialogs", desc: "Seconds after a submission before the dialog closes." },
+  { attr: "data-open-selector", modes: "Dialogs", desc: "CSS selector for your own elements that open the form instead of a generated button." },
+  { attr: "data-button-text · data-button-color", modes: "Dialogs", desc: "Label and hex colour of the button, side tab or bubble (the bubble label is its screen-reader name)." },
+  { attr: "data-position", modes: "Slider, side tab, popover", desc: "right (default) or left." },
+  { attr: "data-width", modes: "Popup, slider, popover", desc: "Panel width in px (720, 420, 380); full width on phones." },
+  { attr: "data-param-<key>", modes: "All", desc: "Prefills the field with that prefill key, e.g. data-param-plan=\"pro\" for a hidden field." },
+  { attr: "data-inherit-params", modes: "All", desc: "Forwards your page's URL parameters: all, or a comma list of keys. UTM tags are always forwarded." },
+  { attr: "data-title", modes: "All", desc: "Accessible name of the iframe and dialog." },
+];
+
+function EmbedOptionsTable() {
+  const columns = [
+    { key: "attr", header: "Attribute", render: (o) => <code className="whitespace-nowrap font-mono text-xs text-foreground">{o.attr}</code> },
+    { key: "modes", header: "Applies to", render: (o) => <span className="whitespace-nowrap text-xs text-text-secondary">{o.modes}</span> },
+    { key: "desc", header: "Description", render: (o) => <span className="text-xs text-text-secondary">{o.desc}</span> },
+  ];
+  return <DataTable columns={columns} data={EMBED_OPTIONS} getRowKey={(o) => o.attr} />;
+}
+
 // Embed snippets for the hosted form page.
 export function EmbedTab({ forms, onConfigure }) {
   const url = useAppBase();
   const slug = forms.find((f) => f.status === "Published")?.slug || forms[0]?.slug || "your-form-slug";
   const formUrl = url(`/form/${slug}`);
+  const script = `<script src="${url("/embed.js")}" async></script>`;
   return (
     <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <CodeBlock label="Inline (script)" code={`<div data-geiger-form="${slug}" data-param-plan="pro"></div>\n${script}`} />
+        <CodeBlock
+          label="Slider on exit intent"
+          code={`<div\n  data-geiger-form="${slug}"\n  data-mode="slider"\n  data-trigger="exit"\n  data-frequency="days"\n  data-frequency-days="14"\n  data-hide-after-submit\n></div>\n${script}`}
+        />
+        <CodeBlock label="Popover bubble" code={`<div\n  data-geiger-form="${slug}"\n  data-mode="popover"\n  data-button-color="#6366f1"\n  data-auto-close="3"\n></div>\n${script}`} />
+        <CodeBlock
+          label="JavaScript API"
+          code={`// mode: popup | slider | popover | fullscreen; returns { close }\nconst dialog = GeigerForms.open("${slug}", {\n  mode: "fullscreen",\n  params: { email: "ada@example.com" },\n  autoClose: 3,\n});\n\ndocument.addEventListener("geiger-form:submitted", (event) => {\n  const { slug, responseId, outcome } = event.detail;\n});\n\n// Mount embeds added after page load\nGeigerForms.mount();`}
+        />
+      </div>
+      <EmbedOptionsTable />
       <div className="grid gap-4 lg:grid-cols-2">
         <CodeBlock label="Inline iframe" code={`<iframe\n  src="${formUrl}"\n  title="Form"\n  style="width:100%;min-height:720px;border:0"\n  loading="lazy"\n></iframe>`} />
         <CodeBlock label="Link or button" code={`<a href="${formUrl}" target="_blank" rel="noopener">\n  Open the form\n</a>`} />
@@ -182,7 +237,7 @@ export function EmbedTab({ forms, onConfigure }) {
         <CodeBlock label="Popup (no script needed)" code={`<dialog id="gf"><iframe src="${formUrl}" style="width:min(640px,90vw);height:80vh;border:0"></iframe></dialog>\n<button onclick="document.getElementById('gf').showModal()">Give feedback</button>`} />
       </div>
       <p className="text-xs text-text-tertiary">
-        Prefill keys come from each field&apos;s prefill key (hidden fields included). Per-form embed options and QR codes live in the form&apos;s Embed section.
+        Prefill keys come from each field&apos;s prefill key (hidden fields included). Dialog embeds load the form on first open and only exchange messages with your page&apos;s origin. Per-form embed options and QR codes live in the form&apos;s Embed section.
         {forms[0] ? (
           <Button variant="link" size="sm" className="h-auto px-1 text-xs" onClick={() => onConfigure(forms[0].id, "embed")}>
             Open Embed settings
