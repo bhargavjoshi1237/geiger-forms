@@ -9,71 +9,75 @@ quoting. Legend: ✔ yes · ➖ partial/add-on/limited · ✕ no · $ = paywalle
 - 🟠**Partial** — foundation exists, needs finishing.
 - ⚪**Gap** — not built.
 
+**Status as of 2026-10-30**, from reading the code (the app was not run). Features
+that only need a deployment's env keys count as Have. A migration in the repo may
+not be applied yet. Competitor columns are unchanged from the mid-2026 study.
+
 ---
 
 ## 1. Core builder & logic
 
 | Feature | Gravity | Typeform | Jotform | Tally | Fillout | Paperform | Google Forms | **Geiger today** |
 |---|---|---|---|---|---|---|---|---|
-| Drag-and-drop builder | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | 🔵 Have (1187-line builder) |
-| Field types (breadth) | ✔ 30+ | ➖ | ✔ 40+ | ✔ | ✔ | ✔ | ➖ | 🟠 10 types — expand |
-| Conditional logic | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ➖ | 🔵 Have (visibility) |
+| Drag-and-drop builder | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | 🔵 Have (undo, autosave, live preview) |
+| Field types (breadth) | ✔ 30+ | ➖ | ✔ 40+ | ✔ | ✔ | ✔ | ➖ | 🔵 Have (39 types) |
+| Conditional logic | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ➖ | 🔵 Have (visibility, page skip; no jump rules) |
 | Calculated fields | ✔ | ➖ | ✔ | ✔ | ✔ | ✔ | ✕ | 🔵 Have (formula eval) |
-| Multi-page / steps | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ⚪ Gap |
-| Save & resume | $ Elite | ➖ | ✔ | ➖ | ✔ | ✔ | ✕ | ⚪ Gap |
-| Conversational (1-Q) mode | $ Elite | ✔ (core) | ➖ | ➖ | ✔ | ➖ | ✕ | 🟠 Renderer can support |
-| Repeating sections | 3rd-party | ✕ | ✔ | ➖ | ✔ | ➖ | ✕ | ⚪ Gap |
-| Scoring / quiz | $ Elite | ✔ | ✔ | ➖ | ✔ | ✔ | ✔ | 🔵 Have (scoring/thresholds) |
-| Templates | ✔ | ✔ | ✔ 10k+ | ✔ | ✔ | ✔ | ✔ | 🟠 Screen exists, needs library |
+| Multi-page / steps | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | 🔵 Have |
+| Save & resume | $ Elite | ➖ | ✔ | ➖ | ✔ | ✔ | ✕ | 🔵 Have (opt-in per form) |
+| Conversational (1-Q) mode | $ Elite | ✔ (core) | ➖ | ➖ | ✔ | ➖ | ✕ | 🔵 Have (per-form layout) |
+| Repeating sections | 3rd-party | ✕ | ✔ | ➖ | ✔ | ➖ | ✕ | 🔵 Have (repeating group) |
+| Scoring / quiz | $ Elite | ✔ | ✔ | ➖ | ✔ | ✔ | ✔ | 🔵 Have (scoring, quiz, outcomes) |
+| Templates | ✔ | ✔ | ✔ 10k+ | ✔ | ✔ | ✔ | ✔ | 🔵 Have (42 templates) |
 
 ## 2. Data, responses, collaboration
 
 | Feature | Gravity | Typeform | Jotform | Tally | Fillout | Google | **Geiger today** |
 |---|---|---|---|---|---|---|---|
-| Response inbox/mgmt | ✔ | ✔ | ✔ (Tables) | ✔ | ✔ | ✔ (Sheets) | 🔵 Have (responses screens) |
-| Export CSV/Excel | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | 🔵 Have (export.js) |
-| Analytics/dashboards | ➖ add-on | ✔ | ✔ | ➖ | ✔ | ➖ | 🟠 Analytics screen exists |
-| Field-level drop-off | ✕ | ✔ | ➖ | ✕ | ➖ | ✕ | ⚪ Gap (one-up) |
-| Response comments/notes | ✔ notes | ✕ | ➖ | ✕ | ➖ | ✕ | 🔵 Have (comments table) |
-| Version history | ✕ | ➖ | ➖ | ✕ | ➖ | ✔ | 🔵 Have (versions table) |
-| Real-time co-editing | ✕ | ➖ | ➖ | ➖ | ➖ | ✔ | ⚪ Gap (suite one-up) |
-| Data as tables/views | 3rd-party | ✕ | ✔ | ✕ | ✔ | ✔ | 🟠 Supabase-native strength |
+| Response inbox/mgmt | ✔ | ✔ | ✔ (Tables) | ✔ | ✔ | ✔ (Sheets) | 🔵 Have (table and kanban inbox) |
+| Export CSV/Excel | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | 🔵 Have (CSV, JSON; no XLSX) |
+| Analytics/dashboards | ➖ add-on | ✔ | ✔ | ➖ | ✔ | ➖ | 🔵 Have (dashboard, reports) |
+| Field-level drop-off | ✕ | ✔ | ➖ | ✕ | ➖ | ✕ | 🔵 Have (one-up) |
+| Response comments/notes | ✔ notes | ✕ | ➖ | ✕ | ➖ | ✕ | 🔵 Have (comments, @mentions) |
+| Version history | ✕ | ➖ | ➖ | ✕ | ➖ | ✔ | 🔵 Have (versions, restore) |
+| Real-time co-editing | ✕ | ➖ | ➖ | ➖ | ➖ | ✔ | 🟠 Presence only (suite one-up) |
+| Data as tables/views | 3rd-party | ✕ | ✔ | ✕ | ✔ | ✔ | 🟠 Saved views, kanban; no relations |
 
 ## 3. Monetization & advanced modules
 
 | Feature | Gravity | Typeform | Jotform | Tally | Cognito | Formstack | **Geiger today** |
 |---|---|---|---|---|---|---|---|
-| Payments (Stripe/etc.) | $ Pro | ➖ | ✔ | ✔ (free!) | ✔ | ✔ | ⚪ Gap (priority) |
-| Subscriptions/recurring | $ Pro | ✕ | ✔ | ➖ | ✔ | ➖ | ⚪ Gap |
-| Coupons/discounts | $ Elite | ✕ | ➖ | ✕ | ✔ | ➖ | ⚪ Gap |
-| E-signature | $ Elite (draw) | ✕ | ✔ Sign | ✕ | ✔ | ✔ | ⚪ Gap |
-| Surveys / NPS | $ Elite | ✔ | ✔ | ➖ | ➖ | ➖ | 🟠 Scoring foundation |
-| Approvals / workflow | 3rd-party | ✕ | ✔ | ✕ | ✕ | ✔ | ⚪ Gap (route to Flow) |
-| PDF/doc generation | 3rd-party | ✕ | ✔ | ✕ | ➖ | ✔ | ⚪ Gap |
-| User registration/login | $ Elite | ✕ | ➖ | ✕ | ✕ | ➖ | ⚪ Gap |
+| Payments (Stripe/etc.) | $ Pro | ➖ | ✔ | ✔ (free!) | ✔ | ✔ | 🔵 Have (Stripe only) |
+| Subscriptions/recurring | $ Pro | ✕ | ✔ | ➖ | ✔ | ➖ | 🔵 Have (monthly, yearly) |
+| Coupons/discounts | $ Elite | ✕ | ➖ | ✕ | ✔ | ➖ | 🔵 Have |
+| E-signature | $ Elite (draw) | ✕ | ✔ Sign | ✕ | ✔ | ✔ | 🟠 Draw or type, countersign; no signing order |
+| Surveys / NPS | $ Elite | ✔ | ✔ | ➖ | ➖ | ➖ | 🔵 Have (NPS, reports; no crosstabs) |
+| Approvals / workflow | 3rd-party | ✕ | ✔ | ✕ | ✕ | ✔ | 🟠 Sequential chain, Flow issues; no parallel |
+| PDF/doc generation | 3rd-party | ✕ | ✔ | ✕ | ➖ | ✔ | 🟠 Browser print only |
+| User registration/login | $ Elite | ✕ | ➖ | ✕ | ✕ | ➖ | 🟠 Login-gated forms; no registration |
 
 ## 4. Distribution, integrations, platform
 
 | Feature | Gravity | Typeform | Jotform | Tally | Fillout | **Geiger today** |
 |---|---|---|---|---|---|---|
 | Hosted (no WP needed) | ✕ | ✔ | ✔ | ✔ | ✔ | 🔵 Have (Next.js/Supabase) |
-| Public link + embed | ➖ (WP) | ✔ | ✔ | ✔ | ✔ | 🟠 Filler built, not routed |
+| Public link + embed | ➖ (WP) | ✔ | ✔ | ✔ | ✔ | 🔵 Have (SSR link, 6 embed modes) |
 | Custom domain | ✔ (your WP) | $ | $ | $ | $ | ⚪ Gap |
-| Webhooks/API | $ Elite | ✔ | ✔ | ➖ | ✔ | 🟠 Supabase gives base |
-| Zapier/Make | $ Pro | ✔ | ✔ | ➖ | ✔ | ⚪ Gap |
+| Webhooks/API | $ Elite | ✔ | ✔ | ➖ | ✔ | 🔵 Have (retries, replay; REST v1 reads and submits) |
+| Zapier/Make | $ Pro | ✔ | ✔ | ➖ | ✔ | 🟠 Through webhooks; no published apps |
 | Native CRM/marketing | tiered | ✔ | ✔ | ➖ | ✔ | ⚪ Gap (or via suite) |
-| Slack/Sheets/etc. | tiered | ✔ | ✔ | ➖ | ✔ | ⚪ Gap |
+| Slack/Sheets/etc. | tiered | ✔ | ✔ | ➖ | ✔ | 🟠 Slack native; Sheets through webhooks |
 
 ## 5. AI, compliance, trust (the modern differentiators)
 
 | Feature | Gravity | Typeform | Jotform | Fillout | Paperform | Zoho | **Geiger today** |
 |---|---|---|---|---|---|---|---|
-| AI form generation | ✕ | ➖ | ✔ | ✔ | ✔ | ➖ | ⚪ Gap (Claude via suite) |
-| AI response analysis | ✕ | ➖ | ➖ | ➖ | ➖ | ✕ | ⚪ Gap (one-up) |
-| HIPAA / BAA | ✕ | ✕ | $ high tier | ✕ | ✕ | ✔ | ⚪ Gap (moat bet) |
-| GDPR/data residency | self | ✔ | ✔ | ✔ | ✔ | ✔ | 🟠 Supabase-controlled |
-| SSO / RBAC | ➖ | $ | $ | $ | $ | ✔ | 🟠 Suite auth |
-| Spam/captcha | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ⚪ Gap |
+| AI form generation | ✕ | ➖ | ✔ | ✔ | ✔ | ➖ | ⚪ Gap (waits on `@geiger/ai`) |
+| AI response analysis | ✕ | ➖ | ➖ | ➖ | ➖ | ✕ | ⚪ Gap (one-up; waits on `@geiger/ai`) |
+| HIPAA / BAA | ✕ | ✕ | $ high tier | ✕ | ✕ | ✔ | 🟠 Readiness controls; no BAA (moat bet) |
+| GDPR/data residency | self | ✔ | ✔ | ✔ | ✔ | ✔ | 🟠 Export, erasure, retention; no region choice |
+| SSO / RBAC | ➖ | $ | $ | $ | $ | ✔ | 🟠 RBAC enforced; SSO from suite account |
+| Spam/captcha | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | 🔵 Have (honeypot, Turnstile, rate limit) |
 
 ---
 
@@ -81,9 +85,10 @@ quoting. Legend: ✔ yes · ➖ partial/add-on/limited · ✕ no · $ = paywalle
 
 **Table-stakes (must have to be credible):** builder, field breadth, conditional
 logic, calculations, multi-page, response management, export, public link +
-embed, basic integrations, spam protection, **payments**. Geiger has most of the
-logic core already — the urgent gaps are **routing the filler, payments,
-multi-page, and embed/distribution.**
+embed, basic integrations, spam protection, **payments**. As of 2026-10-30 Geiger
+has all of these in code — the gaps left against the rest of the grid are **AI
+generation and analysis (waiting on `@geiger/ai`), custom domains, native
+Sheets/Zapier/Make connectors, and server-rendered PDFs.**
 
 **Differentiators (where you win):** absorbed adjacent categories (e-sign,
 approvals→Flow, surveys, PDF, data-tables), **AI response analysis**,

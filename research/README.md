@@ -4,7 +4,8 @@
 > space, mapped against what Geiger Forms already ships, with a concrete
 > "replicate → one-up → undercut" plan.
 
-**Compiled:** 2026-07-11 · **Pricing valid as of:** mid-2026 (verify at purchase)
+**Compiled:** 2026-07-11 · **Pricing valid as of:** mid-2026 (verify at purchase) ·
+**Geiger status as of:** 2026-10-30
 
 ## What's in here
 
@@ -72,20 +73,31 @@ plus RBAC, 90-day audit trails, and a BAA on request). Regulated verticals
 See [`geiger-forms-strategy.md`](./geiger-forms-strategy.md) for how that turns
 into a roadmap against the code you already have.
 
-## Where Geiger Forms already stands (🔵 from the repo)
+## Where Geiger Forms already stands (🔵 from the repo, status as of 2026-10-30)
 
-Geiger Forms is **not** a stub. It already has:
+Geiger Forms is **not** a stub. From reading the code (the app was not run), it has:
 
-- A real **1,187-line visual builder**, public **form filler**, and field
-  renderer.
-- **10 field types** (text, email, phone, textarea, number, date, select,
-  checkbox, file, calculated) with **conditional visibility**, **calculated
-  fields w/ formula evaluation**, and **scoring/priority thresholds**.
-- A **9-screen workspace** (Overview, Forms, Responses, Analytics, Templates,
-  Folders, Shared, Archived, Settings).
-- A complete **Supabase data layer + SQL + RLS** for forms, responses, versions,
-  and comments.
+- A routed **visual builder** (`app/forms/[formId]/page.js`) and an SSR public
+  **form filler** (`app/form/[formId]/page.js`) with classic and conversational
+  layouts.
+- **39 field types** (`lib/forms/field-types.js`) with **conditional visibility**,
+  **page skipping**, **calculated fields w/ formula evaluation**,
+  **scoring/priority thresholds**, quizzes, and outcome branches with their own
+  endings.
+- A **37-view workspace** (`sidebar_nav.js`); the 4 AI views are Coming soon.
+- A **Supabase data layer + SQL + RLS** in the `forms` schema, with RLS scoped by
+  `@geiger/rbac` grants and server routes for all public traffic.
+- **Stripe** one-off and subscription checkout with coupons, signatures with
+  countersign, bookable slots, sequential approvals, partials with resume links,
+  drop-off funnels, A/B tests, signed webhooks with retries and replay, REST v1,
+  six embed modes, field encryption, and GDPR export and erasure.
 
-**The one blocking gap:** the builder and public filler exist as components but
-**aren't routed yet** (`app/forms/[formId]/page.js` and `app/form/[formId]/page.js`
-are empty). That's step zero of the roadmap.
+**Nothing blocks end-to-end use any more;** the routes and the `/form/demo` seed
+are in place. Stripe, email, captcha, encryption, signed links and cron each need
+a deployment's env keys, and a migration in the repo may not be applied yet.
+
+**Still open:** AI generation and analysis (waiting on the suite's `@geiger/ai`),
+server-rendered PDFs, native Google Sheets, Zapier and Make connectors, custom
+domains and white-label email, importers, merged co-editing, and billing (no
+billing code in this repo). Per-recommendation status is in
+[`Forms app competitive feature gaps.md`](../reports/Forms%20app%20competitive%20feature%20gaps.md).

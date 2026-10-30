@@ -4,6 +4,11 @@ Ties the market study to the **actual code in this repo** (🔵 confirmed by
 reading it). The point: Geiger is much closer to competitive than a blank page —
 it needs *finishing and extending in the right order*, not rebuilding.
 
+**Status as of 2026-10-30**, from reading the code (the app was not run). A
+migration in the repo may not be applied yet, and features that only need a
+deployment's env keys count as shipped. Per-recommendation status is in
+[`Forms app competitive feature gaps.md`](../reports/Forms%20app%20competitive%20feature%20gaps.md).
+
 ---
 
 ## 1. Where the code actually is (🔵 from the repo)
@@ -33,67 +38,73 @@ it needs *finishing and extending in the right order*, not rebuilding.
 **So the honest status:** P0 and P1 below have shipped (bar an HTML block; text
 blocks are plain text), and so has most of P2–P4. Still open: AI (8–9, waits for the suite's `@geiger/ai`); a stored,
 server-rendered PDF (14, 16 — documents print from the browser and aren't
-attached to emails); native Google Sheets, Zapier and Make apps (18 — Zapier and
-Make work through webhooks); merged real-time co-editing (20 — presence only; SSO
-comes from the suite account); custom domains and white-label email (21 —
-branding is a per-form footer toggle).
+attached to emails); multi-party signing order (14); calendar sync (17 — booking
+runs on its own slot table); native Google Sheets, Zapier and Make apps (18 —
+Zapier and Make work through webhooks); a BAA or certification (19 — a readiness
+checklist and the technical controls ship); merged real-time co-editing (20 —
+presence only; SSO comes from the suite account); custom domains and white-label
+email (21 — branding is a per-form footer toggle). Beyond this list, importers,
+billing and automated tests of the submit pipeline are also open.
 
 ---
 
 ## 2. Priority order (what closes the gap to Gravity + SaaS fastest)
 
-### P0 — Make it work end-to-end (ship blocker)
+Tags show status as of 2026-10-30: ✅ shipped · 🟠 partly shipped · ⚪ not built.
+
+### P0 — Make it work end-to-end (ship blocker) ✅
 1. **Wire the routes.** Implement `app/forms/[formId]/page.js` (builder shell)
    and `app/form/[formId]/page.js` (public filler via `getPublishedFormBySlug`).
    Everything below depends on this.
 2. **Fix landing dead links** (`/form/demo`) → a real seeded demo form.
 
-### P1 — Table-stakes to be credible vs anyone
+### P1 — Table-stakes to be credible vs anyone ✅
 3. **Multi-page / step forms + progress bar** + **save & resume** (Gravity gates
    resume at Elite; be generous).
 4. **Embed + share** — public link, iframe embed snippet, "copy embed code."
 5. **Spam/anti-abuse** — honeypot + Turnstile/reCAPTCHA + rate limit.
-6. **Field-type breadth** — from 10 → ~25: address (composite), name
+6. **Field-type breadth** — 39 types now: address (composite), name
    (composite), rating/scale, ranking, matrix/Likert, signature, section break,
-   repeating group, hidden, HTML block, image/choice cards, URL, currency.
+   repeating group, hidden, image/choice cards, URL, currency. HTML block still
+   open (text blocks are plain text).
 7. **Payments (Stripe)** — the single highest-ROI feature. Products, quantity,
    totals (you already calculate), coupons, one-off + subscription. This alone
    beats Gravity Basic and Typeform/Google/MS free.
 
 ### P2 — Differentiators (the "one-up")
-8. **AI form generation** — "describe your form → built" (Claude via the suite).
-   Now table-stakes at Jotform/Fillout/Paperform; parity needed.
-9. **AI response analysis** — summarize open-text, auto-categorize, sentiment,
+8. ⚪ **AI form generation** — "describe your form → built" (via the suite's
+   `@geiger/ai`). Now table-stakes at Jotform/Fillout/Paperform; parity needed.
+9. ⚪ **AI response analysis** — summarize open-text, auto-categorize, sentiment,
    "top themes across 500 responses." **Genuine one-up** — nobody does this well.
-10. **Conversational mode** — one-question-at-a-time toggle (Gravity Elite-only;
-    Typeform's whole product). Your renderer can support it.
-11. **Surveys/NPS + Quiz reporting** — you already have scoring; add survey field
-    types + a report/chart view. (Gravity Elite $259.)
-12. **Data tables & views on Responses** — filterable grid, saved views, kanban
+10. ✅ **Conversational mode** — one-question-at-a-time toggle (Gravity Elite-only;
+    Typeform's whole product).
+11. ✅ **Surveys/NPS + Quiz reporting** — survey field types + a report/chart
+    view on top of scoring. (Gravity Elite $259.)
+12. ✅ **Data tables & views on Responses** — filterable grid, saved views, kanban
     by status/score. Leans on your Supabase-native strength (Airtable-of-forms).
-13. **Field-level drop-off analytics** — where users abandon. Almost nobody
+13. ✅ **Field-level drop-off analytics** — where users abandon. Almost nobody
     surfaces this well; cheap with your event model.
 
 ### P3 — Absorb adjacent categories (suite superpower)
-14. **E-signature** — signature field + "send for signing" + signed-PDF storage.
+14. 🟠 **E-signature** — signature field + "send for signing" + signed-PDF storage.
     (Absorbs Papersign/DocuSign for simple cases.)
-15. **Workflow / approvals → Geiger Flow** — route a submission into a Flow issue
+15. ✅ **Workflow / approvals → Geiger Flow** — route a submission into a Flow issue
     / approval chain. **This is the killer suite integration** — competitors need
     GravityFlow/Zapier; you have Flow in-house.
-16. **PDF / document generation** — answers → branded PDF (invoices, contracts,
+16. 🟠 **PDF / document generation** — answers → branded PDF (invoices, contracts,
     certificates), attached to notifications.
-17. **Scheduling** — booking/slot field, or deep-link to a suite scheduling
+17. 🟠 **Scheduling** — booking/slot field, or deep-link to a suite scheduling
     surface (absorbs Calendly for the "book a call" form).
-18. **Integrations** — Slack, Google Sheets, webhooks, Zapier/Make. Webhooks +
+18. 🟠 **Integrations** — Slack, Google Sheets, webhooks, Zapier/Make. Webhooks +
     Sheets first (highest demand).
 
 ### P4 — Moat & enterprise
-19. **HIPAA / compliance** — ePHI field designation, encryption-at-rest labeling,
+19. 🟠 **HIPAA / compliance** — ePHI field designation, encryption-at-rest labeling,
     audit trails, RBAC, BAA. Opens healthcare/legal/gov at premium price. (Copy
     Zoho's "Mark as ePHI" pattern. ✅)
-20. **RBAC + SSO + real-time collaboration** on form building (suite auth already
+20. 🟠 **RBAC + SSO + real-time collaboration** on form building (suite auth already
     there; collab is a Google-Forms-beating differentiator).
-21. **Custom domains + white-label** for agencies (Paperform Agency+ pattern).
+21. 🟠 **Custom domains + white-label** for agencies (Paperform Agency+ pattern).
 
 ---
 
@@ -117,9 +128,9 @@ These are where Geiger doesn't just match — it beats the category:
 
 ## 4. Use-case coverage checklist (ship templates for each)
 
-To "fit the product into their need," Geiger's **template gallery** (screen
-already exists 🔵) should cover every job Gravity/Jotform are bought for. Ship
-templates + a matching field-type for each:
+To "fit the product into their need," Geiger's **template gallery** (42 templates
+across 12 categories today 🔵) should cover every job Gravity/Jotform are bought
+for. Keep shipping templates + a matching field-type for each:
 
 - Lead gen: contact, quote request, demo booking, gated-content, multi-step qual
 - Payments: order form, donation, event tickets, deposit, subscription, invoice
@@ -139,15 +150,14 @@ e-sign) doubles as a sales asset.
 
 ---
 
-## 5. Suggested sequencing (rough)
+## 5. Suggested sequencing (rough, status as of 2026-10-30)
 
 | Phase | Focus | Outcome |
 |---|---|---|
-| **Now** | P0 routes + demo | It works end-to-end; landing links live |
-| **v1** | P1 table-stakes + Stripe | Credible free product that beats Google/Gravity-Basic |
-| **v1.5** | P2 AI + surveys + data tables | Clear differentiation; press-worthy |
-| **v2** | P3 e-sign + Flow workflow + PDF + integrations | "Runs your business" positioning (Paperform-class) |
-| **v2.5** | P4 HIPAA + RBAC/SSO + white-label | Enterprise/regulated revenue |
+| **Shipped** | P0 routes + demo; P1 table-stakes + Stripe; P2 surveys + data tables + drop-off | It works end-to-end; credible product that beats Google/Gravity-Basic |
+| **Now** | Finish P3: server PDF, native Sheets/Zapier/Make | "Runs your business" positioning (Paperform-class) |
+| **When `@geiger/ai` ships** | P2 AI generation + response analysis | Clear differentiation; press-worthy |
+| **Next** | P4 custom domains + white-label; BAA and certification at suite level | Enterprise/regulated revenue |
 
 ---
 

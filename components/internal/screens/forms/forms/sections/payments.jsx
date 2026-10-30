@@ -66,7 +66,7 @@ export function GatewaysSection({ settings, setGroup }) {
         ) : null}
       </SectionCard>
 
-      <SectionCard title="Stripe connection" description="Payments run through your own Stripe account.">
+      <SectionCard title="Stripe connection" description="Payments run on the Stripe account configured for this deployment.">
         <div className="grid gap-3 text-sm text-text-secondary">
           <p>
             Set <code className="rounded bg-surface-card px-1 text-foreground">STRIPE_SECRET_KEY</code> and{" "}

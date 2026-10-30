@@ -162,10 +162,10 @@ covers more of the buyer's job and displaces a second subscription.
 | **E-signature** | DocuSign, Dropbox Sign, PandaDoc, Papersign | Intake forms → contracts is one flow; Gravity gates a *drawn* signature at $259 and it's not a real e-sign | Add a Signature field + a "send for signing" flow; store signed PDF |
 | **Scheduling / booking** | Calendly, Cal.com, Acuity | "Book a call" is the #1 thing a lead form leads to | A booking field / date-slot picker + calendar sync; or deep link to a Geiger scheduling sibling |
 | **Workflow / approvals** | GravityFlow, Kissflow, Zapier, Make | The form *starts* a process (approval, routing, tasks) | Geiger Flow already exists in the suite — route submissions into Flow issues/approvals |
-| **Surveys / NPS / quiz** | SurveyMonkey, Typeform, Qualtrics | Same builder, different render + reporting | Geiger already has scoring; add survey field types + report views |
+| **Surveys / NPS / quiz** | SurveyMonkey, Typeform, Qualtrics | Same builder, different render + reporting | Shipped: survey field types, scoring and report views (crosstabs and XLSX export still open) |
 | **Payments / order forms** | Stripe Checkout, Paperform, order plugins | Monetization; the highest-value forms | Native Stripe; products, quantities, coupons, subscriptions |
 | **PDF / document generation** | Formstack Documents, WebMerge, GravityPDF | Submissions → branded PDF (invoices, contracts, certificates) | Map answers → PDF template; attach to notifications |
-| **Data tables / no-code apps** | Airtable, Jotform Tables, Baserow | Submissions need to be viewed/managed as a database | Responses screen already exists; add a table/grid + views + filters (Geiger is Supabase-native — natural strength) |
+| **Data tables / no-code apps** | Airtable, Jotform Tables, Baserow | Submissions need to be viewed/managed as a database | Shipped: table and kanban layouts with saved views and filters (Geiger is Supabase-native — natural strength) |
 
 ### Bonus adjacent bets (differentiators, not table stakes)
 - **AI form generation** ("describe your form → built") — Fillout, Paperform,
