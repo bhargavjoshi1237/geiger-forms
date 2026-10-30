@@ -28,7 +28,7 @@ Limits on the Done items: the B3-1 proxy checks only that a session cookie is pr
 
 The "Four false claims" section below has since been corrected in the code and README: the PayPal, custom-domain and CRM claims are gone from the README, and the webhook retry copy is now true ([integrations.jsx](../components/internal/screens/forms/forms/sections/integrations.jsx)). The other rows in that table are corrected too.
 
-**A migration being in the repo doesn't confirm it has been applied.** `npm run db:status` on 2026-10-30 showed 5 applied and 8 pending, so the body's "all five migrations are applied" describes the audit date only, and B1-3, B1-6, B1-8 and B3-2 don't work on the shared database until those 8 are pushed.
+**A migration being in the repo doesn't confirm it has been applied.** The 8 migrations added since the audit, which B1-3, B1-6, B1-8 and B3-2 depend on, were pushed on 2026-10-30 (`npm run db:status`: 13 applied, 0 pending), so the body's "all five migrations are applied" describes the audit date only.
 
 ## Rivals now compete on what happens after the submit button
 
