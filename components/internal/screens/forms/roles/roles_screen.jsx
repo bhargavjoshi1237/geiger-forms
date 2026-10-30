@@ -64,6 +64,8 @@ const PERMISSION_GROUPS = (() => {
 })();
 
 const isOwnerRole = (role) => (role?.permissions || []).includes("*");
+// Same test as forms.role_grant_allowed: only owner-grade callers may touch these grants.
+const isOwnerGrade = (role) => isOwnerRole(role) || role?.key === "owner" || (role?.permissions || []).includes("forms.*");
 
 const memberName = (g, myId, me) => (g.userId === myId ? `${me?.name || "You"} (you)` : `Member ${g.userId.slice(0, 8)}`);
 const matches = (q, values) => values.some((v) => String(v || "").toLowerCase().includes(q));
@@ -201,6 +203,9 @@ export function RolesScreen({ focus = "roles" }) {
     return [...byUser.values()].sort((a, b) => (a.userId === myId ? -1 : b.userId === myId ? 1 : 0));
   }, [grants, myId]);
   const ownerCount = members.filter((g) => isOwnerRole(roleById.get(g.roleId))).length;
+  const iAmOwner = members.some((g) => g.userId === myId && isOwnerRole(roleById.get(g.roleId)));
+  const assignableRoles = iAmOwner ? roles : roles.filter((r) => !isOwnerGrade(r));
+  const canChange = (g) => canAssign && (iAmOwner || !isOwnerGrade(roleById.get(g.roleId)));
   const memberCount = (roleId) => members.filter((g) => g.roleId === roleId).length;
   const selectedRole = roleById.get(selectedRoleId) || roles[0] || null;
 
@@ -351,13 +356,13 @@ export function RolesScreen({ focus = "roles" }) {
       key: "role",
       header: "Role",
       render: (g) =>
-        canAssign ? (
+        canChange(g) ? (
           <Select value={g.roleId || ""} onValueChange={(roleId) => changeRole(g, roleId)}>
             <SelectTrigger className="h-8 w-44 border-border bg-surface-card text-xs text-foreground">
               <SelectValue placeholder="Pick a role" />
             </SelectTrigger>
             <SelectContent>
-              {roles.map((r) => (
+              {assignableRoles.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
                   {r.name}
                 </SelectItem>
@@ -384,7 +389,7 @@ export function RolesScreen({ focus = "roles" }) {
       header: "",
       align: "right",
       render: (g) =>
-        canAssign && g.userId !== myId ? (
+        canChange(g) && g.userId !== myId ? (
           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 dark:text-red-400 hover:bg-red-500/10" aria-label="Revoke access" onClick={() => removeMember(g)}>
             <Trash2 className="h-4 w-4" />
           </Button>

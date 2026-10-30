@@ -39,6 +39,7 @@ npm run db:seed        # optional: the /form/demo form linked from the landing p
 - `20261008155426_platform_expansion` is **required** by the current code (new columns and tables).
 - `20261008155427_lock_down_rls` replaces the demo-open policies with `@geiger/rbac` grants and removes anon access. Push it once the workspace runs behind a signed-in suite session; without a session the workspace sees no rows.
 - `20261021104907_inbox_members`, `20261021104920_webhook_retries`, `20261021105053_retire_unscoped_access` and `20261021105156_forms_media` are required by the current code: member assignees and mentions, webhook retries and replay, creator-only access to forms without a project, and the public `forms-media` bucket for builder images.
+- `20261021114224_rbac_trust_hardening`, `20261021114225_tamper_proof_audit`, `20261021114347_tighten_privileges` and `20261024205726_rbac_owner_grade_guard` close security gaps in role grants, comments, the audit log and webhook payloads. Push them in the same run: the hardening migration leaves `created_by` self-promotion open until the guard lands.
 
 ## 3. Run
 
