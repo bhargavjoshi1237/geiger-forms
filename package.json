@@ -12,20 +12,24 @@
     "db:rollback": "geiger-orm rollback",
     "db:new": "geiger-orm create",
     "db:seed": "geiger-orm seed",
-    "ui:update": "npm update @geiger/ui"
+    "ui:update": "npm update @geiger/ui",
+    "test": "node --import ./lib/playground/__tests__/register.mjs --test \"lib/**/*.test.mjs\" \"app/**/*.test.mjs\""
   },
   "dependencies": {
     "@geiger/orm": "github:bhargavjoshi1237/geiger-orm#master",
     "@geiger/rbac": "github:bhargavjoshi1237/geiger-rbac#1835de3735cf9c86df5adebdbc7458dd4302e40d",
     "@geiger/ui": "github:bhargavjoshi1237/geiger-ui#258dd6aa93dbf55262eb37055fcc5ef61da24a5b",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.106.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "input-otp": "^1.5.0",
     "lucide-react": "^0.575.0",
+    "mcp-handler": "^2.3.0",
     "next": "^16.3.1",
     "next-themes": "^0.4.6",
+    "pdf-lib": "1.17.1",
     "qrcode": "^1.5.4",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
@@ -35,7 +39,8 @@
     "recharts": "^3.8.1",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.5.0",
-    "vaul": "^1.1.2"
+    "vaul": "^1.1.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

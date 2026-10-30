@@ -85,7 +85,7 @@
       ".gf-embed-bubble{position:fixed;right:20px;bottom:20px;z-index:99999;display:flex;align-items:center;justify-content:center;width:56px;height:56px;padding:0;border:0;border-radius:50%;cursor:pointer;background:#111;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.25)}" +
       ".gf-embed-bubble.gf-left{right:auto;left:20px}" +
       ".gf-embed-button:hover,.gf-embed-tab:hover,.gf-embed-bubble:hover{opacity:.9}" +
-      ".gf-embed-button:focus-visible,.gf-embed-tab:focus-visible,.gf-embed-bubble:focus-visible,.gf-embed-close:focus-visible{outline:2px solid #6366f1;outline-offset:2px}" +
+      ".gf-embed-button:focus-visible,.gf-embed-tab:focus-visible,.gf-embed-bubble:focus-visible,.gf-embed-close:focus-visible{outline:2px solid #6366f1;outline-offset:2px;box-shadow:0 0 0 2px #fff}" +
       ".gf-embed-overlay{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;transition:opacity .2s ease}" +
       ".gf-embed-modal{position:relative;width:100%;max-width:var(--gf-width,720px);max-height:calc(100vh - 32px);overflow:auto;border-radius:16px;background:transparent;box-shadow:0 24px 64px rgba(0,0,0,.45);transform:translateY(8px);transition:transform .2s ease}" +
       ".gf-slider,.gf-fullscreen{padding:0}" +
@@ -100,8 +100,8 @@
       ".gf-embed-overlay.gf-open,.gf-embed-popover.gf-open{opacity:1}" +
       ".gf-embed-overlay.gf-open .gf-embed-modal,.gf-embed-popover.gf-open{transform:none}" +
       ".gf-embed-overlay[hidden],.gf-embed-popover[hidden]{display:none}" +
-      ".gf-embed-close{position:absolute;top:10px;right:10px;z-index:1;width:32px;height:32px;border-radius:8px;border:0;cursor:pointer;background:rgba(127,127,127,.18);font:20px/1 system-ui,sans-serif;mix-blend-mode:difference;color:#fff}" +
-      ".gf-embed-close:hover{background:rgba(127,127,127,.3)}" +
+      ".gf-embed-close{position:absolute;top:10px;right:10px;z-index:1;width:32px;height:32px;border-radius:8px;border:0;cursor:pointer;background:#111;font:20px/1 system-ui,sans-serif;color:#fff}" +
+      ".gf-embed-close:hover{background:#333}" +
       ".gf-embed-guard{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0}" +
       "@media (prefers-color-scheme:dark){.gf-slider .gf-embed-modal,.gf-fullscreen .gf-embed-modal,.gf-embed-popover{background:#111}}" +
       "@media (max-width:640px){.gf-slider .gf-embed-modal{max-width:none}.gf-embed-popover,.gf-embed-popover.gf-left{left:0;right:0;bottom:0;width:auto;max-height:85vh;border-radius:16px 16px 0 0;transform-origin:bottom center}}" +
@@ -128,14 +128,18 @@
     return iframe;
   }
 
-  // Applies a custom launcher colour with readable text on top.
+  // Applies a custom launcher colour with whichever of black or white text has the higher WCAG contrast.
   function paint(el, color) {
     if (!color) return;
     el.style.background = color;
-    var hex = /^#([0-9a-f]{6})$/i.exec(color);
+    var hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color);
     if (!hex) return;
-    var n = parseInt(hex[1], 16);
-    el.style.color = ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150 ? "#111" : "#fff";
+    var h = hex[1].length === 3 ? hex[1].replace(/./g, "$&$&") : hex[1];
+    var lum = [0, 2, 4].reduce(function (sum, at, i) {
+      var c = parseInt(h.slice(at, at + 2), 16) / 255;
+      return sum + [0.2126, 0.7152, 0.0722][i] * (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+    }, 0);
+    el.style.color = 1.05 / (lum + 0.05) >= (lum + 0.05) / 0.05 ? "#fff" : "#000";
   }
 
   // Locks page scroll while a modal is open, padding for the scrollbar so the page doesn't shift.
@@ -205,7 +209,7 @@
 
     function attachFrame() {
       var url = formUrl(cfg.slug, Object.assign({}, cfg.params, { solid: "1" }), cfg.inherit);
-      record = { iframe: createFrame(url, cfg.title, fill ? "100%" : "480px"), slug: cfg.slug, fill: fill, onSubmit: onSubmit, onEscape: hide };
+      record = { iframe: createFrame(url, cfg.title, fill ? "100%" : "480px"), slug: cfg.slug, fill: fill, onSubmit: onSubmit, onEscape: hide, named: Boolean(cfg.title), dialog: panel };
       panel.insertBefore(record.iframe, endGuard || null);
       frames.push(record);
     }
@@ -353,7 +357,7 @@
   function mountInline(el, cfg) {
     var iframe = createFrame(formUrl(cfg.slug, cfg.params, cfg.inherit), cfg.title, "480px");
     iframe.loading = "lazy";
-    frames.push({ iframe: iframe, slug: cfg.slug });
+    frames.push({ iframe: iframe, slug: cfg.slug, named: Boolean(cfg.title) });
     el.appendChild(iframe);
   }
 
@@ -459,6 +463,10 @@
         if (frame.onSubmit) frame.onSubmit();
       } else if (data.type === "geiger-form:escape" && frame.onEscape) {
         frame.onEscape();
+      } else if (data.type === "geiger-form:title" && typeof data.title === "string" && !frame.named) {
+        // Without an embed title, the generic "Form" name gives way to the form's own once it loads.
+        frame.iframe.title = data.title.slice(0, 200);
+        if (frame.dialog) frame.dialog.setAttribute("aria-label", frame.iframe.title);
       }
       return;
     }

@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   ClipboardCopy,
   Edit3,
+  FileDown,
   Loader2,
   MoreHorizontal,
   PenLine,
@@ -34,7 +35,7 @@ import { logAccess } from "@/lib/supabase/audit";
 import { callApi } from "@/lib/forms/api";
 import { visibleFieldIds } from "@/lib/forms/logic";
 import { answerFields, canonicalFields, fieldLabel, outcomeLabel } from "@/lib/forms/response-utils";
-import { responseCsv } from "@/lib/forms/export";
+import { responseCsv, triggerDownload } from "@/lib/forms/export";
 import { withPrefix } from "@/lib/workspace/base-path";
 import {
   MENU_ITEM,
@@ -211,6 +212,7 @@ export function ResponseDetailPanel({
   const [dialog, setDialog] = useState(null);
   const [escalating, setEscalating] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const canDelete = useCan("forms.response.delete");
   const canExport = useCan("forms.response.export");
   const canAssign = useCan("forms.form.edit");
@@ -262,6 +264,22 @@ export function ResponseDetailPanel({
 
   const print = () => {
     window.open(withPrefix(`/print/response/${row.id}`), "_blank", "noopener");
+  };
+
+  const downloadPdf = async () => {
+    setDownloadingPdf(true);
+    try {
+      const res = await fetch(withPrefix(`/api/responses/${row.id}/pdf`), { credentials: "same-origin" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Couldn't generate the PDF.");
+      }
+      triggerDownload(await res.blob(), `response-${String(row.id).slice(0, 8)}.pdf`, "application/pdf");
+    } catch (e) {
+      toast.error(e?.message || "Couldn't generate the PDF.");
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const copyCsv = async () => {
@@ -354,6 +372,12 @@ export function ResponseDetailPanel({
           <Button type="button" variant="outline" size="sm" className={OUTLINE_BUTTON} onClick={print}>
             <Printer className="h-4 w-4" /> Print / PDF
           </Button>
+          {canExport ? (
+            <Button type="button" variant="outline" size="sm" className={OUTLINE_BUTTON} onClick={downloadPdf} disabled={downloadingPdf}>
+              {downloadingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+              Download PDF
+            </Button>
+          ) : null}
           <Button type="button" variant="outline" size="sm" className={OUTLINE_BUTTON} onClick={() => setDialog("edit")}>
             <Edit3 className="h-4 w-4" /> Request edit
           </Button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Equal, Minus, Plus, Receipt, Tag, X } from "lucide-react";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
@@ -26,7 +26,7 @@ export function CalculatedField({ field, label, allFields, answers, currency }) 
     <div className="flex items-center justify-between gap-4 rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3">
       <span id={ids.label} className="flex min-w-0 items-center gap-2 text-sm text-text-secondary">
         <Equal className="size-4 shrink-0 text-blue-500 dark:text-blue-400" aria-hidden="true" />
-        <span className="truncate">{label}</span>
+        <span className="min-w-0 break-words">{label}</span>
       </span>
       <output aria-labelledby={ids.label} aria-live="polite" suppressHydrationWarning className="shrink-0 font-mono text-lg font-semibold tabular-nums text-foreground">
         {formatCalculated(value, field.config?.format, field.config?.currency || currency)}
@@ -42,12 +42,13 @@ export function ProductField({ field, label, value, onChange, disabled, aria, cu
   const fixed = cfg.quantityMode === "fixed";
   const maxQty = Math.max(1, Number(cfg.maxQuantity) || 10);
   const ids = fieldIds(field);
+  const detailsId = `${ids.control}-details`;
   const locked = disabled || field.readOnly;
   const qty = fixed ? (value ? 1 : 0) : Math.max(0, Math.floor(Number(value) || 0));
   const setQty = (n) => onChange(Math.max(0, Math.min(maxQty, n)) || undefined);
 
   const priceTag = (
-    <span suppressHydrationWarning className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+    <span id={fixed ? undefined : detailsId} suppressHydrationWarning className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
       {formatMoney(price, currency)}
     </span>
   );
@@ -57,7 +58,7 @@ export function ProductField({ field, label, value, onChange, disabled, aria, cu
       <div className="flex items-start justify-between gap-3">
         <span id={ids.label} className="text-sm font-medium leading-5 text-foreground">
           {label}
-          {field.required && <span className="ml-1 text-red-500 dark:text-red-400" aria-hidden="true">*</span>}
+          {field.required && <span className="ml-1 text-red-600 dark:text-red-400" aria-hidden="true">*</span>}
         </span>
         {fixed ? priceTag : null}
       </div>
@@ -81,7 +82,7 @@ export function ProductField({ field, label, value, onChange, disabled, aria, cu
       <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
         {priceTag}
         <div className="flex h-10 items-center overflow-hidden rounded-md border border-border bg-surface-card">
-          <Button type="button" size="icon" variant="ghost" disabled={locked || qty <= 0} aria-label={`${tr("quantity")} −`} onClick={() => setQty(qty - 1)} className="h-full rounded-none">
+          <Button type="button" size="icon" variant="ghost" disabled={locked || qty <= 0} aria-label={`${label}: ${tr("quantity")} −`} onClick={() => setQty(qty - 1)} className="h-full rounded-none">
             <Minus />
           </Button>
           <Input
@@ -97,8 +98,9 @@ export function ProductField({ field, label, value, onChange, disabled, aria, cu
             onChange={(e) => setQty(Number(e.target.value))}
             className="w-12 self-stretch !rounded-none border-0 border-x border-border bg-transparent px-1 py-0 text-center tabular-nums shadow-none focus-visible:bg-surface-hover focus-visible:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             {...aria}
+            aria-describedby={[aria?.["aria-describedby"], detailsId].filter(Boolean).join(" ")}
           />
-          <Button type="button" size="icon" variant="ghost" disabled={locked || qty >= maxQty} aria-label={`${tr("quantity")} +`} onClick={() => setQty(qty + 1)} className="h-full rounded-none">
+          <Button type="button" size="icon" variant="ghost" disabled={locked || qty >= maxQty} aria-label={`${label}: ${tr("quantity")} +`} onClick={() => setQty(qty + 1)} className="h-full rounded-none">
             <Plus />
           </Button>
         </div>
@@ -117,8 +119,18 @@ export function OrderTotal({ field, label, form, allFields, answers, onSetAnswer
   const couponsEnabled = Boolean(payments.hasCoupons || (payments.coupons || []).length);
   const interval = order.mode === "subscription" ? tr("perInterval", { interval: order.interval }) : "";
   const ids = fieldIds(field);
+  // Applying swaps the input for the remove button and back, so focus follows to whichever replaces the one just used.
+  const couponFocus = useRef(false);
+  const focusAfterSwap = (el) => {
+    if (el && couponFocus.current) {
+      couponFocus.current = false;
+      el.focus();
+    }
+  };
   const applyCoupon = () => {
-    if (draft.trim()) onSetAnswer?.("__coupon", draft.trim());
+    if (!draft.trim()) return;
+    couponFocus.current = true;
+    onSetAnswer?.("__coupon", draft.trim());
     setDraft("");
   };
 
@@ -126,9 +138,9 @@ export function OrderTotal({ field, label, form, allFields, answers, onSetAnswer
     <section aria-labelledby={ids.label} className="overflow-hidden rounded-lg border border-border bg-surface-card">
       <header className="flex items-center gap-2 border-b border-border px-4 py-2.5">
         <Receipt className="size-4 text-text-tertiary" aria-hidden="true" />
-        <h3 id={ids.label} className="text-sm font-medium text-foreground">
+        <h2 id={ids.label} className="text-sm font-medium text-foreground [font-family:inherit]">
           {label || tr("total")}
-        </h3>
+        </h2>
       </header>
       <div className="grid gap-2 px-4 py-3 text-sm">
         {order.items.length === 0 ? (
@@ -136,7 +148,7 @@ export function OrderTotal({ field, label, form, allFields, answers, onSetAnswer
         ) : (
           order.items.map((item) => (
             <div key={item.fieldId} className="flex items-baseline justify-between gap-3">
-              <span className="min-w-0 truncate text-text-secondary">
+              <span className="min-w-0 break-words text-text-secondary">
                 {item.name}
                 {item.quantity > 1 && <span className="text-text-tertiary"> × {item.quantity}</span>}
               </span>
@@ -154,7 +166,7 @@ export function OrderTotal({ field, label, form, allFields, answers, onSetAnswer
                 {formatMoney(order.subtotal, order.currency)}
               </span>
             </div>
-            <div className="flex justify-between gap-3 text-emerald-600 dark:text-emerald-400">
+            <div className="flex justify-between gap-3 text-emerald-700 dark:text-emerald-400">
               <span>
                 {tr("discount")} ({order.coupon?.code})
               </span>
@@ -173,7 +185,17 @@ export function OrderTotal({ field, label, form, allFields, answers, onSetAnswer
                 <Tag />
                 {appliedCode.toUpperCase()}
               </Badge>
-              <Button type="button" size="xs" variant="ghost" disabled={disabled || !onSetAnswer} onClick={() => onSetAnswer?.("__coupon", undefined)}>
+              <Button
+                ref={focusAfterSwap}
+                type="button"
+                size="xs"
+                variant="ghost"
+                disabled={disabled || !onSetAnswer}
+                onClick={() => {
+                  couponFocus.current = true;
+                  onSetAnswer?.("__coupon", undefined);
+                }}
+              >
                 <X />
                 {tr("couponRemove")}
               </Button>
@@ -181,6 +203,7 @@ export function OrderTotal({ field, label, form, allFields, answers, onSetAnswer
           ) : (
             <div className="flex gap-2">
               <Input
+                ref={focusAfterSwap}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
@@ -203,7 +226,7 @@ export function OrderTotal({ field, label, form, allFields, answers, onSetAnswer
       )}
       <footer className="flex items-baseline justify-between gap-3 border-t border-border bg-surface-subtle px-4 py-3">
         <span className="text-sm font-medium text-foreground">{tr("total")}</span>
-        <span className="text-lg font-semibold tabular-nums text-foreground">
+        <span aria-live="polite" aria-atomic="true" className="text-lg font-semibold tabular-nums text-foreground">
           <span suppressHydrationWarning>{formatMoney(order.total, order.currency)}</span>
           {interval && <span className="ml-1 text-xs font-normal text-text-secondary">{interval}</span>}
         </span>

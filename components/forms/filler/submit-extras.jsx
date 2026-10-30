@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ExternalLink, FileCheck2, ShieldCheck, UserRoundCog } from "lucide-react";
+import { Button } from "@geiger/ui/button";
 import { Checkbox } from "@geiger/ui/checkbox";
 import { Input } from "@geiger/ui/input";
 import { Label } from "@geiger/ui/label";
@@ -13,7 +14,7 @@ const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?ren
 function ExtraError({ id, children }) {
   if (!children) return null;
   return (
-    <p id={id} role="alert" className="mt-2 text-xs font-medium text-red-500 dark:text-red-400">
+    <p id={id} className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">
       {children}
     </p>
   );
@@ -36,7 +37,7 @@ export function DelegateBlock({ value, onChange, tr, error }) {
             <Label htmlFor="gf-delegate-name" className="text-xs font-normal text-text-secondary">
               {tr("delegateName")}
             </Label>
-            <Input id="gf-delegate-name" value={value.forName} autoComplete="off" onChange={(e) => onChange({ ...value, forName: e.target.value })} className="bg-background" aria-invalid={error ? true : undefined} />
+            <Input id="gf-delegate-name" value={value.forName} autoComplete="off" onChange={(e) => onChange({ ...value, forName: e.target.value })} className="bg-background" aria-required={true} aria-invalid={error ? true : undefined} aria-describedby={error ? "gf-delegate-error" : undefined} />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="gf-delegate-email" className="text-xs font-normal text-text-secondary">
@@ -60,7 +61,7 @@ export function AttestationBlock({ statement, checked, onChange, tr, error }) {
         {tr("attestationTitle")}
       </p>
       <label htmlFor="gf-attestation" className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-foreground">
-        <Checkbox id="gf-attestation" checked={checked} onCheckedChange={(c) => onChange(c === true)} className="mt-0.5" aria-invalid={error ? true : undefined} aria-describedby={error ? "gf-attestation-error" : undefined} />
+        <Checkbox id="gf-attestation" checked={checked} onCheckedChange={(c) => onChange(c === true)} className="mt-0.5" aria-required={true} aria-invalid={error ? true : undefined} aria-describedby={error ? "gf-attestation-error" : undefined} />
         <span>{statement}</span>
       </label>
       <ExtraError id="gf-attestation-error">{error}</ExtraError>
@@ -92,12 +93,12 @@ export function PolicyBlock({ policy, value, onChange, tr, error }) {
   return (
     <section className={cn("overflow-hidden rounded-lg border", error ? "border-red-500/40" : "border-border")} aria-labelledby="gf-policy-title">
       <header className="flex items-center justify-between gap-3 border-b border-border bg-surface-card px-4 py-3">
-        <h3 id="gf-policy-title" className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+        <h2 id="gf-policy-title" className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground [font-family:inherit]">
           <FileCheck2 className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
-          <span className="truncate">{policy.title || tr("attestationTitle")}</span>
-        </h3>
+          <span className="min-w-0 break-words">{policy.title || tr("attestationTitle")}</span>
+        </h2>
         {policy.url && (
-          <a href={policy.url} target="_blank" rel="noopener noreferrer" className="flex shrink-0 items-center gap-1 text-xs text-text-secondary underline-offset-4 hover:text-foreground hover:underline">
+          <a href={policy.url} target="_blank" rel="noopener noreferrer" className="flex min-h-6 shrink-0 items-center gap-1 text-xs text-text-secondary underline underline-offset-4 hover:text-foreground">
             {tr("policyOpen")}
             <ExternalLink className="size-3" />
           </a>
@@ -106,6 +107,7 @@ export function PolicyBlock({ policy, value, onChange, tr, error }) {
       {policy.body && (
         <div
           ref={scrollRef}
+          id="gf-policy-body"
           onScroll={onScroll}
           tabIndex={0}
           aria-label={policy.title || tr("attestationTitle")}
@@ -115,7 +117,7 @@ export function PolicyBlock({ policy, value, onChange, tr, error }) {
         </div>
       )}
       <div className="grid gap-3 border-t border-border bg-surface-card px-4 py-3">
-        {requireScroll && !value.scrolled && <p className="text-xs text-text-tertiary">{tr("policyScroll")}</p>}
+        {requireScroll && !value.scrolled && <p id="gf-policy-scroll-hint" className="text-xs text-text-tertiary">{tr("policyScroll")}</p>}
         {policy.requireName !== false && (
           <div className="grid gap-1.5">
             <Label htmlFor="gf-policy-name" className="text-xs font-normal text-text-secondary">
@@ -125,6 +127,9 @@ export function PolicyBlock({ policy, value, onChange, tr, error }) {
               id="gf-policy-name"
               value={value.typedName}
               autoComplete="name"
+              aria-required={true}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "gf-policy-error" : undefined}
               onChange={(e) => onChange({ ...value, typedName: e.target.value })}
               className="bg-background font-medium"
               style={value.typedName ? { fontFamily: "var(--font-playfair), serif", fontStyle: "italic" } : undefined}
@@ -132,7 +137,7 @@ export function PolicyBlock({ policy, value, onChange, tr, error }) {
           </div>
         )}
         <label htmlFor="gf-policy-agree" className={cn("flex items-start gap-3 text-sm text-foreground", canAgree ? "cursor-pointer" : "cursor-not-allowed opacity-60")}>
-          <Checkbox id="gf-policy-agree" checked={value.agreed} disabled={!canAgree} onCheckedChange={(c) => onChange({ ...value, agreed: c === true })} className="mt-0.5" />
+          <Checkbox id="gf-policy-agree" checked={value.agreed} disabled={!canAgree} onCheckedChange={(c) => onChange({ ...value, agreed: c === true })} aria-required={true} aria-invalid={error ? true : undefined} aria-describedby={[requireScroll && !value.scrolled && "gf-policy-scroll-hint", error && "gf-policy-error"].filter(Boolean).join(" ") || undefined} className="mt-0.5" />
           <span>{tr("policyAgree")}</span>
         </label>
         <ExtraError id="gf-policy-error">{error}</ExtraError>
@@ -163,10 +168,12 @@ function loadTurnstile() {
   return turnstilePromise;
 }
 
-// Cloudflare Turnstile widget; reports the token (or "" when it expires).
-export function TurnstileWidget({ siteKey, onToken, theme = "auto", error }) {
+// Cloudflare Turnstile widget; reports the token (or "" when it expires), and offers a retry when it can't load or run.
+export function TurnstileWidget({ siteKey, onToken, theme = "auto", error, tr }) {
   const ref = useRef(null);
   const tokenRef = useRef(onToken);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     tokenRef.current = onToken;
@@ -183,10 +190,13 @@ export function TurnstileWidget({ siteKey, onToken, theme = "auto", error }) {
           theme,
           callback: (token) => tokenRef.current?.(token),
           "expired-callback": () => tokenRef.current?.(""),
-          "error-callback": () => tokenRef.current?.(""),
+          "error-callback": () => {
+            tokenRef.current?.("");
+            setFailed(true);
+          },
         });
       })
-      .catch(() => {});
+      .catch(() => setFailed(true));
     return () => {
       cancelled = true;
       try {
@@ -195,11 +205,27 @@ export function TurnstileWidget({ siteKey, onToken, theme = "auto", error }) {
         // Widget already gone.
       }
     };
-  }, [siteKey, theme]);
+  }, [siteKey, theme, attempt]);
 
   return (
     <div>
-      <div ref={ref} className="min-h-[65px]" />
+      <div ref={ref} id="gf-captcha" tabIndex={-1} role="group" aria-label={tr("verification")} aria-describedby={error ? "gf-captcha-error" : undefined} className="min-h-[65px] outline-none" />
+      {failed && (
+        <div role="alert" className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+          {tr("captchaFailed")}
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            onClick={() => {
+              setFailed(false);
+              setAttempt((n) => n + 1);
+            }}
+          >
+            {tr("retry")}
+          </Button>
+        </div>
+      )}
       <ExtraError id="gf-captcha-error">{error}</ExtraError>
     </div>
   );

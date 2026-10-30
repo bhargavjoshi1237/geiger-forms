@@ -1,7 +1,7 @@
-import { fail, ok } from "@/lib/server/http";
+import { json, ok } from "@/lib/server/http";
 import { formsAdmin } from "@/lib/server/supabase-admin";
-import { toServerForm } from "@/lib/server/forms";
-import { apiForm, authenticateApiKey, scopeToProject } from "@/lib/server/api-keys";
+import { authenticateApiKey, authorizeWrite } from "@/lib/server/api-keys";
+import { API_KEY_ACTOR, apiFailure, apiForm, createForm, listForms } from "@/lib/server/forms-api";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,11 +10,22 @@ export const runtime = "nodejs";
 export async function GET(request) {
   const { key, error } = await authenticateApiKey(request, "read");
   if (error) return error;
-  const query = formsAdmin().from("forms").select("*").is("deleted_at", null).eq("is_template", false).order("updated_at", { ascending: false }).limit(500);
-  const { data, error: dbError } = await scopeToProject(query, key);
-  if (dbError) {
-    console.error("[v1.forms]", dbError.message);
-    return fail("Couldn't load forms.", 500);
+  try {
+    const forms = await listForms(formsAdmin(), key.projectId);
+    return ok({ forms: forms.map((form) => apiForm(form)) });
+  } catch (e) {
+    return apiFailure(e, "v1.forms");
   }
-  return ok({ forms: (data || []).map((row) => apiForm(toServerForm(row))) });
+}
+
+// REST v1: creates a Draft form in the key's project; fields and settings go through the same normalization as the builder.
+export async function POST(request) {
+  const { key, body, error } = await authorizeWrite(request);
+  if (error) return error;
+  try {
+    const form = await createForm(formsAdmin(), { projectId: key.projectId, input: body, actor: API_KEY_ACTOR });
+    return json({ ok: true, form: apiForm(form, { detail: true }) }, 201);
+  } catch (e) {
+    return apiFailure(e, "v1.forms.create");
+  }
 }

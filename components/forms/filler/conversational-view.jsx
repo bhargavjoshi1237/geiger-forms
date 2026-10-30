@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, BookmarkPlus, Check, ChevronDown, ChevronUp, CornerDownLeft } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { Label } from "@geiger/ui/label";
+import { Switch } from "@geiger/ui/switch";
 import { cn } from "@/lib/utils";
 import { isMultiChoice } from "@/lib/forms/field-types";
+import { optionForLetter } from "@/lib/forms/a11y";
+import { fieldIds } from "@/components/forms/fields/field-shell";
 import { LinearProgress } from "./progress";
 import { SubmitButton } from "./classic-view";
 import { Banner } from "./banners";
@@ -12,6 +16,8 @@ import { SpotsBadge } from "./form-hero";
 
 const TEXT_ENTRY = new Set(["text", "email", "phone", "url", "number", "currency", "date", "time", "datetime", "textarea", "name", "address"]);
 const LETTER_TYPES = new Set(["select", "multiselect", "picture", "multipicture"]);
+const AUTO_ADVANCE_TYPES = new Set(["select", "picture"]);
+const SHORTCUTS_KEY = "geiger-forms:letter-shortcuts";
 
 // One question per screen with large type, Enter to advance, letter shortcuts for choices and slide transitions.
 export function ConversationalView({
@@ -44,8 +50,28 @@ export function ConversationalView({
   const number = steps.slice(0, stepIndex + 1).filter((s) => s.field).length;
   const field = step?.field;
   const statement = step?.statement;
+  const [lettersOn, setLettersOn] = useState(true);
 
-  // Keyboard: Enter advances (Shift+Enter keeps a newline in long text); A–Z picks choice options.
+  // The respondent's choice to turn letter shortcuts off (WCAG 2.1.4) sticks across forms on this device.
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (window.localStorage.getItem(SHORTCUTS_KEY) === "off") setLettersOn(false);
+    } catch {
+      // Storage blocked: shortcuts stay on for this visit and can still be switched off.
+    }
+  }, []);
+
+  const toggleLetters = (on) => {
+    setLettersOn(on);
+    try {
+      window.localStorage.setItem(SHORTCUTS_KEY, on ? "on" : "off");
+    } catch {
+      // Storage blocked: the choice lasts until the page reloads.
+    }
+  };
+
+  // Keyboard: Enter advances (Shift+Enter keeps a newline in long text); A–Z picks options, only while focus is inside the question.
   useEffect(() => {
     handlerRef.current = (e) => {
       if (e.defaultPrevented || e.isComposing) return;
@@ -62,10 +88,9 @@ export function ConversationalView({
         onNext();
         return;
       }
-      if (typing || e.metaKey || e.ctrlKey || e.altKey || !field) return;
-      if (!LETTER_TYPES.has(field.type)) return;
-      if (!/^[a-z]$/i.test(e.key)) return;
-      const option = field.options?.[e.key.toUpperCase().charCodeAt(0) - 65];
+      if (typing || e.metaKey || e.ctrlKey || e.altKey || !field || !lettersOn) return;
+      if (!LETTER_TYPES.has(field.type) || !containerRef.current?.contains(target)) return;
+      const option = optionForLetter(e.key, field.options);
       if (!option) return;
       e.preventDefault();
       if (!isMultiChoice(field.type)) {
@@ -92,13 +117,14 @@ export function ConversationalView({
   }, [step?.id, field]);
 
   const hint = field?.type === "textarea" ? tr("shiftEnter") : tr("pressEnter");
+  const positionLabel = fieldSteps.length > 0 ? tr("questionOf", { current: Math.max(1, number), total: fieldSteps.length }) : title;
   const error = submitState.status === "error" && submitState.message;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col">
       <div className="mb-6 grid gap-3">
         <div className="flex items-center justify-between gap-3 text-xs text-text-secondary">
-          <span className="min-w-0 truncate font-medium text-foreground">{title}</span>
+          <h1 className="min-w-0 break-words text-xs font-medium text-foreground [font-family:inherit]">{title}</h1>
           <SpotsBadge form={form} tr={tr} />
         </div>
         {settings.progressBar !== false && <LinearProgress index={stepIndex} total={steps.length} label={tr("questionOf", { current: number, total: fieldSteps.length })} />}
@@ -110,18 +136,29 @@ export function ConversationalView({
           key={step?.id}
           ref={containerRef}
           tabIndex={-1}
-          aria-live="polite"
+          role="group"
+          aria-labelledby={field ? fieldIds(field).label : undefined}
+          aria-label={field ? undefined : positionLabel}
           className={cn("outline-none animate-in fade-in-0 duration-300 ease-out", direction > 0 ? "slide-in-from-bottom-6" : "slide-in-from-top-6")}
         >
           {field && (
             <p className="mb-3 flex items-center gap-1.5 text-sm font-medium tabular-nums text-text-tertiary">
               {number}
               <ArrowRight className="size-3.5 rtl:rotate-180" aria-hidden="true" />
-              {step.pageTitle && <span className="ml-1 truncate font-normal">{step.pageTitle}</span>}
+              {step.pageTitle && <span className="ml-1 min-w-0 break-words font-normal">{step.pageTitle}</span>}
             </p>
           )}
           {step?.preface?.length > 0 && <div className="mb-6 grid gap-4">{step.preface.map((f) => renderField(f, { large: true }))}</div>}
           {field && renderField(field, { large: true, autoFocus: TEXT_ENTRY.has(field.type) })}
+          {field?.required && (
+            <p className="mt-3 text-xs text-text-tertiary">
+              <span className="text-red-600 dark:text-red-400" aria-hidden="true">
+                *
+              </span>{" "}
+              {tr("required")}
+            </p>
+          )}
+          {field && AUTO_ADVANCE_TYPES.has(field.type) && <p className="mt-3 text-xs text-text-tertiary">{tr("autoAdvanceHint")}</p>}
           {statement && renderField(statement, { large: true })}
           {step?.submit && !field && step.preface.length === 0 && (
             <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{tr("submit")}</h2>
@@ -153,7 +190,15 @@ export function ConversationalView({
 
       <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
         <span className="text-xs tabular-nums text-text-tertiary">{fieldSteps.length > 0 && tr("questionOf", { current: Math.max(1, number), total: fieldSteps.length })}</span>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {steps.some((s) => s.field && LETTER_TYPES.has(s.field.type)) && (
+            <span className="mr-1.5 flex items-center gap-1.5">
+              <Label htmlFor="gf-letter-shortcuts" className="text-xs font-normal text-text-tertiary">
+                {tr("shortcutsToggle")}
+              </Label>
+              <Switch id="gf-letter-shortcuts" checked={lettersOn} onCheckedChange={toggleLetters} />
+            </span>
+          )}
           {saveResume && (
             <Button type="button" variant="ghost" size="sm" onClick={onSaveLater} className="text-text-secondary">
               <BookmarkPlus />

@@ -216,9 +216,14 @@ export function renderTypeSettings({ field, onChange, formId, scoring, quiz, cur
           ? `Plays in ${source.provider}'s privacy-enhanced player.`
           : "YouTube, Vimeo or a direct .mp4 / .webm link. Embed code isn't accepted.";
       return (
-        <FieldRow label="Video link" hint={hint}>
-          <TextInput type="url" value={config.url} onChange={(url) => setConfig({ url: url.trim() })} placeholder="https://www.youtube.com/watch?v=…" className={cn(config.url && !source && "border-red-500/40")} />
-        </FieldRow>
+        <div className="space-y-3">
+          <FieldRow label="Video link" hint={hint}>
+            <TextInput type="url" value={config.url} onChange={(url) => setConfig({ url: url.trim() })} placeholder="https://www.youtube.com/watch?v=…" className={cn(config.url && !source && "border-red-500/40")} />
+          </FieldRow>
+          <FieldRow label="Video title" hint="Names the player for screen readers. Use a video with captions so people who can't hear it can follow along.">
+            <TextInput value={config.title} onChange={(title) => setConfig({ title })} placeholder="e.g. Venue walkthrough" />
+          </FieldRow>
+        </div>
       );
     }
     case "matrix":

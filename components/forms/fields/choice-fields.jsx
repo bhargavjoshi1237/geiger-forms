@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ExternalLink, GripVertical } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@geiger/ui/radio-group";
 import { Checkbox } from "@geiger/ui/checkbox";
@@ -59,7 +59,7 @@ export function SingleChoice({ field, value, onChange, disabled, aria, large, on
             className={choiceCardClass(selected, { disabled: disabled || field.readOnly, large })}
           >
             {large ? <KeyBadge index={i} selected={selected} /> : null}
-            <RadioGroupItem id={optId} value={opt} className={cn(large && "sr-only")} />
+            <RadioGroupItem id={optId} value={opt} className={cn("border-border-strong", large && "sr-only")} />
             <span className="min-w-0 flex-1 break-words">{opt}</span>
           </label>
         );
@@ -80,7 +80,7 @@ export function MultiChoice({ field, value, onChange, disabled, aria, large }) {
     onChange(next.length ? options.filter((o) => next.includes(o)) : []);
   };
   return (
-    <div role="group" aria-labelledby={ids.label} className={cn("grid gap-2", options.length > 4 && !large && "sm:grid-cols-2")} {...aria}>
+    <div className={cn("grid gap-2", options.length > 4 && !large && "sm:grid-cols-2")}>
       {options.map((opt, i) => {
         const optId = `${ids.control}-opt-${i}`;
         const checked = selected.includes(opt);
@@ -88,7 +88,7 @@ export function MultiChoice({ field, value, onChange, disabled, aria, large }) {
         return (
           <label key={opt} htmlFor={optId} className={choiceCardClass(checked, { disabled: locked, large })}>
             {large ? <KeyBadge index={i} selected={checked} /> : null}
-            <Checkbox id={optId} checked={checked} disabled={locked} onCheckedChange={() => toggle(opt)} className={cn(large && "sr-only")} />
+            <Checkbox id={optId} checked={checked} disabled={locked} onCheckedChange={() => toggle(opt)} aria-invalid={aria?.["aria-invalid"]} className={cn(large && "sr-only")} />
             <span className="min-w-0 flex-1 break-words">{opt}</span>
           </label>
         );
@@ -114,7 +114,7 @@ export function ConsentCheckbox({ field, label, value, onChange, disabled, aria,
       <span className="min-w-0 flex-1 whitespace-pre-line leading-relaxed text-foreground">
         {label}
         {field.required && (
-          <span className="ml-1 text-red-500 dark:text-red-400" aria-hidden="true">
+          <span className="ml-1 text-red-600 dark:text-red-400" aria-hidden="true">
             *
           </span>
         )}
@@ -134,7 +134,7 @@ export function ConsentField({ field, tr, ...props }) {
           href={policyUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 justify-self-start rounded-sm text-xs font-medium text-text-secondary underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/40"
+          className="inline-flex min-h-6 items-center gap-1.5 justify-self-start rounded-sm text-xs font-medium text-text-secondary underline underline-offset-4 hover:text-foreground"
         >
           {field.config?.policyLabel || tr("policyOpen")}
           <ExternalLink className="size-3.5" aria-hidden="true" />
@@ -145,29 +145,48 @@ export function ConsentField({ field, tr, ...props }) {
 }
 
 // Ranking: drag to reorder (pointer) or use the arrow buttons / Alt+Arrow keys (keyboard).
-export function RankingField({ field, value, onChange, disabled, aria, tr }) {
+export function RankingField({ field, value, onChange, disabled, tr }) {
   const options = field.options || [];
   const current = Array.isArray(value) && value.length ? [...value.filter((v) => options.includes(v)), ...options.filter((o) => !value.includes(o))] : options;
   const [dragIndex, setDragIndex] = useState(null);
   const [overIndex, setOverIndex] = useState(null);
-  const ids = fieldIds(field);
+  const [moved, setMoved] = useState("");
+  const listRef = useRef(null);
+  const pendingFocus = useRef(null);
   const locked = disabled || field.readOnly;
 
-  const move = (from, to) => {
+  const move = (from, to, dir) => {
     if (to < 0 || to >= current.length || from === to) return;
     const next = [...current];
     const [item] = next.splice(from, 1);
     next.splice(to, 0, item);
     onChange(next);
+    setMoved(tr("rankMoved", { item, position: to + 1, total: next.length }));
+    if (dir) pendingFocus.current = { item, dir };
   };
+
+  // Reordering can drop focus and the arrow may just have disabled itself, so keep focus on the moved item.
+  useEffect(() => {
+    const pending = pendingFocus.current;
+    if (!pending) return;
+    pendingFocus.current = null;
+    const row = listRef.current?.children[current.indexOf(pending.item)];
+    (row?.querySelector(`[data-rank-dir="${pending.dir}"]:not(:disabled)`) || row?.querySelector("button:not(:disabled)"))?.focus();
+  });
 
   return (
     <div>
-      <ol role="list" aria-labelledby={ids.label} className="grid gap-2" {...aria}>
+      <ol ref={listRef} role="list" className="grid gap-2">
         {current.map((opt, i) => (
           <li
             key={opt}
             draggable={!locked}
+            onKeyDown={(e) => {
+              if (locked || !e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+              e.preventDefault();
+              if (e.key === "ArrowUp") move(i, i - 1, "up");
+              else move(i, i + 1, "down");
+            }}
             onDragStart={(e) => {
               setDragIndex(i);
               e.dataTransfer.effectAllowed = "move";
@@ -206,10 +225,8 @@ export function RankingField({ field, value, onChange, disabled, aria, tr }) {
                 variant="ghost"
                 disabled={locked || i === 0}
                 aria-label={`${tr("moveUp")}: ${opt}`}
-                onClick={() => move(i, i - 1)}
-                onKeyDown={(e) => {
-                  if (e.altKey && e.key === "ArrowDown") move(i, i + 1);
-                }}
+                data-rank-dir="up"
+                onClick={() => move(i, i - 1, "up")}
               >
                 <ArrowUp />
               </Button>
@@ -219,10 +236,8 @@ export function RankingField({ field, value, onChange, disabled, aria, tr }) {
                 variant="ghost"
                 disabled={locked || i === current.length - 1}
                 aria-label={`${tr("moveDown")}: ${opt}`}
-                onClick={() => move(i, i + 1)}
-                onKeyDown={(e) => {
-                  if (e.altKey && e.key === "ArrowUp") move(i, i - 1);
-                }}
+                data-rank-dir="down"
+                onClick={() => move(i, i + 1, "down")}
               >
                 <ArrowDown />
               </Button>
@@ -230,10 +245,13 @@ export function RankingField({ field, value, onChange, disabled, aria, tr }) {
           </li>
         ))}
       </ol>
+      <p role="status" className="sr-only">
+        {moved}
+      </p>
       <div className="mt-2 flex items-center justify-between gap-3">
         <p className="text-xs text-text-tertiary">{tr("rankHint")}</p>
         {!locked && !(Array.isArray(value) && value.length) && options.length > 0 && (
-          <Button type="button" size="xs" variant="outline" onClick={() => onChange([...options])}>
+          <Button type="button" size="xs" variant="outline" aria-label={`${tr("ok")}: ${tr("rankKeep")}`} onClick={() => onChange([...options])}>
             {tr("ok")}
           </Button>
         )}

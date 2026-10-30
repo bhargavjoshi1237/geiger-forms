@@ -46,8 +46,8 @@ function coerce(type, raw) {
 // read the same tokens to stay the same height; `large` (conversational view) only grows padding and text.
 export const controlSize = (large) => (large ? "py-3 text-base md:text-lg" : "");
 const BOX_PADDING = "px-[var(--input-box-padding-x,0.75rem)] py-[var(--input-box-padding-y,0.5rem)] leading-5";
-export const selectBox = (large) => cn("w-full bg-surface-card data-[size=default]:h-auto", BOX_PADDING, large && "py-3 text-base md:text-lg");
-const textareaBox = (large) => cn("min-h-28 resize-y", BOX_PADDING, large && "text-base md:text-lg");
+export const selectBox = (large) => cn("w-full border-input bg-surface-card data-[size=default]:h-auto", BOX_PADDING, large && "py-3 text-base md:text-lg");
+const textareaBox = (large) => cn("min-h-28 resize-y border-input", BOX_PADDING, large && "text-base md:text-lg");
 
 // Single-line input for text-like, numeric and date/time types; `autoComplete` overrides the field's autofill token.
 export function TextLikeInput({ field, value, onChange, disabled, aria, large, autoFocus, currency, id, onEnter, placeholder, autoComplete }) {
@@ -56,9 +56,11 @@ export function TextLikeInput({ field, value, onChange, disabled, aria, large, a
   const symbol = type === "currency" ? currencySymbol(field.config?.currency || currency) : "";
   const inputType = INPUT_TYPES[type] || "text";
   const numeric = type === "number" || type === "currency";
+  const controlId = id || fieldIds(field).control;
+  const describedBy = [aria?.["aria-describedby"], symbol && `${controlId}-currency`].filter(Boolean).join(" ") || undefined;
   const input = (
     <Input
-      id={id || fieldIds(field).control}
+      id={controlId}
       type={inputType}
       inputMode={INPUT_MODE[type]}
       autoComplete={autoComplete ?? autofillToken(field)}
@@ -82,6 +84,7 @@ export function TextLikeInput({ field, value, onChange, disabled, aria, large, a
       onChange={(e) => onChange(coerce(type, e.target.value))}
       className={cn("bg-surface-card", controlSize(large), symbol && "pl-9", field.readOnly && "cursor-default opacity-80")}
       {...aria}
+      aria-describedby={describedBy}
     />
   );
   if (!symbol) return input;
@@ -89,6 +92,9 @@ export function TextLikeInput({ field, value, onChange, disabled, aria, large, a
     <div className="relative">
       <span suppressHydrationWarning className="pointer-events-none absolute inset-y-0 left-[var(--input-box-padding-x,0.75rem)] flex items-center text-sm text-text-secondary" aria-hidden="true">
         {symbol}
+      </span>
+      <span id={`${controlId}-currency`} className="sr-only">
+        {String(field.config?.currency || currency || "").toUpperCase()}
       </span>
       {input}
     </div>

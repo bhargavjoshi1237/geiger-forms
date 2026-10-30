@@ -9,7 +9,7 @@ import { normalizeSettings, toCanonicalField } from "@/lib/forms/schema";
 import { buildTheme } from "@/lib/forms/theme";
 import { isRtl, resolveLocale, translator } from "@/lib/forms/i18n";
 import { withPrefix } from "@/lib/workspace/base-path";
-import { FillerHeader, FillerShell, PoweredBy, StatusScreen } from "@/components/forms/filler/filler-shell";
+import { FillerFooter, FillerHeader, FillerShell, StatusScreen } from "@/components/forms/filler/filler-shell";
 import { GateScreen } from "@/components/forms/filler/gates";
 import { FormRunner } from "@/components/forms/filler/form-runner";
 import { parseFillerParams, publicApi, restartPath } from "@/components/forms/filler/session";
@@ -38,7 +38,7 @@ export function FormFillerContent({ formId, slug: slugProp, initialPayload = nul
   const [status, setStatus] = useState(() => (initialPayload ? "ready" : initialStatus || "loading"));
   const [password, setPassword] = useState("");
   const [attempt, setAttempt] = useState(0);
-  const notifySubmitted = useEmbedBridge(params.embed, slug);
+  const [gateFromSubmit, setGateFromSubmit] = useState(false);
 
   const fetchPayload = useCallback(async () => {
     const res = await callApi(payloadUrl(slug, params));
@@ -66,6 +66,12 @@ export function FormFillerContent({ formId, slug: slugProp, initialPayload = nul
   const locale = resolveLocale(settings?.locale);
   const tr = useMemo(() => translator(locale), [locale]);
   const title = payload?.variant?.title || form?.title || "";
+  const notifySubmitted = useEmbedBridge(params.embed, slug, title);
+
+  // Server rendering sets the title from metadata; this covers forms the client had to fetch itself.
+  useEffect(() => {
+    if (title && !initialPayload) document.title = `${title} - Geiger Forms`;
+  }, [title, initialPayload]);
 
   const unlock = useCallback(
     async (value) => {
@@ -86,8 +92,9 @@ export function FormFillerContent({ formId, slug: slugProp, initialPayload = nul
   let body;
   if (status === "loading") {
     body = (
-      <div className="flex min-h-[60dvh] items-center justify-center" aria-busy="true">
+      <div role="status" className="flex min-h-[60dvh] items-center justify-center" aria-busy="true">
         <LogoLoading size={params.embed ? 48 : 80} />
+        <span className="sr-only">{tr("loading")}</span>
       </div>
     );
   } else if (status === "missing" || (status === "ready" && !form)) {
@@ -130,7 +137,7 @@ export function FormFillerContent({ formId, slug: slugProp, initialPayload = nul
       </StatusScreen>
     );
   } else if (payload?.gate) {
-    body = <GateScreen gate={payload.gate} gateMessage={payload.gateMessage} form={form} tr={tr} onPassword={unlock} />;
+    body = <GateScreen gate={payload.gate} gateMessage={payload.gateMessage} form={form} tr={tr} onPassword={unlock} focusOnMount={gateFromSubmit} />;
   } else {
     body = (
       <FormRunner
@@ -145,15 +152,17 @@ export function FormFillerContent({ formId, slug: slugProp, initialPayload = nul
         locale={locale}
         embed={params.embed}
         onSubmitted={notifySubmitted}
-        onGate={(gate, message) => setPayload((cur) => ({ ...cur, gate, gateMessage: message || cur?.gateMessage || "" }))}
+        onGate={(gate, message) => {
+          setGateFromSubmit(true);
+          setPayload((cur) => ({ ...cur, gate, gateMessage: message || cur?.gateMessage || "" }));
+        }}
       />
     );
   }
 
   return (
-    <FillerShell theme={theme} embed={params.embed} transparent={params.embed && !params.solid} dir={isRtl(locale) ? "rtl" : "ltr"} lang={locale} header={header}>
+    <FillerShell theme={theme} embed={params.embed} transparent={params.embed && !params.solid} dir={isRtl(locale) ? "rtl" : "ltr"} lang={locale} header={header} footer={<FillerFooter tr={tr} branding={Boolean(form && theme.branding && status === "ready")} />}>
       {body}
-      {form && theme.branding && status === "ready" && <PoweredBy tr={tr} />}
     </FillerShell>
   );
 }

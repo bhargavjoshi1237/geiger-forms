@@ -18,6 +18,9 @@ export function NotificationsSection({ form, settings, set }) {
       <SectionCard title="Confirmation email" description="Sent to the respondent right after they submit.">
         <SettingsList>
           <SettingRow title="Email respondents a confirmation" checked={Boolean(settings.confirmEmail)} onCheckedChange={(v) => set("confirmEmail", v)} />
+          {settings.confirmEmail ? (
+            <SettingRow title="Attach a PDF of the response" description="Sensitive answers stay masked and internal details are left out. If the PDF can't be generated, the email still goes out." checked={Boolean(settings.confirmAttachPdf)} onCheckedChange={(v) => set("confirmAttachPdf", v)} />
+          ) : null}
         </SettingsList>
         {settings.confirmEmail ? (
           <div className="mt-4 grid gap-4">
@@ -39,6 +42,7 @@ export function NotificationsSection({ form, settings, set }) {
             <ChipsInput value={settings.notifyEmails || []} onChange={(v) => set("notifyEmails", v)} placeholder="ops@company.com" />
           </Field>
           <SettingsList>
+            <SettingRow title="Attach a PDF to team emails" description="The full record with its audit trail, sensitive answers masked. If the PDF can't be generated, the email still goes out." checked={Boolean(settings.notifyAttachPdf)} onCheckedChange={(v) => set("notifyAttachPdf", v)} />
             <SettingRow title="Notify in Geiger Flow" description="Post new responses to the project's Flow activity." checked={Boolean(settings.notifyFlow)} onCheckedChange={(v) => set("notifyFlow", v)} />
           </SettingsList>
           <Field label="Weekly report" hint="A digest of responses, completion and items needing review, sent Mondays (UTC).">

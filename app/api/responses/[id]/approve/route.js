@@ -1,8 +1,7 @@
 import { appOrigin, fail, forbidden, ok, readJson } from "@/lib/server/http";
 import { formsAdmin } from "@/lib/server/supabase-admin";
 import { userCan } from "@/lib/server/auth";
-import { maskEncrypted } from "@/lib/server/crypto";
-import { logActivity } from "@/lib/server/forms";
+import { logActivity, safeAnswers } from "@/lib/server/forms";
 import { sendApprovalRequest, sendDecision } from "@/lib/server/side-effects";
 import { dispatchEvent, responsePayload } from "@/lib/server/webhooks";
 import { requireResponse } from "@/lib/server/workspace";
@@ -49,7 +48,7 @@ export async function POST(request, { params }) {
   }
 
   const origin = appOrigin(request);
-  const payload = responsePayload(form, updated, maskEncrypted(updated.answers));
+  const payload = responsePayload(form, updated, safeAnswers(updated, form, "[protected]"));
   await Promise.allSettled([
     hasNext ? sendApprovalRequest({ form, row: updated, origin }) : sendDecision({ form, row: updated, decision, note }),
     !hasNext ? dispatchEvent(form, decision === "approve" ? "response.approved" : "response.updated", payload, updated.id) : null,

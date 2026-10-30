@@ -57,13 +57,14 @@ export function ImageBlock({ field, caption, preview }) {
 export function VideoBlock({ field, title, caption, preview }) {
   const source = videoSource(field.config?.url);
   if (!source) return preview ? <MissingMedia Icon={VideoOff} text="Add a YouTube, Vimeo or MP4 link in the field settings." /> : null;
+  const name = field.config?.title || title || `${source.provider || "Form"} video`;
   return (
     <figure className="grid gap-2">
       <div className="aspect-video w-full overflow-hidden rounded-xl border border-border bg-black">
         {source.kind === "embed" ? (
           <iframe
             src={source.src}
-            title={title || `${source.provider} video`}
+            title={name}
             loading="lazy"
             allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
@@ -72,7 +73,7 @@ export function VideoBlock({ field, title, caption, preview }) {
             className="size-full border-0"
           />
         ) : (
-          <video src={source.src} controls preload="metadata" playsInline aria-label={title} className="size-full" />
+          <video src={source.src} controls preload="metadata" playsInline aria-label={name} className="size-full" />
         )}
       </div>
       <Caption text={caption} />

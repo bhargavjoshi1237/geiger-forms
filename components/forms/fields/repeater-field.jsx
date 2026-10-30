@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { Label } from "@geiger/ui/label";
@@ -16,7 +17,7 @@ function SubInput({ sub, id, value, onChange, disabled, tr }) {
 }
 
 // Repeating group: rows of sub-fields with add/remove bounded by config.minRows / maxRows.
-export function RepeaterField({ field, value, onChange, disabled, aria, tr }) {
+export function RepeaterField({ field, value, onChange, disabled, tr }) {
   const cfg = field.config || {};
   const subs = Array.isArray(cfg.subFields) ? cfg.subFields : [];
   const minRows = Math.max(0, Number(cfg.minRows) || 0);
@@ -27,17 +28,38 @@ export function RepeaterField({ field, value, onChange, disabled, aria, tr }) {
   const locked = disabled || field.readOnly;
   const canRemove = rows.length > minRows && !(rows.length === 1 && stored.length === 0);
 
+  const [status, setStatus] = useState("");
+  const rootRef = useRef(null);
+  const pendingFocus = useRef(null);
+
   const setCell = (ri, subId, v) => onChange(rows.map((row, i) => (i === ri ? { ...row, [subId]: v } : row)));
-  const addRow = () => onChange([...rows, {}]);
+  const addRow = () => {
+    onChange([...rows, {}]);
+    setStatus(tr("entryAdded", { n: rows.length + 1 }));
+    pendingFocus.current = rows.length;
+  };
   const removeRow = (ri) => {
     const next = rows.filter((_, i) => i !== ri);
     onChange(next.length ? next : undefined);
+    setStatus(tr("entryRemoved", { n: ri + 1 }));
+    pendingFocus.current = Math.max(0, ri - 1);
   };
 
+  // Adding moves focus into the new entry; removing, whose button just vanished, moves it to the entry before.
+  useEffect(() => {
+    if (pendingFocus.current == null) return;
+    const entry = rootRef.current?.querySelector(`[data-gf-entry="${pendingFocus.current}"]`);
+    pendingFocus.current = null;
+    entry?.querySelector("input, textarea, [role='combobox']")?.focus();
+  });
+
   return (
-    <div role="group" aria-labelledby={ids.label} className="grid gap-2.5" {...aria}>
+    <div ref={rootRef} className="grid gap-2.5">
+      <p role="status" className="sr-only">
+        {status}
+      </p>
       {rows.map((row, ri) => (
-        <div key={ri} className="rounded-lg border border-border bg-surface-card p-3">
+        <div key={ri} role="group" aria-label={tr("entry", { n: ri + 1 })} data-gf-entry={ri} className="rounded-lg border border-border bg-surface-card p-3">
           <div className="mb-2.5 flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-text-secondary">{tr("entry", { n: ri + 1 })}</span>
             {canRemove ? (
@@ -53,7 +75,7 @@ export function RepeaterField({ field, value, onChange, disabled, aria, tr }) {
                 <div key={sub.id} className={sub.type === "textarea" ? "grid gap-1.5 sm:col-span-2" : "grid gap-1.5"}>
                   <Label htmlFor={id} className="text-xs font-normal text-text-secondary">
                     {sub.label || "Field"}
-                    {sub.required && <span className="text-red-500 dark:text-red-400" aria-hidden="true">*</span>}
+                    {sub.required && <span className="text-red-600 dark:text-red-400" aria-hidden="true">*</span>}
                   </Label>
                   <SubInput sub={sub} id={id} value={row?.[sub.id]} onChange={(v) => setCell(ri, sub.id, v)} disabled={locked} tr={tr} />
                 </div>

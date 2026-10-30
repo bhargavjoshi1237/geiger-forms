@@ -19,7 +19,7 @@ function PictureCard({ option, index, image, control, selected, locked, large, h
       htmlFor={optId}
       {...advance}
       className={cn(
-        "group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border bg-surface-card text-left text-sm transition-[border-color,background-color,box-shadow] duration-150 outline-none focus-within:ring-[3px] focus-within:ring-ring/40",
+        "group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border bg-surface-card text-left text-sm transition-[border-color,background-color,box-shadow] duration-150 outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
         selected ? "border-primary text-foreground shadow-[inset_0_0_0_1px_var(--primary)]" : "border-border text-text-secondary hover:border-border-strong hover:text-foreground",
         locked && "pointer-events-none opacity-60",
       )}
@@ -89,7 +89,7 @@ export function PictureChoice({ field, value, onChange, disabled, aria, large, o
     onChange(options.filter((o) => next.includes(o)));
   };
   return (
-    <div role="group" aria-labelledby={ids.label} className={grid} {...aria}>
+    <div className={grid}>
       {options.map((opt, i) => {
         const checked = selected.includes(opt);
         const optLocked = locked || (max > 0 && selected.length >= max && !checked);
@@ -99,7 +99,7 @@ export function PictureChoice({ field, value, onChange, disabled, aria, large, o
             {...cardProps(opt, i)}
             selected={checked}
             locked={optLocked}
-            control={<Checkbox id={optId(i)} checked={checked} disabled={optLocked} onCheckedChange={() => toggle(opt)} className="sr-only" />}
+            control={<Checkbox id={optId(i)} checked={checked} disabled={optLocked} onCheckedChange={() => toggle(opt)} aria-invalid={aria?.["aria-invalid"]} className="sr-only" />}
           />
         );
       })}

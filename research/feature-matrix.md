@@ -53,7 +53,7 @@ not be applied yet. Competitor columns are unchanged from the mid-2026 study.
 | E-signature | $ Elite (draw) | ✕ | ✔ Sign | ✕ | ✔ | ✔ | 🟠 Draw or type, countersign; no signing order |
 | Surveys / NPS | $ Elite | ✔ | ✔ | ➖ | ➖ | ➖ | 🔵 Have (NPS, reports; no crosstabs) |
 | Approvals / workflow | 3rd-party | ✕ | ✔ | ✕ | ✕ | ✔ | 🟠 Sequential chain, Flow issues; no parallel |
-| PDF/doc generation | 3rd-party | ✕ | ✔ | ✕ | ➖ | ✔ | 🟠 Browser print only |
+| PDF/doc generation | 3rd-party | ✕ | ✔ | ✕ | ➖ | ✔ | 🟠 Server-rendered PDF and browser print; Latin-script font only, no fillable or Word templates |
 | User registration/login | $ Elite | ✕ | ➖ | ✕ | ✕ | ➖ | 🟠 Login-gated forms; no registration |
 
 ## 4. Distribution, integrations, platform
@@ -87,8 +87,8 @@ not be applied yet. Competitor columns are unchanged from the mid-2026 study.
 logic, calculations, multi-page, response management, export, public link +
 embed, basic integrations, spam protection, **payments**. As of 2026-10-30 Geiger
 has all of these in code — the gaps left against the rest of the grid are **AI
-generation and analysis (waiting on `@geiger/ai`), custom domains, native
-Sheets/Zapier/Make connectors, and server-rendered PDFs.**
+generation and analysis (waiting on `@geiger/ai`), custom domains, and native
+Sheets/Zapier/Make connectors.**
 
 **Differentiators (where you win):** absorbed adjacent categories (e-sign,
 approvals→Flow, surveys, PDF, data-tables), **AI response analysis**,

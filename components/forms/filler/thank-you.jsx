@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Award, Check, CheckCircle2, Copy, Loader2, RotateCcw, XCircle } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -58,7 +58,7 @@ function QuizSummary({ quiz, fields, showAnswers, tr }) {
           </span>
         )}
       </div>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-active">
+      <div aria-hidden="true" className="mt-4 h-2 overflow-hidden rounded-full bg-surface-active">
         <div className={cn("h-full rounded-full transition-[width] duration-700", quiz.passed === false ? "bg-red-500" : "bg-primary")} style={{ width: `${percent}%` }} />
       </div>
       {showAnswers && results && (
@@ -161,16 +161,33 @@ export function ThankYou({ result, form, answers, slug, tr, onSubmitAnother, red
   const quiz = result?.quiz && settings.quiz?.enabled ? result.quiz : null;
   const showScore = settings.showScore && !quiz && result?.score != null;
   const editUrl = result?.editUrl ? absoluteUrl(result.editUrl, withPrefix) : "";
+  const redirectTarget = redirecting ? safeHttpUrl(result?.checkoutUrl) || safeHttpUrl(ending.redirectUrl) : "";
+  const titleRef = useRef(null);
+
+  // The submit button is gone, so focus lands on the confirmation and a screen reader reads it.
+  useEffect(() => {
+    titleRef.current?.focus({ preventScroll: true });
+  }, []);
 
   return (
     <section className="mx-auto w-full max-w-xl rounded-2xl border border-border bg-surface-subtle p-6 text-center shadow-sm animate-in fade-in-0 zoom-in-95 duration-300 sm:p-8">
       <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
         {redirecting ? <Loader2 className="size-6 animate-spin" /> : <CheckCircle2 className="size-6" />}
       </div>
-      <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <h1 ref={titleRef} tabIndex={-1} className="mt-5 text-2xl font-semibold tracking-tight text-foreground outline-none">
+        {title}
+      </h1>
       <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{redirecting ? tr("redirecting") : text}</p>
 
       <div className="mt-7 flex flex-col items-center gap-4">
+        {redirectTarget && (
+          <Button asChild variant="outline">
+            <a href={redirectTarget} target="_top">
+              {tr("redirectNow")}
+              <ArrowRight className="rtl:rotate-180" />
+            </a>
+          </Button>
+        )}
         {ctaUrl && !redirecting && (
           <Button asChild size="lg" className="min-w-32">
             <a href={ctaUrl} target="_top">

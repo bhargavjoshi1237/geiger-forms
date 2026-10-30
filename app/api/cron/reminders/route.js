@@ -1,8 +1,7 @@
 import { appOrigin, cronAuthError, formUrl, ok, unavailable } from "@/lib/server/http";
 import { formsAdmin } from "@/lib/server/supabase-admin";
-import { interpolate } from "@/lib/forms/logic";
-import { maskEncrypted } from "@/lib/server/crypto";
-import { mergeResponseMeta, toServerForm } from "@/lib/server/forms";
+import { interpolate, sensitiveIdentity } from "@/lib/forms/logic";
+import { mergeResponseMeta, respondentContact, safeAnswers, toServerForm } from "@/lib/server/forms";
 import { isEmailConfigured, renderEmail, sendEmail } from "@/lib/server/email";
 import { bookingConfig } from "@/lib/server/booking";
 
@@ -59,27 +58,30 @@ async function sendFollowUps(db) {
     const followUps = (form.settings.followUps || []).filter((f) => f && f.id && (f.subject || f.body));
     if (!followUps.length) continue;
     const delays = followUps.map((f) => Math.max(0, Number(f.delayHours) || 0));
-    const { data: responses } = await db
+    let query = db
       .from("responses")
       .select("id, answers, metadata, respondent_email, submitted_at")
       .eq("form_id", form.id)
       .is("deleted_at", null)
       .neq("status", "Spam")
-      .not("respondent_email", "is", null)
       .gte("submitted_at", new Date(now - (Math.max(...delays) + 168) * HOUR).toISOString())
-      .lte("submitted_at", new Date(now - Math.min(...delays) * HOUR).toISOString())
-      .limit(1000);
+      .lte("submitted_at", new Date(now - Math.min(...delays) * HOUR).toISOString());
+    // A sensitive email answer leaves the column empty, so those rows are resolved one by one below.
+    if (!sensitiveIdentity(form.fieldDefs).email) query = query.not("respondent_email", "is", null);
+    const { data: responses } = await query.limit(1000);
     for (const r of responses || []) {
+      const to = respondentContact(r, form);
+      if (!to) continue;
       const done = new Set(r.metadata?.followUpsSent || []);
       const age = now - Date.parse(r.submitted_at);
-      const answers = maskEncrypted(r.answers);
+      const answers = safeAnswers(r, form, "[protected]");
       const newlySent = [];
       for (const f of followUps) {
         const delay = Math.max(0, Number(f.delayHours) || 0) * HOUR;
         if (done.has(f.id) || age < delay || age > delay + 168 * HOUR) continue;
         const subject = interpolate(f.subject, form, answers) || `Following up: ${form.title}`;
         const text = interpolate(f.body, form, answers);
-        const result = await sendEmail({ to: r.respondent_email, subject, text, html: renderEmail({ heading: form.title, text }) });
+        const result = await sendEmail({ to, subject, text, html: renderEmail({ heading: form.title, text }) });
         if (result.sent) newlySent.push(f.id);
       }
       if (newlySent.length) {

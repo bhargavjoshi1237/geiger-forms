@@ -3,7 +3,8 @@
 @import "tw-animate-css";
 @import "@geiger/ui/logo-loading.css";
 
-@custom-variant dark (&:is(.dark *));
+/* The nearest mode wins: a forced-light form inside a dark app must not pick up `dark:` utilities. Specificity stays as it was. */
+@custom-variant dark (&:is(.dark *):where(:not(.dark .light *)));
 
 @theme inline {
   --color-background: var(--background);
@@ -201,6 +202,54 @@
   .gf-theme :is(h1, h2) {
     font-family: var(--gf-font-heading);
     font-synthesis-weight: none;
+  }
+}
+
+/* Respondent filler accessibility (docs/accessibility-audit.md). Tokens mirror lib/forms/theme.js for auto-mode forms; forced modes set them inline. */
+body:has([data-gf-root]) {
+  --muted-foreground: #6b6b75;
+  --input: #8a8a8a;
+  --ring: #71717a;
+  --border-strong: #8a8a8a;
+  --text-tertiary: #6b6b6b;
+}
+
+.dark body:has([data-gf-root]) {
+  --muted-foreground: #a3a3a3;
+  --destructive: #ef4444;
+  --input: #7a7a7a;
+  --ring: #a3a3a3;
+  --border-strong: #7a7a7a;
+  --text-secondary: #a3a3a3;
+  --text-tertiary: #999999;
+}
+
+/* The suite's focus ring is a translucent token; this is a solid 3:1 indicator. Programmatic focus targets keep none. */
+[data-gf-root] :focus-visible:not(h1, ul, [role="group"], [role="alert"]),
+body:has([data-gf-root]) [role="dialog"] :focus-visible,
+body:has([data-gf-root]) [role="listbox"] :focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+body:has([data-gf-root]) [role="option"]:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Tabbing backwards must not land a control under the sticky header (WCAG 2.4.11). */
+html:has([data-gf-root]) {
+  scroll-padding-top: 4.5rem;
+  scroll-padding-bottom: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has([data-gf-root]) *,
+  body:has([data-gf-root]) *::before,
+  body:has([data-gf-root]) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

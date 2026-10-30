@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Logo from "@geiger/ui/logo";
 import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
 import { cn } from "@/lib/utils";
 import { backgroundStyle, cssVariables } from "@/lib/forms/theme";
 import { withPrefix } from "@/lib/workspace/base-path";
 
-// Mirrors the form theme (tokens and body font) onto <body> so portalled popovers/dialogs match, and makes embeds transparent.
-function useBodyTheme(theme, transparent) {
+// Mirrors the form theme (tokens, mode, body font) onto <body> so portalled popovers/dialogs match, sets the page's language and direction, and makes embeds transparent.
+function useBodyTheme(theme, transparent, lang, dir) {
   useEffect(() => {
     const body = document.body;
     const html = document.documentElement;
@@ -18,6 +18,16 @@ function useBodyTheme(theme, transparent) {
     const prevBg = body.style.background;
     const prevHtmlBg = html.style.background;
     const prevFont = body.style.fontFamily;
+    const prevLang = html.lang;
+    const prevDir = html.dir;
+    const prevScheme = body.style.colorScheme;
+    if (lang) html.lang = lang;
+    html.dir = dir;
+    // A body-level mode class makes `dark:` utilities in portals follow the form, not the visitor's app theme.
+    if (theme?.mode) {
+      body.classList.add(theme.mode);
+      body.style.colorScheme = theme.mode;
+    }
     if (theme?.fontFamily) body.style.fontFamily = theme.fontFamily;
     if (transparent) {
       body.style.background = "transparent";
@@ -31,13 +41,17 @@ function useBodyTheme(theme, transparent) {
       body.style.background = prevBg;
       html.style.background = prevHtmlBg;
       body.style.fontFamily = prevFont;
+      html.lang = prevLang;
+      html.dir = prevDir;
+      if (theme?.mode) body.classList.remove(theme.mode);
+      body.style.colorScheme = prevScheme;
     };
-  }, [theme, transparent]);
+  }, [theme, transparent, lang, dir]);
 }
 
 // Themed root: CSS variables, mode class, font, page background and text direction.
-export function FillerShell({ theme, embed = false, transparent = false, dir = "ltr", lang, header, children }) {
-  useBodyTheme(theme, transparent);
+export function FillerShell({ theme, embed = false, transparent = false, dir = "ltr", lang, header, footer, children }) {
+  useBodyTheme(theme, transparent, lang, dir);
   return (
     <div
       dir={dir}
@@ -48,7 +62,8 @@ export function FillerShell({ theme, embed = false, transparent = false, dir = "
     >
       {theme?.fontUrl ? <link rel="stylesheet" href={theme.fontUrl} /> : null}
       {!embed && header}
-      <main className={cn("mx-auto w-full", embed ? (transparent ? "px-1 py-2" : "px-4 py-6 sm:px-6") : "px-4 pb-16 pt-6 sm:px-6 sm:pt-10")}>{children}</main>
+      <main className={cn("mx-auto w-full", embed ? (transparent ? "px-1 pt-2" : "px-4 pt-6 sm:px-6") : "px-4 pt-6 sm:px-6 sm:pt-10")}>{children}</main>
+      {footer && <footer className={cn("px-4 sm:px-6", embed ? (transparent ? "pb-2 pt-4" : "pb-6 pt-6") : "pb-16 pt-8")}>{footer}</footer>}
     </div>
   );
 }
@@ -66,7 +81,7 @@ function initials(name) {
 export function FillerHeader({ title, theme, user, tr }) {
   const logo = theme?.showIcon && theme?.logoUrl ? theme.logoUrl : "";
   return (
-    <header className="sticky top-0 z-20 flex h-14 w-full items-center justify-between gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
+    <header className="sticky top-0 z-20 flex h-14 w-full [@media(max-height:480px)]:static items-center justify-between gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
       <div className="flex min-w-0 items-center gap-1.5">
         <span className="flex size-8 shrink-0 items-center justify-center" aria-hidden="true">
           {logo ? (
@@ -90,17 +105,24 @@ export function FillerHeader({ title, theme, user, tr }) {
   );
 }
 
-export function PoweredBy({ tr }) {
+const FOOTER_LINK = "flex min-h-6 w-fit items-center gap-1.5 rounded-full border border-border bg-surface-subtle/80 px-3 py-1 text-[11px] text-text-secondary transition-colors hover:text-foreground";
+
+// Footer links; the statement link shows on every form, including ones with Geiger branding off. Both open in a new tab so answers aren't lost.
+export function FillerFooter({ tr, branding }) {
   return (
-    <a
-      href={withPrefix("/")}
-      target="_blank"
-      rel="noopener"
-      className="mx-auto mt-8 flex w-fit items-center gap-1.5 rounded-full border border-border bg-surface-subtle/80 px-3 py-1 text-[11px] text-text-secondary transition-colors hover:text-foreground"
-    >
-      <Logo size={11} />
-      {tr("poweredBy")}
-    </a>
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {branding && (
+        <a href={withPrefix("/")} target="_blank" rel="noopener" className={FOOTER_LINK}>
+          <Logo size={11} />
+          {tr("poweredBy")}
+          <span className="sr-only"> {tr("opensNewTab")}</span>
+        </a>
+      )}
+      <a href={withPrefix("/accessibility")} target="_blank" rel="noopener" className={FOOTER_LINK}>
+        {tr("accessibility")}
+        <span className="sr-only"> {tr("opensNewTab")}</span>
+      </a>
+    </div>
   );
 }
 
@@ -111,16 +133,22 @@ const TONES = {
   danger: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
 };
 
-// Centered card for gates, errors and terminal states.
-export function StatusScreen({ icon: Icon, tone = "default", title, description, children, className }) {
+// Centered card for gates, errors and terminal states; `focusOnMount` is for when it replaces a form the respondent was using.
+export function StatusScreen({ icon: Icon, tone = "default", title, description, children, className, focusOnMount = false }) {
+  const titleRef = useRef(null);
+  useEffect(() => {
+    if (focusOnMount) titleRef.current?.focus({ preventScroll: true });
+  }, [focusOnMount]);
   return (
-    <section className={cn("mx-auto w-full max-w-lg rounded-2xl border border-border bg-surface-subtle p-8 text-center shadow-sm animate-in fade-in-0 zoom-in-95 duration-300", className)}>
+    <section role={tone === "warning" || tone === "danger" ? "alert" : undefined} className={cn("mx-auto w-full max-w-lg rounded-2xl border border-border bg-surface-subtle p-8 text-center shadow-sm animate-in fade-in-0 zoom-in-95 duration-300", className)}>
       {Icon && (
         <div className={cn("mx-auto flex size-14 items-center justify-center rounded-2xl border", TONES[tone] || TONES.default)}>
           <Icon className="size-6" />
         </div>
       )}
-      <h1 className="mt-5 text-xl font-semibold text-foreground">{title}</h1>
+      <h1 ref={titleRef} tabIndex={-1} className="mt-5 text-xl font-semibold text-foreground outline-none">
+        {title}
+      </h1>
       {description && <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{description}</p>}
       {children && <div className="mt-7 flex flex-col items-center gap-3">{children}</div>}
     </section>

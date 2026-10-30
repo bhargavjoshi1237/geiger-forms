@@ -28,7 +28,13 @@ function parentOrigin(embed) {
 }
 
 // In embed mode, reports height and unhandled Escape presses and announces submissions, posting only to the parent's origin.
-export function useEmbedBridge(embed, slug) {
+export function useEmbedBridge(embed, slug, title) {
+  // Names the host page's iframe and dialog after the form when the embed code didn't set a title.
+  useEffect(() => {
+    const target = parentOrigin(embed);
+    if (target && title) window.parent.postMessage({ type: "geiger-form:title", slug, title }, target);
+  }, [embed, slug, title]);
+
   useEffect(() => {
     const target = parentOrigin(embed);
     if (!target) return undefined;

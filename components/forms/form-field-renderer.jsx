@@ -1,7 +1,8 @@
 "use client";
 
 import { interpolate } from "@/lib/forms/logic";
-import { translator } from "@/lib/forms/i18n";
+import { resolveLocale, translator } from "@/lib/forms/i18n";
+import { errorLanguage } from "@/lib/forms/a11y";
 import { FieldShell, ariaProps } from "@/components/forms/fields/field-shell";
 import { DropdownInput, LongTextInput, TextLikeInput } from "@/components/forms/fields/basic-inputs";
 import { ConsentCheckbox, ConsentField, MultiChoice, RankingField, SingleChoice } from "@/components/forms/fields/choice-fields";
@@ -16,7 +17,9 @@ import { RepeaterField } from "@/components/forms/fields/repeater-field";
 import { CalculatedField, OrderTotal, ProductField } from "@/components/forms/fields/commerce-fields";
 import { cn } from "@/lib/utils";
 
-const GROUP_TYPES = new Set(["select", "multiselect", "picture", "multipicture", "ranking", "rating", "scale", "nps", "opinion", "matrix", "name", "address", "booking", "repeater"]);
+const GROUP_TYPES = new Set(["select", "multiselect", "picture", "multipicture", "ranking", "rating", "scale", "nps", "opinion", "matrix", "name", "address", "booking", "repeater", "signature"]);
+// These render their own named radiogroup, so a wrapping fieldset would name the same group twice.
+const RADIO_TYPES = new Set(["select", "picture", "rating", "scale", "nps", "opinion"]);
 
 // Heading / text block: `label` is the heading, `hint` the body (merge tags resolved).
 function LayoutBlock({ field, text, large }) {
@@ -87,6 +90,8 @@ export function FormFieldRenderer({
       hint={hint}
       error={error}
       group={GROUP_TYPES.has(field.type)}
+      radio={RADIO_TYPES.has(field.type)}
+      errorLang={errorLanguage(field, error, resolveLocale(locale || settings.locale))}
       large={large}
       readOnly={field.readOnly}
       readOnlyLabel={tr("readOnly")}
@@ -115,33 +120,11 @@ export function FormFieldRenderer({
       return shell(field.options?.length ? <SingleChoice {...props} onAdvance={onAdvance} /> : <EmptyOptions tr={tr} />);
     case "dropdown":
       return shell(<DropdownInput {...props} placeholder={tr("selectPlaceholder")} />);
-    case "multiselect": {
-      const note = choiceHint();
-      return shell(
-        field.options?.length ? (
-          <>
-            <MultiChoice {...props} />
-            {note && <p className="mt-2 text-xs text-text-tertiary">{note}</p>}
-          </>
-        ) : (
-          <EmptyOptions tr={tr} />
-        ),
-      );
-    }
+    case "multiselect":
+      return shell(field.options?.length ? <MultiChoice {...props} /> : <EmptyOptions tr={tr} />, { note: choiceHint() });
     case "picture":
-    case "multipicture": {
-      const note = field.type === "multipicture" ? choiceHint() : "";
-      return shell(
-        field.options?.length ? (
-          <>
-            <PictureChoice {...props} onAdvance={onAdvance} />
-            {note && <p className="mt-2 text-xs text-text-tertiary">{note}</p>}
-          </>
-        ) : (
-          <EmptyOptions tr={tr} />
-        ),
-      );
-    }
+    case "multipicture":
+      return shell(field.options?.length ? <PictureChoice {...props} onAdvance={onAdvance} /> : <EmptyOptions tr={tr} />, { note: field.type === "multipicture" ? choiceHint() : "" });
     case "checkbox":
     case "consent": {
       const statement = text(field.label && field.label !== field.title ? field.label : field.title);

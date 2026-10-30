@@ -36,9 +36,9 @@ deployment's env keys count as shipped. Per-recommendation status is in
   is backed by `supabase/seeds/demo_form.sql`.
 
 **So the honest status:** P0 and P1 below have shipped (bar an HTML block; text
-blocks are plain text), and so has most of P2–P4. Still open: AI (8–9, waits for the suite's `@geiger/ai`); a stored,
-server-rendered PDF (14, 16 — documents print from the browser and aren't
-attached to emails); multi-party signing order (14); calendar sync (17 — booking
+blocks are plain text), and so has most of P2–P4. Still open: AI (8–9, waits for the suite's `@geiger/ai`); a stored
+signed PDF, branded PDF templates and non-Latin PDF text (14, 16 — responses render as PDFs on the server, with
+opt-in email attachments, but aren't stored); multi-party signing order (14); calendar sync (17 — booking
 runs on its own slot table); native Google Sheets, Zapier and Make apps (18 —
 Zapier and Make work through webhooks); a BAA or certification (19 — a readiness
 checklist and the technical controls ship); merged real-time co-editing (20 —
@@ -155,7 +155,7 @@ e-sign) doubles as a sales asset.
 | Phase | Focus | Outcome |
 |---|---|---|
 | **Shipped** | P0 routes + demo; P1 table-stakes + Stripe; P2 surveys + data tables + drop-off | It works end-to-end; credible product that beats Google/Gravity-Basic |
-| **Now** | Finish P3: server PDF, native Sheets/Zapier/Make | "Runs your business" positioning (Paperform-class) |
+| **Now** | Finish P3: PDF templates and non-Latin text, native Sheets/Zapier/Make | "Runs your business" positioning (Paperform-class) |
 | **When `@geiger/ai` ships** | P2 AI generation + response analysis | Clear differentiation; press-worthy |
 | **Next** | P4 custom domains + white-label; BAA and certification at suite level | Enterprise/regulated revenue |
 

@@ -1,6 +1,8 @@
 import { appOrigin, fail, formUrl, ipHash, isEmail, notFound, ok, rateLimit, rateLimited, readJson, unavailable } from "@/lib/server/http";
 import { formsAdmin } from "@/lib/server/supabase-admin";
 import { loadPublishedForm } from "@/lib/server/forms";
+import { sensitiveIdentity } from "@/lib/forms/logic";
+import { indexPartialEmail } from "@/lib/server/respondent";
 import { renderEmail, sendEmail } from "@/lib/server/email";
 
 export const dynamic = "force-dynamic";
@@ -19,9 +21,13 @@ export async function POST(request, { params }) {
   if (!form) return notFound("Form not found.");
   if (!(await rateLimit(`resume:${form.id}:${ipHash(request)}`, 5))) return rateLimited();
   const email = body.email.trim();
+  // Only the send needs the address on anonymous forms and forms that treat it as sensitive, so the column stays empty there.
+  const anonymous = Boolean(form.settings.anonymous);
+  const hidesEmail = sensitiveIdentity(form.fieldDefs).email;
+  const keepEmail = !anonymous && !hidesEmail;
   const { data, error: dbError } = await db
     .from("partials")
-    .update({ respondent_email: email })
+    .update(keepEmail ? { respondent_email: email } : { updated_at: new Date().toISOString() })
     .eq("form_id", form.id)
     .eq("token", body.token)
     .is("completed_at", null)
@@ -30,6 +36,7 @@ export async function POST(request, { params }) {
     .maybeSingle();
   if (dbError) console.error("[api.resume-email]", dbError.message);
   if (!data) return notFound("This saved response is no longer available.");
+  if (hidesEmail && !anonymous) await indexPartialEmail(db, form.id, body.token, email);
   const link = formUrl(appOrigin(request), form.slug, { resume: body.token });
   const text = `You saved your progress on "${form.title}". Use the link below to pick up where you left off.`;
   const result = await sendEmail({

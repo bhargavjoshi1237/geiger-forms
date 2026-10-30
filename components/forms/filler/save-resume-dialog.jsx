@@ -57,11 +57,12 @@ export function SaveResumeDialog({ open, onOpenChange, slug, flushPartial, defau
           <DialogDescription>{tr("resumeBody")}</DialogDescription>
         </DialogHeader>
         {state.status === "saving" || state.status === "idle" ? (
-          <div className="flex justify-center py-6">
+          <div role="status" className="flex justify-center py-6">
             <LogoLoading size={36} />
+            <span className="sr-only">{tr("saving")}</span>
           </div>
         ) : state.status === "error" ? (
-          <p className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">{tr("resumeFailed")}</p>
+          <p role="alert" className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">{tr("resumeFailed")}</p>
         ) : (
           <div className="grid gap-4">
             <CopyField value={link} tr={tr} label={tr("copyLink")} />
@@ -76,8 +77,10 @@ export function SaveResumeDialog({ open, onOpenChange, slug, flushPartial, defau
                   {tr("sendLink")}
                 </Button>
               </div>
-              {sent && <p className="text-xs text-emerald-600 dark:text-emerald-400">{tr("linkSent")}</p>}
-              {sendError && <p className="text-xs text-red-500 dark:text-red-400">{sendError}</p>}
+              <div role="status" className="empty:hidden">
+                {sent && <p className="text-xs text-emerald-700 dark:text-emerald-400">{tr("linkSent")}</p>}
+                {sendError && <p className="text-xs text-red-600 dark:text-red-400">{sendError}</p>}
+              </div>
             </form>
           </div>
         )}

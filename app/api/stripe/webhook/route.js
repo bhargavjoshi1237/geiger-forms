@@ -1,10 +1,9 @@
 import { appOrigin, fail, json, unavailable } from "@/lib/server/http";
 import { formsAdmin } from "@/lib/server/supabase-admin";
 import { verifyStripeSignature } from "@/lib/server/stripe";
-import { loadForm, logActivity } from "@/lib/server/forms";
+import { loadForm, logActivity, safeAnswers } from "@/lib/server/forms";
 import { sendApprovalRequest } from "@/lib/server/side-effects";
 import { dispatchEvent, responsePayload } from "@/lib/server/webhooks";
-import { maskEncrypted } from "@/lib/server/crypto";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -75,7 +74,7 @@ export async function POST(request) {
   if (form) {
     await Promise.allSettled([
       status === "Pending" ? sendApprovalRequest({ form, row: updated, origin: appOrigin(request) }) : null,
-      dispatchEvent(form, "response.updated", responsePayload(form, updated, maskEncrypted(updated.answers)), updated.id),
+      dispatchEvent(form, "response.updated", responsePayload(form, updated, safeAnswers(updated, form, "[protected]")), updated.id),
       logActivity({ projectId: form.projectId, formId: form.id, responseId: row.id, actor: { name: "Stripe" }, action: "payment.paid", detail: { amount: row.payment_amount, currency: row.payment_currency } }),
     ]);
   }

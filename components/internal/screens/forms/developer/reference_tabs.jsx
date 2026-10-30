@@ -6,15 +6,21 @@ import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { DataTable, EmptyState, SearchInput, SectionCard } from "@geiger/ui/screen-kit";
 import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
+import { buildAppCatalog } from "@/lib/mcp/app_catalog";
 import { CodeBlock, useAppBase } from "./code_block";
 
-const METHOD_VARIANT = { GET: "info", POST: "success" };
+const METHOD_VARIANT = { GET: "info", POST: "success", PATCH: "warning" };
 
 const REST_ENDPOINTS = [
   { method: "GET", path: "/api/v1/forms", auth: "API key (read)", desc: "List this project's forms." },
-  { method: "GET", path: "/api/v1/forms/:id", auth: "API key (read)", desc: "One form with its field definitions." },
-  { method: "GET", path: "/api/v1/forms/:id/responses?since=&limit=&cursor=", auth: "API key (read)", desc: "Paginated responses, oldest first; pass nextCursor back as cursor to continue. Encrypted answers come back null and are listed in encryptedFields." },
+  { method: "POST", path: "/api/v1/forms", auth: "API key (write)", desc: "Create a Draft form (201) from title, description, category, tags, fields and settings. Always lands in the key's project." },
+  { method: "GET", path: "/api/v1/forms/:id", auth: "API key (read)", desc: "One form with its field definitions. Quiz answer keys and secrets are never included." },
+  { method: "PATCH", path: "/api/v1/forms/:id", auth: "API key (write)", desc: "Change details, fields (a full replace that keeps stored answer keys), settings (merged) or status. Publishing returns 409 with warnings until you resend with acknowledgeWarnings: true. Sensitive fields can't be removed or downgraded, and webhooks, notifications, access, payments and retention stay workspace-only." },
+  { method: "GET", path: "/api/v1/forms/:id/responses?since=&limit=&cursor=", auth: "API key (read)", desc: "Paginated responses, oldest first; pass nextCursor back as cursor to continue. Sensitive answers come back null; encrypted ones are also listed in encryptedFields." },
+  { method: "GET", path: "/api/v1/forms/:id/responses/:responseId/pdf", auth: "API key (read)", desc: "One response as a PDF, the pdfUrl on each response above. Sensitive answers stay masked." },
   { method: "POST", path: "/api/v1/forms/:id/responses", auth: "API key (write)", desc: "Headless submit (201) through the same validation, scoring, automation, and webhook pipeline. Skips respondent gates and spam checks; the response limit still applies." },
+  { method: "PATCH", path: "/api/v1/responses/:id", auth: "API key (write)", desc: "Change status, priority, tags or assignee (a project member's id, email or name; null clears it). Approval decisions and payment states can't be set here." },
+  { method: "POST", path: "/api/v1/responses/:id/comments", auth: "API key (write)", desc: "Add an internal comment (201) of up to 5,000 characters. Respondents never see it." },
   { method: "GET", path: "/api/public/forms/:slug", auth: "Public", desc: "Published form schema and public settings for custom renderers." },
   { method: "POST", path: "/api/public/forms/:slug/submit", auth: "Public", desc: "Submit answers from your own front-end (honeypot, captcha, and rate limits apply)." },
   { method: "GET", path: "/api/public/forms/:slug/results", auth: "Public", desc: "Aggregated poll results when the form shows results publicly." },
@@ -42,6 +48,26 @@ function EndpointTable() {
   return <DataTable columns={columns} data={REST_ENDPOINTS} getRowKey={(e) => `${e.method} ${e.path}`} />;
 }
 
+// How to connect an AI app to the MCP server; the same limits as the API apply, on top of the connection's projects and access.
+function McpCard({ address }) {
+  const commands = buildAppCatalog(address).filter((app) => app.kind === "command");
+  return (
+    <SectionCard
+      title="MCP server"
+      description="Connect an AI app to list and edit forms and to read and update responses. You sign in, then choose which projects it can reach and whether it can make changes. Your role still applies, sensitive answers stay masked, and every call is logged."
+    >
+      <div className="space-y-4">
+        <CodeBlock label="Server address" code={address} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          {commands.map((app) => (
+            <CodeBlock key={app.id} label={app.name} code={app.command} />
+          ))}
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
 // REST v1 + public endpoints with curl examples; `frontend` adds data front-end guidance.
 export function RestTab({ frontend = false }) {
   const url = useAppBase();
@@ -64,13 +90,22 @@ export function RestTab({ frontend = false }) {
           label="Headless submit"
           code={`curl -X POST "${url("/api/v1/forms/FORM_ID/responses")}" \\\n  -H "Authorization: Bearer gf_your_key" \\\n  -H "Content-Type: application/json" \\\n  -d '{"answers": {"FIELD_ID": "value"}}'`}
         />
+        <CodeBlock
+          label="Create a form"
+          code={`curl -X POST "${url("/api/v1/forms")}" \\\n  -H "Authorization: Bearer gf_your_key" \\\n  -H "Content-Type: application/json" \\\n  -d '{"title": "Feedback", "fields": [{"type": "text", "title": "Your name"}]}'`}
+        />
+        <CodeBlock
+          label="Update a response"
+          code={`curl -X PATCH "${url("/api/v1/responses/RESPONSE_ID")}" \\\n  -H "Authorization: Bearer gf_your_key" \\\n  -H "Content-Type: application/json" \\\n  -d '{"status": "Needs review", "tags": ["vip"], "assignee": "sam@example.com"}'`}
+        />
         <CodeBlock label="Public schema" code={`curl "${url("/api/public/forms/your-form-slug")}"`} />
         <CodeBlock
           label="Response (example)"
           code={`{\n  "ok": true,\n  "responses": [\n    { "id": "…", "status": "Complete", "answers": { "FIELD_ID": "value" },\n      "encryptedFields": ["SSN_FIELD"], "score": 82 }\n  ],\n  "nextCursor": "…"\n}`}
         />
       </div>
-      <p className="text-xs text-text-tertiary">Every response is JSON <code>{"{ ok, error? }"}</code>; failures return a non-2xx status with an error message (401 means a missing or revoked key).</p>
+      <p className="text-xs text-text-tertiary">Every response is JSON <code>{"{ ok, error? }"}</code>; failures return a non-2xx status with an error message (401 means a missing or revoked key, 403 a key without the write scope). Writes are limited to 120 a minute per key and 256 KB per request.</p>
+      <McpCard address={url("/api/mcp")} />
     </div>
   );
 }
@@ -106,7 +141,8 @@ const PAYLOAD_SNIPPET = `{
       "answers": { "FIELD_ID": "value" },
       "respondent": { "name": "Ada Lovelace", "email": "ada@example.com" },
       "score": 82,
-      "submittedAt": "2026-10-08T12:00:00Z"
+      "submittedAt": "2026-10-08T12:00:00Z",
+      "pdfUrl": "https://…/api/responses/…/pdf?token=…"
     }
   }
 }`;
@@ -139,7 +175,7 @@ export function WebhooksTab({ forms, onConfigure }) {
       </div>
       <SectionCard
         title="Delivery & retries"
-        description="Answer with any 2xx within 8 seconds. Timeouts, network errors, 408, 425, 429 and 5xx responses are retried twice within seconds, then with exponential backoff from 5 minutes to a day (honoring Retry-After) for up to 8 attempts; other responses fail at once. Backoff retries run at the first background sweep after they fall due: within minutes while webhooks are flowing, otherwise daily. Every attempt is logged under Deliveries, where deliveries can be replayed for 30 days, and the form owner is alerted when one fails for good."
+        description="Answer with any 2xx within 8 seconds. Timeouts, network errors, 408, 425, 429 and 5xx responses are retried twice within seconds, then with exponential backoff from 5 minutes to a day (honoring Retry-After) for up to 8 attempts; other responses fail at once. Backoff retries run at the first background sweep after they fall due: within minutes while webhooks are flowing, otherwise daily. Every attempt is logged under Deliveries, where deliveries can be replayed for 30 days, and the form owner is alerted when one fails for good. Each attempt carries a fresh response.pdfUrl, a signed link to the response PDF that works for one hour, with sensitive answers masked."
         action={withHooks.length ? <SearchInput value={search} onChange={setSearch} placeholder="Search forms or endpoints…" /> : null}
         bodyPadding={false}
       >

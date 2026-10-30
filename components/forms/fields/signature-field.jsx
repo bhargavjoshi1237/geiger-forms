@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Eraser, Keyboard, Loader2, PenLine } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
+import { Label } from "@geiger/ui/label";
 import { cn } from "@/lib/utils";
 import { fieldIds } from "./field-shell";
 import { uploadToForm } from "./upload";
@@ -40,7 +41,7 @@ function typedSignature(name, width) {
   return canvas.toDataURL("image/png");
 }
 
-// Signature pad (pointer events) with a typed fallback. Answer: PNG data URL, then { path, signedAt } once uploaded.
+// Signature pad (pointer events) with a typed alternative for keyboard, voice and switch users. Answer: PNG data URL, then { path, signedAt } once uploaded.
 export function SignatureField({ field, value, onChange, disabled, aria, slug, tr }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
@@ -157,15 +158,14 @@ export function SignatureField({ field, value, onChange, disabled, aria, slug, t
   };
 
   return (
-    <div className="grid gap-2" {...aria}>
+    <div className="grid gap-2">
       <div ref={wrapRef} className="relative">
         {mode === "draw" ? (
           <div className={cn("relative overflow-hidden rounded-lg border border-border-strong bg-white", locked && "opacity-70")}>
             <canvas
               ref={canvasRef}
-              id={ids.control}
               role="img"
-              aria-label={tr("signHere")}
+              aria-label={hasInk || onFile ? tr("signatureDrawn") : `${tr("signHere")}. ${tr("signKeyboardHint")}`}
               className={cn("block touch-none", !locked && "cursor-crosshair")}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
@@ -175,7 +175,7 @@ export function SignatureField({ field, value, onChange, disabled, aria, slug, t
             />
             <div className="pointer-events-none absolute inset-x-6 bottom-9 border-b border-dashed border-zinc-300" />
             {!hasInk && !onFile && (
-              <span className="pointer-events-none absolute bottom-3 left-6 flex items-center gap-1.5 text-xs text-zinc-400">
+              <span className="pointer-events-none absolute bottom-3 left-6 flex items-center gap-1.5 text-xs text-zinc-600">
                 <PenLine className="size-3.5" /> {tr("signHere")}
               </span>
             )}
@@ -187,16 +187,19 @@ export function SignatureField({ field, value, onChange, disabled, aria, slug, t
           </div>
         ) : (
           <div className="grid gap-2">
+            <Label htmlFor={ids.control} className="text-xs font-normal text-text-secondary">
+              {tr("typeYourName")}
+            </Label>
             <Input
               id={ids.control}
+              {...aria}
               value={typed}
               disabled={locked}
-              placeholder={tr("typeYourName")}
               autoComplete="name"
               onChange={(e) => applyTyped(e.target.value)}
               className="bg-surface-card"
             />
-            <div className="flex h-24 items-center overflow-hidden rounded-lg border border-border-strong bg-white px-5">
+            <div aria-hidden="true" className="flex h-24 items-center overflow-hidden rounded-lg border border-border-strong bg-white px-5">
               <span className="truncate text-4xl italic text-zinc-900" style={{ fontFamily: "var(--font-playfair), cursive" }}>
                 {typed || " "}
               </span>
@@ -213,7 +216,7 @@ export function SignatureField({ field, value, onChange, disabled, aria, slug, t
           )}
           {!uploading && onFile && (
             <>
-              <Check className="size-3.5 text-emerald-500" /> {tr("saved")}
+              <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" /> {tr("saved")}
             </>
           )}
         </span>

@@ -23,18 +23,19 @@ The product has two sides: an **authoring workspace** at `/project/[projectId]` 
 | Area | What it does |
 | --- | --- |
 | **Builder** | Drag-and-drop canvas with layout and columns, per-field configuration, live preview, autosave, and version history. |
+| **Import** | Bring a form in as a draft from Typeform (with a personal access token that is never stored), a Geiger JSON export or a CSV, with a preview listing everything dropped or approximated. Questions and logic only, not responses. Google Forms isn't supported yet. |
 | **Field types** | Text, email, phone, number, currency, choice, picture choice, date and time, rating, scale, opinion scale, matrix, file upload, name, address, calculated, hidden, consent (timestamp and wording hash per response), repeating groups, product/quantity, plus statement, image and video blocks. Inputs carry correct browser-autofill markup. |
 | **Logic** | Conditional visibility, page skip logic, calculations, scoring and outcome branching with per-outcome endings, answer recall in questions and endings, and validation rules. |
 | **Flow & UX** | Multi-step pages, a fast-then-slow progress indicator (optional per form), save and resume with optional opt-in before progress is stored, conversational mode, and submission rules. |
 | **Design** | A searchable picker over 100 fonts loaded via Bunny Fonts (no requests to Google), uploaded logo, cover and background images, 10 theme presets plus saved workspace themes, welcome, default and per-outcome ending screens, a per-form switch for the Geiger footer, and built-in text in 7 languages. Emails come from one shared Geiger Forms sender. |
 | **Payments** | Stripe Checkout for one-off and subscription payments, product and order-total fields, coupons and discounts, and printable receipts and invoices. |
 | **Surveys & quizzes** | Survey fields, a quiz engine, NPS and CSAT, survey reporting, and polls. |
-| **Documents & signing** | Signature capture with reviewer countersign, send for signing, document templates, and a printable record with an audit trail (saved as PDF from the browser's print dialog). |
+| **Documents & signing** | Signature capture with reviewer countersign, send for signing, document templates, and a record with an audit trail: printable, or a server-rendered PDF to download or attach to confirmation and team emails, with sensitive answers masked. The PDF font covers Latin text only; other scripts appear as "?" with a notice in the document. |
 | **Workflow** | Approval routing, assignment to workspace members, @mentions in internal comments with suite bell notifications, automation triggers, and hand-off into Geiger Flow. |
 | **Responses** | A response inbox with table and kanban layouts and saved views, bulk actions, partial and abandoned submissions, CSV and JSON export, retention controls, and GDPR subject-access export and erasure by email. |
 | **Analytics** | Dashboard, funnel and drop-off, source and attribution, A/B testing of a form's title and description, and reports. |
 | **Distribution** | Public link and QR; inline, popup, slider, side-tab, popover and full-screen embeds with delay, scroll and exit-intent triggers and frequency caps; signed personal links; and email and social sharing. |
-| **Integrations** | Signed webhooks with automatic retries (up to 8 attempts), replay from the delivery log and owner alerts on permanent failure, a REST API (v1), Slack alerts, Geiger Flow issues, and Geiger Assets file sync. Zapier and Make connect through their catch-hook webhooks. |
+| **Integrations** | Signed webhooks with automatic retries (up to 8 attempts), replay from the delivery log and owner alerts on permanent failure, a one-hour signed PDF link on each delivery (needs `NEXT_PUBLIC_APP_URL`), a REST API (v1) with a per-response PDF, Slack alerts, Geiger Flow issues, and Geiger Assets file sync. Zapier and Make connect through their catch-hook webhooks. |
 
 ## Tech stack
 

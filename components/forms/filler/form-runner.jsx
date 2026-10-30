@@ -6,13 +6,14 @@ import { Button } from "@geiger/ui/button";
 import { callApi } from "@/lib/forms/api";
 import { withPrefix } from "@/lib/workspace/base-path";
 import { detectRespondent, interpolate, safeHttpUrl, validateAnswers, visiblePages } from "@/lib/forms/logic";
+import { errorSummaryItems, scrollMotion } from "@/lib/forms/a11y";
 import { isInputField, isLayoutField } from "@/lib/forms/field-types";
 import { clearDraft, clearQueued, loadDraft, loadPartialToken, loadQueued, markOnce, queueSubmission, saveDraft, savePartialToken, sessionIdFor } from "@/lib/forms/draft";
 import { FormFieldRenderer } from "@/components/forms/form-field-renderer";
 import { fieldIds } from "@/components/forms/fields/field-shell";
 import { buildInitialAnswers, partialAnswers, postEvent, publicApi, restartPath } from "./session";
 import { AttestationBlock, DelegateBlock, Honeypot, PolicyBlock, TurnstileWidget } from "./submit-extras";
-import { Banner, ConsentNotice } from "./banners";
+import { Banner, ConsentNotice, ErrorSummary, LiveRegion, useAnnouncer } from "./banners";
 import { StatusScreen } from "./filler-shell";
 import { ThankYou } from "./thank-you";
 import { SaveResumeDialog } from "./save-resume-dialog";
@@ -43,13 +44,25 @@ function navigateTop(url, embed) {
   window.location.assign(url);
 }
 
+const FOCUSABLE = 'input:not([type="hidden"]):not([tabindex="-1"]), textarea, button:not([tabindex="-1"]), [tabindex="0"]';
+
+// Moves focus to a field's first usable control; group types have no single control id, and the info button is never the answer.
 function focusField(field) {
   if (!field || typeof document === "undefined") return;
   const ids = fieldIds(field);
   setTimeout(() => {
-    const el = document.getElementById(ids.control) || document.getElementById(ids.label);
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
-    if (el && typeof el.focus === "function") el.focus({ preventScroll: true });
+    const root = document.querySelector(`[data-gf-field="${CSS.escape(String(field.id))}"]`);
+    const first = root && [...root.querySelectorAll(FOCUSABLE)].find((el) => !el.disabled && !el.hasAttribute("data-gf-skip") && el.getClientRects().length > 0);
+    const el = first || document.getElementById(ids.control);
+    (el || root)?.scrollIntoView({ behavior: scrollMotion(), block: "center" });
+    el?.focus({ preventScroll: true });
+  }, 60);
+}
+
+// Returns focus to the submit button when a failed submit left it nowhere (the button disables itself while sending).
+function restoreSubmitFocus() {
+  setTimeout(() => {
+    if (!document.activeElement || document.activeElement === document.body) document.querySelector("[data-gf-submit]")?.focus();
   }, 60);
 }
 
@@ -96,6 +109,8 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
   const [resumeOpen, setResumeOpen] = useState(false);
   const [partialConsent, setPartialConsent] = useState(Boolean(params.resume));
   const [reviewLeft, setReviewLeft] = useState(reviewSeconds);
+  const [summaryFocus, setSummaryFocus] = useState(0);
+  const [liveMessage, announce] = useAnnouncer();
 
   const sessionRef = useRef("");
   const startedRef = useRef(false);
@@ -109,6 +124,8 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
   const progressRef = useRef(0);
   const advanceTimer = useRef(null);
   const nextRef = useRef(() => {});
+  const announcedIndex = useRef(0);
+  const savedAnnounced = useRef(false);
 
   // --- Derived pages / steps ---------------------------------------------------
 
@@ -293,6 +310,11 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
       if (token) {
         partialTokenRef.current = token;
         savePartialToken(slug, token);
+        // Saving is otherwise silent, so screen reader users hear it once rather than on every keystroke's save.
+        if (!savedAnnounced.current) {
+          savedAnnounced.current = true;
+          announce(tr("saved"));
+        }
       }
       return res.ok ? token || partialTokenRef.current : null;
     });
@@ -300,7 +322,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
     const token = await run;
     partialInFlight.current = null;
     return token;
-  }, [slug, fields, partialConsent, dropPartial]);
+  }, [slug, fields, partialConsent, dropPartial, announce, tr]);
 
   useEffect(() => {
     if (!startedRef.current || params.edit || stage !== "form" || (consentRequired && !partialConsent)) return undefined;
@@ -365,7 +387,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
       setStage("done");
       setSubmitState({ status: "idle", message: "" });
       onSubmitted?.(data || {});
-      if (typeof window !== "undefined" && !embed) window.scrollTo({ top: 0, behavior: "smooth" });
+      if (typeof window !== "undefined" && !embed) window.scrollTo({ top: 0, behavior: scrollMotion() });
       if (data?.checkoutUrl) {
         setRedirecting(true);
         navigateTop(data.checkoutUrl, embed);
@@ -375,7 +397,8 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
       const redirect = safeHttpUrl(data?.thankYou?.redirectUrl);
       if (redirect) {
         setRedirecting(true);
-        setTimeout(() => navigateTop(redirect, embed), 1200);
+        // Long enough for a screen reader to start the confirmation; the screen also offers a link to go now.
+        setTimeout(() => navigateTop(redirect, embed), 3000);
       }
     },
     [slug, embed, onSubmitted],
@@ -429,14 +452,61 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
           setDirection(-1);
           setStepId(target.id);
         }
+        focusField(firstField);
+        announce(errs[firstField.id]);
       } else {
+        // Classic forms open the error summary, which takes focus and links to every invalid field.
         const target = pages.find((p) => p.fields.some((f) => f.id === firstField.id));
         if (target) setPageId(target.id);
+        setSummaryFocus((n) => n + 1);
       }
-      focusField(firstField);
     },
-    [fields, conversational, steps, pages],
+    [fields, conversational, steps, pages, announce],
   );
+
+  // The submit extras' errors in the summary's shape, each pointing at the control to fix.
+  const extraErrorItems = useCallback(
+    (ex) => {
+      const p = settings.policy || {};
+      const policyTarget = p.body && p.requireScroll !== false && !policy.scrolled ? "gf-policy-body" : p.requireName !== false && policy.typedName.trim().length < 2 ? "gf-policy-name" : "gf-policy-agree";
+      return [
+        { key: "delegate", targetId: "gf-delegate-name", label: tr("delegateName"), message: ex.delegate },
+        { key: "policy", targetId: policyTarget, label: p.title || tr("attestationTitle"), message: ex.policy },
+        { key: "attestation", targetId: "gf-attestation", label: tr("attestationTitle"), message: ex.attestation },
+        { key: "captcha", targetId: "gf-captcha", label: tr("verification"), message: ex.captcha },
+      ];
+    },
+    [settings.policy, policy.scrolled, policy.typedName, tr],
+  );
+
+  const summaryItems = useMemo(() => {
+    if (!summaryFocus) return [];
+    const label = (f) => interpolate(f.label || f.title || "", form, answers);
+    return errorSummaryItems({ fields, errors, extras: extraErrorItems(extraErrors), label, locale });
+  }, [summaryFocus, fields, errors, extraErrors, extraErrorItems, form, answers, locale]);
+
+  const pickError = (item) => {
+    if (item.targetId) {
+      document.getElementById(item.targetId)?.focus();
+      return;
+    }
+    const field = fields.find((f) => f.id === item.fieldId);
+    const target = pages.find((p) => p.fields.some((f) => f.id === item.fieldId));
+    if (target) setPageId(target.id);
+    focusField(field);
+  };
+
+  // Extras have no field to route through: classic opens the summary, conversational focuses the control.
+  const reportExtras = (ex) => {
+    if (!conversational) {
+      setSummaryFocus((n) => n + 1);
+      return;
+    }
+    const first = extraErrorItems(ex).find((item) => item.message);
+    if (!first) return;
+    document.getElementById(first.targetId)?.focus();
+    announce(first.message);
+  };
 
   const extrasCheck = () => {
     const ex = {};
@@ -466,9 +536,13 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
     setExtraErrors(ex);
     if (has(ex)) {
       setSubmitState({ status: "error", message: tr("errorValidation") });
+      reportExtras(ex);
       return;
     }
-    if (reviewLeft > 0) return;
+    if (reviewLeft > 0) {
+      announce(tr("reviewWait", { seconds: reviewLeft }));
+      return;
+    }
 
     const body = {
       answers,
@@ -506,7 +580,11 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
     }
     if (data.fieldErrors && has(data.fieldErrors)) {
       const { __attestation, __policy, ...fieldErrors } = data.fieldErrors;
-      if (__attestation || __policy) setExtraErrors({ attestation: __attestation, policy: __policy });
+      if (__attestation || __policy) {
+        const serverExtras = { attestation: __attestation, policy: __policy };
+        setExtraErrors(serverExtras);
+        reportExtras(serverExtras);
+      }
       if (has(fieldErrors)) {
         setErrors(fieldErrors);
         goToFirstError(fieldErrors);
@@ -517,12 +595,13 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
       setCaptchaKeyN((n) => n + 1);
     }
     setSubmitState({ status: "error", message: errorMessage(res) });
+    restoreSubmitFocus();
   };
 
   // --- Navigation -----------------------------------------------------------------
 
   const scrollTop = () => {
-    if (typeof window !== "undefined" && !embed) window.scrollTo({ top: 0, behavior: "smooth" });
+    if (typeof window !== "undefined" && !embed) window.scrollTo({ top: 0, behavior: scrollMotion() });
   };
 
   const goNextPage = () => {
@@ -530,9 +609,10 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
     const errs = validateAnswers(fields, answers, ids);
     if (has(errs)) {
       setErrors((cur) => ({ ...cur, ...errs }));
-      focusField(page.fields.find((f) => errs[f.id]));
+      setSummaryFocus((n) => n + 1);
       return;
     }
+    setSummaryFocus(0);
     setSubmitState({ status: "idle", message: "" });
     setDirection(1);
     setPageId(pages[pageIndex + 1].id);
@@ -541,6 +621,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
 
   const goPrevPage = () => {
     if (pageIndex === 0) return;
+    setSummaryFocus(0);
     setDirection(-1);
     setPageId(pages[pageIndex - 1].id);
     scrollTop();
@@ -555,6 +636,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
       if (has(errs)) {
         setErrors((cur) => ({ ...cur, ...errs }));
         focusField(step.field);
+        announce(errs[step.field.id]);
         return;
       }
     }
@@ -591,6 +673,8 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
     setAnswers(initialAnswers());
     setErrors({});
     setExtraErrors({});
+    setSummaryFocus(0);
+    savedAnnounced.current = false;
     setResult(null);
     setRedirecting(false);
     setPageId(null);
@@ -607,6 +691,34 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
     setPartialConsent(false);
     setStage(welcome.enabled ? "welcome" : "form");
   };
+
+  // --- Screen reader announcements ----------------------------------------------------
+
+  // Position after a page or question change; focus moves too, so this only adds where the respondent is.
+  const stepNumber = steps.slice(0, stepIndex + 1).filter((s) => s.field).length;
+  const positionText = conversational ? tr("questionOf", { current: Math.max(1, stepNumber), total: steps.filter((s) => s.field).length }) : tr("stepOf", { current: pageIndex + 1, total: pages.length });
+  useEffect(() => {
+    if (stage !== "form" || announcedIndex.current === currentIndex) return;
+    announcedIndex.current = currentIndex;
+    announce(positionText);
+  }, [stage, currentIndex, positionText, announce]);
+
+  // The submit lock is a disabled button keyboard users can't reach, so say when it starts and ends.
+  useEffect(() => {
+    if (stage !== "form" || !reviewSeconds) return;
+    if (reviewLeft === reviewSeconds) announce(tr("reviewWait", { seconds: reviewSeconds }));
+    else if (reviewLeft === 0) announce(tr("reviewDone"));
+  }, [stage, reviewLeft, reviewSeconds, announce, tr]);
+
+  const connectionText =
+    submitState.status === "queued" ? tr("offlineQueued") : submitState.status === "retrying" ? tr("offlineRetrying") : submitState.status === "submitting" ? tr("submitting") : offlineEnabled && !isOnline ? tr("offlineBanner") : "";
+  const offerText = notice?.text || (draftOffer ? tr("restoreDraftTitle") : "");
+  useEffect(() => {
+    if (connectionText) announce(connectionText);
+  }, [connectionText, announce]);
+  useEffect(() => {
+    if (offerText) announce(offerText);
+  }, [offerText, announce]);
 
   // --- Render helpers ---------------------------------------------------------------
 
@@ -642,7 +754,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
       {showAttestation && (
         <AttestationBlock statement={settings.attestation.statement || tr("attestationTitle")} checked={attested} onChange={setAttested} tr={tr} error={extraErrors.attestation} />
       )}
-      {captchaKey && <TurnstileWidget key={captchaKeyN} siteKey={captchaKey} onToken={setCaptchaToken} theme={settings.theme?.mode === "light" ? "light" : settings.theme?.mode === "dark" ? "dark" : "auto"} error={extraErrors.captcha} />}
+      {captchaKey && <TurnstileWidget key={captchaKeyN} siteKey={captchaKey} onToken={setCaptchaToken} theme={settings.theme?.mode === "light" ? "light" : settings.theme?.mode === "dark" ? "dark" : "auto"} error={extraErrors.captcha} tr={tr} />}
     </div>
   ) : null;
 
@@ -701,48 +813,60 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
 
   // --- Stages -------------------------------------------------------------------------
 
+  // One live region stays mounted across every stage, so its updates are actually announced.
+  const live = <LiveRegion message={liveMessage} />;
+
   if (stage === "done") {
     return (
-      <ThankYou
-        result={result}
-        form={form}
-        answers={answers}
-        slug={slug}
-        tr={tr}
-        redirecting={redirecting}
-        onSubmitAnother={params.edit ? undefined : submitAnother}
-      />
+      <>
+        {live}
+        <ThankYou
+          result={result}
+          form={form}
+          answers={answers}
+          slug={slug}
+          tr={tr}
+          redirecting={redirecting}
+          onSubmitAnother={params.edit ? undefined : submitAnother}
+        />
+      </>
     );
   }
 
   if (editState?.status === "invalid") {
     return (
-      <StatusScreen icon={Link2Off} tone="danger" title={tr("editExpired")} description={editState.message || ""}>
-        <Button asChild variant="outline">
-          <a href={withPrefix(restartPath(slug, params))}>
-            <RotateCcw />
-            {tr("startOver")}
-          </a>
-        </Button>
-      </StatusScreen>
+      <>
+        {live}
+        <StatusScreen icon={Link2Off} tone="danger" title={tr("editExpired")} description={editState.message || ""}>
+          <Button asChild variant="outline">
+            <a href={withPrefix(restartPath(slug, params))}>
+              <RotateCcw />
+              {tr("startOver")}
+            </a>
+          </Button>
+        </StatusScreen>
+      </>
     );
   }
 
   if (stage === "welcome") {
     return (
-      <WelcomeScreen
-        form={form}
-        title={recall(welcome.title || title)}
-        body={recall(welcome.body || description)}
-        buttonLabel={welcome.buttonLabel || tr("start")}
-        questionCount={inputFields.length}
-        banners={banners}
-        tr={tr}
-        onStart={() => {
-          setStage("form");
-          scrollTop();
-        }}
-      />
+      <>
+        {live}
+        <WelcomeScreen
+          form={form}
+          title={recall(welcome.title || title)}
+          body={recall(welcome.body || description)}
+          buttonLabel={welcome.buttonLabel || tr("start")}
+          questionCount={inputFields.length}
+          banners={banners}
+          tr={tr}
+          onStart={() => {
+            setStage("form");
+            scrollTop();
+          }}
+        />
+      </>
     );
   }
 
@@ -768,6 +892,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
 
   return (
     <>
+      {live}
       {conversational ? (
         <ConversationalView
           {...shared}
@@ -790,6 +915,8 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
           onNext={goNextPage}
           onBack={goPrevPage}
           onSubmit={submit}
+          focusOnMount={Boolean(welcome.enabled)}
+          errorSummary={summaryItems.length > 0 ? <ErrorSummary items={summaryItems} title={tr("errorSummaryTitle")} focusKey={summaryFocus} onPick={pickError} /> : null}
         />
       )}
       {settings.saveResume && (

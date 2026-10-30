@@ -12,7 +12,7 @@ export function stepProgress(index, total) {
 export function LinearProgress({ index, total, label, className }) {
   const pct = stepProgress(index, total);
   return (
-    <div className={cn("h-1 w-full overflow-hidden rounded-full bg-surface-active", className)} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+    <div className={cn("h-1 w-full overflow-hidden rounded-full bg-surface-active", className)} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-valuetext={label}>
       <div className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out" style={{ width: `${pct}%` }} />
     </div>
   );
@@ -24,7 +24,7 @@ export function PageProgress({ pages, index, tr }) {
   return (
     <div className="mb-5">
       <div className="mb-2 flex items-center justify-between gap-3 text-xs">
-        <span className="min-w-0 truncate font-medium text-foreground">{pages[index]?.title || step}</span>
+        {pages[index]?.title ? <h2 className="min-w-0 break-words text-xs font-medium text-foreground [font-family:inherit]">{pages[index].title}</h2> : <span className="min-w-0 break-words font-medium text-foreground">{step}</span>}
         <span className="shrink-0 tabular-nums text-text-tertiary">{step}</span>
       </div>
       <LinearProgress index={index} total={pages.length} label={step} className="h-1.5" />

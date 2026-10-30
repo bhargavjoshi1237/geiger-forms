@@ -1,7 +1,9 @@
 import { MAX_BODY_BYTES, fail, ipHash, isEmail, jsonSize, notFound, ok, rateLimit, rateLimited, readJson, unavailable } from "@/lib/server/http";
 import { formsAdmin } from "@/lib/server/supabase-admin";
 import { loadPublishedForm } from "@/lib/server/forms";
+import { sensitiveIdentity } from "@/lib/forms/logic";
 import { decryptAnswers, encryptSensitive, randomToken } from "@/lib/server/crypto";
+import { indexPartialEmail } from "@/lib/server/respondent";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -53,12 +55,15 @@ export async function POST(request, { params }) {
     if (typeof v === "string" && v.startsWith("data:")) continue;
     kept[k] = v;
   }
+  // The email the filler sends can be a sensitive field's answer; then only its keyed index is kept, for data-subject requests.
+  const email = isEmail(body.email) && !form.settings.anonymous ? body.email.trim() : null;
+  const hidesEmail = sensitiveIdentity(form.fieldDefs).email;
   const row = {
     answers: encryptSensitive(form.fieldDefs, kept).answers,
     last_field_id: typeof body.lastFieldId === "string" ? body.lastFieldId.slice(0, 80) : null,
     page_index: Math.max(0, Math.min(500, Number(body.pageIndex) || 0)),
     progress: Math.max(0, Math.min(100, Number(body.progress) || 0)),
-    ...(isEmail(body.email) && !form.settings.anonymous ? { respondent_email: body.email.trim() } : {}),
+    ...(email && !hidesEmail ? { respondent_email: email } : {}),
   };
 
   if (validToken(body.token)) {
@@ -77,6 +82,7 @@ export async function POST(request, { params }) {
     }
     // A withdrawn, submitted or expired partial is never silently re-created; the client drops its token.
     if (!data) return fail("This saved response is no longer available.", 410, { code: "gone" });
+    if (email && hidesEmail) await indexPartialEmail(db, form.id, data.token, email);
     return ok({ token: data.token });
   }
   const token = randomToken(24);
@@ -86,6 +92,7 @@ export async function POST(request, { params }) {
     console.error("[api.partial.insert]", insertError.message);
     return fail("Couldn't save your progress.", 500);
   }
+  if (email && hidesEmail) await indexPartialEmail(db, form.id, token, email);
   return ok({ token });
 }
 

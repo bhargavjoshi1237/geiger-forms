@@ -9,7 +9,9 @@ import {
   Clock3,
   Copy,
   ExternalLink,
+  FileDown,
   FileText,
+  FileUp,
   FolderOpen,
   Globe,
   GlobeLock,
@@ -53,6 +55,7 @@ import { applyWorkspaceDefaults, folderNames } from "../settings/use_workspace_s
 import { FORM_STATUS_MAP, STATUS_FILTER_OPTIONS, formatCount } from "./constants";
 import { FormDetailScreen } from "./form_detail";
 import { NewFormDialog } from "./new_form_dialog";
+import { ImportFormDialog, downloadFormJson } from "./import_form_dialog";
 
 const ITEM = "cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground";
 
@@ -81,6 +84,9 @@ function RowActions({ form, can, onAction }) {
           </DropdownMenuItem>
           <DropdownMenuItem className={ITEM} onClick={() => onAction("preview", form)}>
             <ExternalLink className="h-4 w-4" /> Preview
+          </DropdownMenuItem>
+          <DropdownMenuItem className={ITEM} onClick={() => onAction("export", form)}>
+            <FileDown className="h-4 w-4" /> Export JSON
           </DropdownMenuItem>
           {copyable || can.publish ? <DropdownMenuSeparator className="bg-border" /> : null}
           {copyable ? (
@@ -130,6 +136,7 @@ export function FormsScreen() {
   const [statusFilter, setStatusFilter] = useState("Active");
   const [categoryPick, setCategoryPick] = useState(null);
   const [showNew, setShowNew] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [responsesFormId, setResponsesFormId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -198,6 +205,8 @@ export function FormsScreen() {
         return setResponsesFormId(form.id);
       case "preview":
         return window.open(withPrefix(`/form/${form.slug}`), "_blank", "noopener,noreferrer");
+      case "export":
+        return downloadFormJson(form);
       case "duplicate":
         return run(() => duplicate(form.id), "Form duplicated", "Couldn't duplicate the form.");
       case "template":
@@ -313,9 +322,14 @@ export function FormsScreen() {
         description="Every form in this workspace. Open one to edit its settings, or jump into the builder."
         actions={
           can.create ? (
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setShowNew(true)}>
-              <Plus className="h-4 w-4" /> New form
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => setShowImport(true)}>
+                <FileUp className="h-4 w-4" /> Import
+              </Button>
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setShowNew(true)}>
+                <Plus className="h-4 w-4" /> New form
+              </Button>
+            </>
           ) : null
         }
       />
@@ -394,6 +408,16 @@ export function FormsScreen() {
         userTemplates={templates.forms}
         onCreate={createAndOpen}
         onCreateFromTemplate={createFromUserTemplate}
+      />
+
+      <ImportFormDialog
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        projectId={url.projectId}
+        onImported={(form) => {
+          toast.success("Imported as a draft");
+          router.push(withPrefix(`/forms/${form.slug}`));
+        }}
       />
 
       <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && !deleting && setDeleteTarget(null)}>

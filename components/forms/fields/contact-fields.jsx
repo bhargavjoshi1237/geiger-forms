@@ -31,12 +31,19 @@ function Part({ id, label, value, onChange, disabled, readOnly, autoComplete, au
   );
 }
 
+// Required and invalid apply only to the parts the validator actually needs; the fieldset carries the group's description.
+const partAria = (field, aria, needed) => ({
+  ...aria,
+  "aria-required": field.required && needed ? true : undefined,
+  "aria-invalid": aria?.["aria-invalid"] && needed ? true : undefined,
+});
+
 export function NameField({ field, value, onChange, disabled, aria, large, tr, autoFocus }) {
   const ids = fieldIds(field);
   const current = value && typeof value === "object" ? value : {};
   const set = (key) => (v) => onChange({ ...current, [key]: v });
   return (
-    <div role="group" aria-labelledby={ids.label} className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-3 sm:grid-cols-2">
       <Part id={ids.control} label={tr("firstName")} value={current.first} onChange={set("first")} autoComplete="given-name" disabled={disabled} readOnly={field.readOnly} aria={aria} large={large} autoFocus={autoFocus} />
       <Part id={`${ids.control}-last`} label={tr("lastName")} value={current.last} onChange={set("last")} autoComplete="family-name" disabled={disabled} readOnly={field.readOnly} aria={aria} large={large} />
     </div>
@@ -47,12 +54,13 @@ export function AddressField({ field, value, onChange, disabled, aria, large, tr
   const ids = fieldIds(field);
   const current = value && typeof value === "object" ? value : {};
   const set = (key) => (v) => onChange({ ...current, [key]: v });
-  const common = { disabled, readOnly: field.readOnly, aria, large };
+  const common = { disabled, readOnly: field.readOnly, aria: partAria(field, aria, false), large };
+  const needed = { ...common, aria: partAria(field, aria, true) };
   return (
-    <div role="group" aria-labelledby={ids.label} className="grid gap-3 sm:grid-cols-6">
-      <Part id={ids.control} label={tr("address1")} value={current.line1} onChange={set("line1")} autoComplete="address-line1" className="sm:col-span-6" autoFocus={autoFocus} {...common} />
+    <div className="grid gap-3 sm:grid-cols-6">
+      <Part id={ids.control} label={tr("address1")} value={current.line1} onChange={set("line1")} autoComplete="address-line1" className="sm:col-span-6" autoFocus={autoFocus} {...needed} />
       <Part id={`${ids.control}-line2`} label={tr("address2")} value={current.line2} onChange={set("line2")} autoComplete="address-line2" className="sm:col-span-6" {...common} />
-      <Part id={`${ids.control}-city`} label={tr("city")} value={current.city} onChange={set("city")} autoComplete="address-level2" className="sm:col-span-3" {...common} />
+      <Part id={`${ids.control}-city`} label={tr("city")} value={current.city} onChange={set("city")} autoComplete="address-level2" className="sm:col-span-3" {...needed} />
       <Part id={`${ids.control}-state`} label={tr("state")} value={current.state} onChange={set("state")} autoComplete="address-level1" className="sm:col-span-3" {...common} />
       <Part id={`${ids.control}-zip`} label={tr("zip")} value={current.zip} onChange={set("zip")} autoComplete="postal-code" autoCapitalize="characters" className="sm:col-span-2" {...common} />
       <Part id={`${ids.control}-country`} label={tr("country")} value={current.country} onChange={set("country")} autoComplete="country-name" className="sm:col-span-4" {...common} />

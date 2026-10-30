@@ -97,7 +97,7 @@ are in place. Stripe, email, captcha, encryption, signed links and cron each nee
 a deployment's env keys, and a migration in the repo may not be applied yet.
 
 **Still open:** AI generation and analysis (waiting on the suite's `@geiger/ai`),
-server-rendered PDFs, native Google Sheets, Zapier and Make connectors, custom
+non-Latin text in server-rendered PDFs, native Google Sheets, Zapier and Make connectors, custom
 domains and white-label email, importers, merged co-editing, and billing (no
 billing code in this repo). Per-recommendation status is in
 [`Forms app competitive feature gaps.md`](../reports/Forms%20app%20competitive%20feature%20gaps.md).

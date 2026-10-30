@@ -8,7 +8,7 @@ import { Skeleton } from "@geiger/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { callApi } from "@/lib/forms/api";
 import { formatSlot } from "@/lib/forms/logic";
-import { fieldIds } from "./field-shell";
+import { fieldIds, useRoving } from "./field-shell";
 
 function ymd(date) {
   const y = date.getFullYear();
@@ -37,7 +37,7 @@ function timeLabel(iso) {
 }
 
 // Booking slot picker: calendar (bookable weekdays within the horizon) + slot grid from GET /slots.
-export function BookingField({ field, value, onChange, disabled, aria, slug, tr }) {
+export function BookingField({ field, value, onChange, disabled, slug, tr }) {
   const cfg = field.config || {};
   const days = Array.isArray(cfg.days) && cfg.days.length ? cfg.days.map(Number) : [1, 2, 3, 4, 5];
   const horizon = Number(cfg.horizonDays) || 30;
@@ -57,6 +57,8 @@ export function BookingField({ field, value, onChange, disabled, aria, slug, tr 
 
   const dateKey = date ? ymd(date) : "";
   const mounted = useMounted();
+  const bookable = slots.filter((slot) => slot.available !== false).map((slot) => slot.start);
+  const { refs, focusIndex, onKeyDown } = useRoving(bookable, value, (start) => !locked && onChange(start));
 
   useEffect(() => {
     if (!dateKey || !slug) return undefined;
@@ -76,7 +78,10 @@ export function BookingField({ field, value, onChange, disabled, aria, slug, tr 
   if (!mounted) return <Skeleton className="h-80 rounded-lg border border-border bg-surface-card" aria-busy="true" />;
 
   return (
-    <div className="grid gap-3" {...aria}>
+    <div className="grid gap-3">
+      <p role="status" className="sr-only">
+        {date && slug && status === "loading" ? tr("slotsLoading") : date && slug && status === "ready" ? (slots.length ? tr("slotsAvailable", { count: bookable.length }) : tr("noSlots")) : ""}
+      </p>
       <div className="grid gap-3 rounded-lg border border-border bg-surface-card p-2 sm:grid-cols-[auto_1fr] sm:p-3">
         <DatePicker
           mode="single"
@@ -106,6 +111,8 @@ export function BookingField({ field, value, onChange, disabled, aria, slug, tr 
                 <Skeleton key={i} className="h-9 bg-surface-active" />
               ))}
             </div>
+          ) : status === "error" ? (
+            <p className="text-xs text-text-tertiary">{tr("loadErrorBody")}</p>
           ) : slots.length === 0 ? (
             <p className="text-xs text-text-tertiary">{tr("noSlots")}</p>
           ) : (
@@ -113,9 +120,15 @@ export function BookingField({ field, value, onChange, disabled, aria, slug, tr 
               {slots.map((slot) => {
                 const selected = value === slot.start;
                 const unavailable = slot.available === false;
+                const position = bookable.indexOf(slot.start);
                 return (
                   <Button
                     key={slot.start}
+                    ref={(el) => {
+                      if (position >= 0) refs.current[position] = el;
+                    }}
+                    tabIndex={position === focusIndex ? 0 : -1}
+                    onKeyDown={(e) => position >= 0 && onKeyDown(e, position)}
                     type="button"
                     variant={selected ? "default" : "outline"}
                     role="radio"
@@ -136,12 +149,14 @@ export function BookingField({ field, value, onChange, disabled, aria, slug, tr 
           )}
         </div>
       </div>
-      {value && (
-        <p id={ids.control} className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
-          <CalendarCheck2 className="size-4" />
-          {formatSlot(value)}
-        </p>
-      )}
+      <div aria-live="polite" className="empty:hidden">
+        {value && (
+          <p className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            <CalendarCheck2 className="size-4" />
+            {formatSlot(value)}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

@@ -40,7 +40,7 @@ function PasswordGate({ tr, onSubmit, title }) {
         </Button>
       </form>
       {error && (
-        <p id="gf-password-error" role="alert" className="text-xs font-medium text-red-500 dark:text-red-400">
+        <p id="gf-password-error" role="alert" className="text-xs font-medium text-red-600 dark:text-red-400">
           {error}
         </p>
       )}
@@ -49,7 +49,7 @@ function PasswordGate({ tr, onSubmit, title }) {
 }
 
 // Access/availability gate screens returned by the public payload (`gate` + `gateMessage`).
-export function GateScreen({ gate, gateMessage, form, tr, onPassword }) {
+export function GateScreen({ gate, gateMessage, form, tr, onPassword, focusOnMount = false }) {
   const settings = form?.settings || {};
   const custom = gateMessage || settings.closedMessage || "";
   switch (gate) {
@@ -57,7 +57,7 @@ export function GateScreen({ gate, gateMessage, form, tr, onPassword }) {
       return <PasswordGate tr={tr} onSubmit={onPassword} title={form?.title} />;
     case "login":
       return (
-        <StatusScreen icon={LogIn} title={tr("loginTitle")} description={gateMessage || tr("loginBody")}>
+        <StatusScreen focusOnMount={focusOnMount} icon={LogIn} title={tr("loginTitle")} description={gateMessage || tr("loginBody")}>
           <Button asChild>
             {/* Suite sign-in lives at the hub root, outside this app. */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
@@ -72,6 +72,7 @@ export function GateScreen({ gate, gateMessage, form, tr, onPassword }) {
       const domain = settings.access?.orgDomain || "";
       return (
         <StatusScreen
+          focusOnMount={focusOnMount}
           icon={Building2}
           tone="warning"
           title={tr("domainTitle")}
@@ -89,13 +90,13 @@ export function GateScreen({ gate, gateMessage, form, tr, onPassword }) {
       );
     }
     case "signed":
-      return <StatusScreen icon={Link2Off} tone="danger" title={tr("signedTitle")} description={gateMessage || tr("signedBody")} />;
+      return <StatusScreen focusOnMount={focusOnMount} icon={Link2Off} tone="danger" title={tr("signedTitle")} description={gateMessage || tr("signedBody")} />;
     case "scheduled":
-      return <StatusScreen icon={CalendarClock} title={tr("scheduledTitle")} description={custom || tr("scheduledDefault")} />;
+      return <StatusScreen focusOnMount={focusOnMount} icon={CalendarClock} title={tr("scheduledTitle")} description={custom || tr("scheduledDefault")} />;
     case "limit":
-      return <StatusScreen icon={Users} title={tr("limitTitle")} description={custom || tr("limitDefault")} />;
+      return <StatusScreen focusOnMount={focusOnMount} icon={Users} title={tr("limitTitle")} description={custom || tr("limitDefault")} />;
     case "closed":
     default:
-      return <StatusScreen icon={Lock} title={tr("closedTitle")} description={custom || tr("closedDefault")} />;
+      return <StatusScreen focusOnMount={focusOnMount} icon={Lock} title={tr("closedTitle")} description={custom || tr("closedDefault")} />;
   }
 }

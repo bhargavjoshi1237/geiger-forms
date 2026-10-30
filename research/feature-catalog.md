@@ -241,7 +241,7 @@ Per-recommendation status is in
 
 ## 10. PDF & Document Generation
 
-- **Response → PDF** 🟠 (print to PDF from the browser; nothing stored or attached to email)
+- **Response → PDF** 🟠 (server-rendered download, opt-in email attachment, webhook and API links; Latin-script font only, no custom template, nothing stored)
   - Auto-generate PDF of a submission
   - Branded template, logo, layout
   - Attach to notification emails, store in response

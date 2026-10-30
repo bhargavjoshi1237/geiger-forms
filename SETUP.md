@@ -23,6 +23,7 @@ Everything else is optional; each feature degrades cleanly when its key is missi
 | `FORMS_LINK_SECRET` | Signed/expiring form links |
 | `CRON_SECRET` | `/api/cron/{retention,reminders,reports,webhooks}` (scheduled daily in `vercel.json`) |
 | `NEXT_PUBLIC_DASH_ORIGIN` | Suite hub origin for the signed-out redirect to `/login` (e.g. `http://localhost:3000` in dev) |
+| `MCP_PUBLIC_ORIGIN` | Public origin of the MCP server, for its OAuth metadata (defaults to `https://geiger.studio` in production, `http://localhost:3000` in dev) |
 
 Workspace Settings → Configuration shows which of these the running deployment has.
 
@@ -48,6 +49,10 @@ npm install
 npm run dev
 ```
 
+## MCP server
+
+`/api/mcp` exposes Forms' own API to AI apps; it holds no model or provider code. Sign-in is Supabase's OAuth server with the consent page on Dash (`/oauth/consent`), which stores the chosen projects and read or write access in `public.mcp_connections`. Each call checks that connection and `forms.*` permissions, and is logged in `public.mcp_audit_log`. Both tables are Dash's, so its migrations must be pushed first.
+
 ## Architecture
 
 ```
@@ -58,7 +63,8 @@ lib/supabase/     browser data access       forms, responses, audit, saved views
                                             comments, versions, rbac
 lib/server/       server-only               service-role client, session auth, submission pipeline, email,
                                             stripe, webhooks, flow, storage, crypto
-app/api/          route handlers            public respondent API, workspace actions, cron, REST v1
+lib/mcp/          MCP server                tool catalog, connection and permission checks, audit log, over lib/server/forms-api
+app/api/          route handlers            public respondent API, workspace actions, cron, REST v1, MCP
 app/form/[slug]   public filler             server-loaded, gated, themed, multi-page / conversational
 app/forms/[slug]  builder
 app/print/        printable responses (PDF via the browser)

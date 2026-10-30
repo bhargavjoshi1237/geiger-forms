@@ -1,6 +1,6 @@
 import { appOrigin, fail, formUrl, ok, readJson } from "@/lib/server/http";
 import { randomToken } from "@/lib/server/crypto";
-import { logActivity, mergeResponseMeta } from "@/lib/server/forms";
+import { logActivity, mergeResponseMeta, respondentContact } from "@/lib/server/forms";
 import { isEmailConfigured, renderEmail, sendEmail } from "@/lib/server/email";
 import { requireResponse } from "@/lib/server/workspace";
 
@@ -24,10 +24,11 @@ export async function POST(request, { params }) {
 
   const url = formUrl(appOrigin(request), form.slug, { edit: token });
   let emailed = false;
-  if (row.respondent_email && isEmailConfigured()) {
+  const to = respondentContact(row, form);
+  if (to && isEmailConfigured()) {
     const message = typeof body.message === "string" && body.message.trim() ? body.message.trim().slice(0, 4000) : `Please review and update your response to "${form.title}".`;
     const result = await sendEmail({
-      to: row.respondent_email,
+      to,
       subject: `Update requested: ${form.title}`,
       text: `${message}\n\n${url}\n\nThis link expires ${new Date(expiresAt).toUTCString()}.`,
       html: renderEmail({ heading: form.title, text: `${message}\n\nThis link expires ${new Date(expiresAt).toUTCString()}.`, cta: { url, label: "Update your response" } }),
