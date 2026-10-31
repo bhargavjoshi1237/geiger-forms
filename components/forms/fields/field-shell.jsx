@@ -118,6 +118,9 @@ export function FieldShell({
           <LabelTag
             id={ids.label}
             htmlFor={group ? undefined : ids.control}
+            data-gf-part="label"
+            data-gf-large={large ? "" : undefined}
+            data-gf-group={group ? "" : undefined}
             className={cn(
               "block font-medium text-foreground",
               large ? "text-xl leading-snug sm:text-2xl" : "text-sm leading-snug",

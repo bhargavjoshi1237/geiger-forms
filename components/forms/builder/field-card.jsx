@@ -1,10 +1,10 @@
 "use client";
 
 import { memo, useRef } from "react";
-import { ChevronDown, Copy, EyeOff, FunctionSquare, GitBranch, GripVertical, Lock, MoreHorizontal, Trash2, Trophy } from "lucide-react";
+import { ChevronDown, Copy, EyeOff, FunctionSquare, GitBranch, GripVertical, Lock, Trash2, Trophy } from "lucide-react";
 import { Badge } from "@geiger/ui/badge";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import { Button } from "@geiger/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@geiger/ui/dropdown-menu";
 import { Input } from "@geiger/ui/input";
 import { cn } from "@/lib/utils";
 import { getFieldType, isInputField } from "@/lib/forms/field-types";
@@ -118,19 +118,16 @@ export const FieldCard = memo(function FieldCard({
           <Button type="button" variant="ghost" size="icon-sm" aria-label="Duplicate field" title="Duplicate" onClick={() => onDuplicate(field.id)} className="text-text-secondary opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100">
             <Copy className="h-4 w-4" />
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Field actions" className="text-text-secondary">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 border-border bg-surface-subtle">
-              <DropdownMenuItem onSelect={() => onDuplicate(field.id)}><Copy />Duplicate</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onToggleIncluded(field.id)}><EyeOff />Exclude from form</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" className="text-red-600 dark:text-red-400 focus:bg-red-500/10" onSelect={() => onDelete(field.id)}><Trash2 />Delete</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ActionMenu
+            label="Field actions"
+            triggerClassName="text-text-secondary"
+            items={[
+              { icon: Copy, label: "Duplicate", onSelect: () => onDuplicate(field.id) },
+              { icon: EyeOff, label: "Exclude from form", onSelect: () => onToggleIncluded(field.id) },
+              { separator: true },
+              { icon: Trash2, label: "Delete", destructive: true, onSelect: () => onDelete(field.id) },
+            ]}
+          />
           <Button
             type="button"
             variant="ghost"

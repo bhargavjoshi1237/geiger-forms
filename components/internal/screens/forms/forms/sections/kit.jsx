@@ -5,6 +5,7 @@ import { Check, Copy, ExternalLink, Info, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -128,12 +129,12 @@ export function ChipsInput({ value = [], onChange, placeholder = "Add and press 
       {value.length ? (
         <div className="flex flex-wrap gap-1.5">
           {value.map((item) => (
-            <span key={item} className="flex items-center gap-1 rounded-md border border-border bg-surface-card px-2 py-0.5 text-xs text-muted-foreground">
+            <Badge key={item} className="text-xs font-normal whitespace-normal">
               {item}
               <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${item}`} onClick={() => onChange(value.filter((x) => x !== item))} className="size-4 text-text-tertiary hover:bg-transparent hover:text-foreground">
                 <X className="size-3" />
               </Button>
-            </span>
+            </Badge>
           ))}
         </div>
       ) : null}

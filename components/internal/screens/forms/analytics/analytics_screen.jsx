@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { BarChart3, FileText } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { Progress } from "@geiger/ui/progress";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
   ChartContainer,
@@ -37,7 +38,7 @@ import {
   totalsOf,
   useAnalyticsData,
 } from "./analytics_data";
-import { Meter, RangePicker } from "./analytics_ui";
+import { RangePicker } from "./analytics_ui";
 
 // Response status colors shared by every analytics status list.
 export const RESPONSE_STATUS_MAP = {
@@ -105,7 +106,7 @@ function StatusMix({ responses }) {
                 {row.count.toLocaleString()} <span className="text-text-tertiary">· {share}%</span>
               </span>
             </div>
-            <Meter value={share} />
+            <Progress value={share} className="h-1.5" />
           </div>
         );
       })}
@@ -196,7 +197,7 @@ export function AnalyticsScreen() {
       header: "Conversion",
       render: (row) => (
         <div className="flex min-w-28 items-center gap-2">
-          <Meter value={row.conversion ?? 0} className="w-20" />
+          <Progress value={row.conversion ?? 0} className="h-1.5 w-20" />
           <span className="tabular-nums text-xs text-text-secondary">{formatPct(row.conversion)}</span>
         </div>
       ),

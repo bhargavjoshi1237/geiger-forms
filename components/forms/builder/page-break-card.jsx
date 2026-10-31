@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { ChevronDown, GitBranch, GripVertical, SplitSquareVertical, Trash2 } from "lucide-react";
 import { Badge } from "@geiger/ui/badge";
+import { Separator } from "@geiger/ui/separator";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,7 @@ export const PageBreakCard = memo(function PageBreakCard({ field, pageNumber, se
         <GripVertical className="h-4 w-4" />
       </Button>
       <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-border-strong" />
+        <Separator className="flex-1 bg-border-strong data-[orientation=horizontal]:w-auto" />
         <div className={cn("flex items-center gap-2 rounded-lg border bg-surface-subtle py-1 pl-2.5 pr-1", selected ? "border-border-strong" : "border-border")}>
           <SplitSquareVertical className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
           <span className="shrink-0 text-xs font-medium text-text-secondary">Page {pageNumber} ·</span>
@@ -46,7 +47,7 @@ export const PageBreakCard = memo(function PageBreakCard({ field, pageNumber, se
             <Trash2 />
           </Button>
         </div>
-        <div className="h-px flex-1 bg-border-strong" />
+        <Separator className="flex-1 bg-border-strong data-[orientation=horizontal]:w-auto" />
       </div>
       {selected ? (
         <div className="mx-auto mt-3 max-w-lg space-y-2">

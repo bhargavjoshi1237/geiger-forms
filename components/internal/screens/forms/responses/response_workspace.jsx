@@ -7,7 +7,7 @@ import {
   Download,
   ExternalLink,
   FileJson,
-  FileText,
+  FileSpreadsheet, FileText,
   Inbox,
   Kanban,
   ListFilter,
@@ -134,6 +134,7 @@ function MoreFilters({ filters, facets, assigneeOptions, onChange }) {
 // Header actions for the Export & Sync screen; they act on the current filtered view.
 function ExportActions({ onExport, onPrint, disabled }) {
   return [
+    { icon: FileSpreadsheet, title: "Excel", body: "An .xlsx workbook", run: () => onExport("xlsx") },
     { icon: FileText, title: "CSV", body: "Excel & Sheets ready, UTF-8", run: () => onExport("csv") },
     { icon: FileJson, title: "JSON", body: "Raw + labelled answers", run: () => onExport("json") },
     { icon: Printer, title: "Print / PDF", body: `Up to ${PRINT_LIMIT} documents`, run: onPrint },

@@ -16,7 +16,8 @@ import { withPrefix } from "@/lib/workspace/base-path";
 
 import { FORM_STATUS_MAP } from "./constants";
 import { NAV_GROUPS, SECTIONS } from "./form_sections";
-import { OUTLINE_BTN } from "./sections/kit";
+import { OUTLINE_BTN, publicFormUrl, useOrigin } from "./sections/kit";
+import { QrViewerButton } from "./sections/qr_code";
 
 const DETAIL_KEYS = ["title", "description", "category", "tags"];
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -60,6 +61,7 @@ export function FormDetailScreen({ form, categories = [], onBack, onUpdate, onMe
   const { setSection } = useWorkspaceUrl();
   const canEdit = useCan("forms.form.edit");
   const canPublish = useCan("forms.form.publish");
+  const origin = useOrigin();
 
   const [draft, setDraft] = useState(() => seedDraft(form));
   const [baseForm, setBaseForm] = useState(form);
@@ -128,7 +130,8 @@ export function FormDetailScreen({ form, categories = [], onBack, onUpdate, onMe
 
   // Leaving with unsaved edits asks first.
   const guard = (action) => (changes.dirty ? setPending(() => action) : action());
-  const openBuilder = () => guard(() => router.push(withPrefix(`/forms/${form.slug}`)));
+  // A field id deep-links to that question; button clicks pass an event, which is ignored.
+  const openBuilder = (fieldId) => guard(() => router.push(withPrefix(`/forms/${form.slug}${typeof fieldId === "string" ? `?field=${encodeURIComponent(fieldId)}` : ""}`)));
   const preview = () => window.open(withPrefix(`/form/${form.slug}`), "_blank", "noopener,noreferrer");
 
   const saveButton = (
@@ -151,6 +154,7 @@ export function FormDetailScreen({ form, categories = [], onBack, onUpdate, onMe
         meta={`${form.fields} fields · ${form.responses} responses${form.lastEdited ? ` · edited ${form.lastEdited}` : ""}`}
         actions={
           <>
+            <QrViewerButton text={publicFormUrl(origin, form.slug)} fileName={`${form.slug}-qr.png`} />
             <Button variant="outline" className={OUTLINE_BTN} onClick={preview}>
               <ExternalLink className="h-4 w-4" /> Preview
             </Button>

@@ -13,6 +13,8 @@ const SERVICES = [
   { key: "email", label: "Email (Resend)", icon: Mail, env: ["RESEND_API_KEY"], effect: "Confirmation, notification, approval, resume-link, invitation, follow-up and report emails aren't sent." },
   { key: "payments", label: "Stripe Checkout", icon: CreditCard, env: ["STRIPE_SECRET_KEY"], effect: "Respondents aren't sent to checkout, so payments aren't collected." },
   { key: "paymentWebhooks", label: "Stripe webhooks", icon: Webhook, env: ["STRIPE_WEBHOOK_SECRET"], effect: "Payments are never confirmed, so paid responses stay “Awaiting payment”." },
+  { key: "paypal", label: "PayPal", icon: CreditCard, env: ["PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET"], effect: "Forms set to PayPal can't send respondents to pay." },
+  { key: "paypalWebhooks", label: "PayPal webhooks", icon: Webhook, env: ["PAYPAL_WEBHOOK_ID"], effect: "A payer who doesn't return from PayPal stays “Awaiting payment”." },
   { key: "captcha", label: "Captcha (Cloudflare Turnstile)", icon: ShieldCheck, env: ["NEXT_PUBLIC_TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"], effect: "Captcha challenges aren't shown or verified, so the per-form toggle has no effect." },
   { key: "encryption", label: "Field encryption", icon: Lock, env: ["FORMS_ENCRYPTION_KEY"], effect: "Sensitive answers are stored unencrypted, and answers encrypted earlier can't be revealed." },
   { key: "signedLinks", label: "Link signing", icon: Link2, env: ["FORMS_LINK_SECRET"], effect: "Signed, expiring respondent links can't be created or verified." },

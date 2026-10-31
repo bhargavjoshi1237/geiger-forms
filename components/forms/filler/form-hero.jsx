@@ -35,8 +35,8 @@ export function FormHero({ form, title, description, tr, compact = false, meta }
   const showCover = settings.coverStyle === "cover";
   const logo = settings.showIcon && settings.logoUrl ? settings.logoUrl : "";
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle">
-      {showCover && <div className="h-28 sm:h-40" style={{ background: coverBackground(settings) }} aria-hidden="true" />}
+    <div data-gf-part="hero" className="overflow-hidden rounded-2xl border border-border bg-surface-subtle">
+      {showCover && <div data-gf-part="cover" className="h-28 sm:h-40" style={{ background: coverBackground(settings) }} aria-hidden="true" />}
       <div className={cn("px-6 sm:px-8", compact ? "py-5" : "py-6 sm:py-7")}>
         {logo && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -46,8 +46,8 @@ export function FormHero({ form, title, description, tr, compact = false, meta }
             className={cn("mb-4 size-14 rounded-xl border border-border bg-surface-card object-cover shadow-sm", showCover && "-mt-14 sm:-mt-16")}
           />
         )}
-        <h1 className={cn("font-semibold tracking-tight text-foreground", compact ? "text-xl" : "text-2xl sm:text-3xl")}>{title}</h1>
-        {description && !compact && <p className="mt-2.5 text-sm leading-relaxed whitespace-pre-line text-muted-foreground sm:text-[15px]">{description}</p>}
+        <h1 data-gf-part="title" className={cn("font-semibold tracking-tight text-foreground", compact ? "text-xl" : "text-2xl sm:text-3xl")}>{title}</h1>
+        {description && !compact && <p data-gf-part="description" className="mt-2.5 text-sm leading-relaxed whitespace-pre-line text-muted-foreground sm:text-[15px]">{description}</p>}
         {(meta || spotsLeft(form)) && (
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-text-secondary">
             {meta}

@@ -2,8 +2,8 @@
 
 import { memo, useMemo, useState } from "react";
 import { History, Loader2, RotateCcw } from "lucide-react";
-import { LogoLoading } from "@geiger/ui/logo-loading";
 import { Badge } from "@geiger/ui/badge";
+import { LoadingArea } from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@geiger/ui/dialog";
 import { Textarea } from "@geiger/ui/textarea";
@@ -121,7 +121,7 @@ export const HistorySection = memo(function HistorySection({ versions, loading, 
   return (
     <div className="space-y-2">
       {loading ? (
-        <div className="grid place-items-center py-4"><LogoLoading size={32} /></div>
+        <LoadingArea size={32} label="Loading versions" className="py-4" />
       ) : versions.length === 0 ? (
         <SubtleNote>No saved versions yet. Save one to snapshot this form.</SubtleNote>
       ) : (

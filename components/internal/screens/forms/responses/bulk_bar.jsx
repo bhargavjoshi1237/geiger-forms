@@ -6,7 +6,7 @@ import {
   CircleDot,
   Download,
   FileJson,
-  FileText,
+  FileSpreadsheet, FileText,
   Loader2,
   Printer,
   Tag,
@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { Separator } from "@geiger/ui/separator";
 import { Input } from "@geiger/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@geiger/ui/popover";
 import {
@@ -124,7 +125,7 @@ export function BulkBar({
           Select all {totalFiltered}
         </Button>
       ) : null}
-      <div className="mx-1 hidden h-4 w-px bg-border sm:block" />
+      <Separator orientation="vertical" className="mx-1 hidden data-[orientation=vertical]:h-4 sm:block" />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild><MenuButton icon={CircleDot} label="Status" /></DropdownMenuTrigger>
@@ -168,7 +169,8 @@ export function BulkBar({
           <DropdownMenuTrigger asChild><MenuButton icon={Download} label="Export" /></DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48 border-border bg-surface-subtle">
             <DropdownMenuLabel className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">Selected responses</DropdownMenuLabel>
-            <DropdownMenuItem className={MENU_ITEM} onClick={() => onExport("csv")}><FileText className="h-4 w-4" /> CSV (Excel-ready)</DropdownMenuItem>
+            <DropdownMenuItem className={MENU_ITEM} onClick={() => onExport("xlsx")}><FileSpreadsheet className="h-4 w-4" /> Excel (.xlsx)</DropdownMenuItem>
+            <DropdownMenuItem className={MENU_ITEM} onClick={() => onExport("csv")}><FileText className="h-4 w-4" /> CSV</DropdownMenuItem>
             <DropdownMenuItem className={MENU_ITEM} onClick={() => onExport("json")}><FileJson className="h-4 w-4" /> JSON</DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem className={MENU_ITEM} onClick={onPrint}><Printer className="h-4 w-4" /> Print / PDF</DropdownMenuItem>

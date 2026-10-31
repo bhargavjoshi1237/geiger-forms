@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Printer } from "lucide-react";
 import { Button } from "@geiger/ui/button";
-import { LogoLoading } from "@geiger/ui/logo-loading";
+import { LoadingArea } from "@geiger/ui/screen-kit";
 import { getResponse } from "@/lib/supabase/responses";
 import { getFormById } from "@/lib/supabase/forms";
 import { logAccess } from "@/lib/supabase/audit";
@@ -358,9 +358,7 @@ export function PrintResponses({ ids = [], autoPrint = true }) {
       </div>
       <main className="px-4 py-8 print:p-0">
         {state.loading ? (
-          <div className="flex min-h-[60vh] items-center justify-center">
-            <LogoLoading size={80} aria-label="Preparing documents" />
-          </div>
+          <LoadingArea size={80} label="Preparing documents" className="min-h-[60vh] py-0" />
         ) : state.error ? (
           <p className="mx-auto max-w-md rounded-md border border-neutral-300 bg-white p-6 text-center text-sm text-neutral-600">{state.error}</p>
         ) : (

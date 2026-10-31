@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { Loader2, Mail } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { LoadingArea } from "@geiger/ui/screen-kit";
 import { Input } from "@geiger/ui/input";
 import { Label } from "@geiger/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@geiger/ui/dialog";
-import { LogoLoading } from "@geiger/ui/logo-loading";
 import { callApi } from "@/lib/forms/api";
 import { withPrefix } from "@/lib/workspace/base-path";
 import { CopyField } from "./thank-you";
@@ -57,10 +57,7 @@ export function SaveResumeDialog({ open, onOpenChange, slug, flushPartial, defau
           <DialogDescription>{tr("resumeBody")}</DialogDescription>
         </DialogHeader>
         {state.status === "saving" || state.status === "idle" ? (
-          <div role="status" className="flex justify-center py-6">
-            <LogoLoading size={36} />
-            <span className="sr-only">{tr("saving")}</span>
-          </div>
+          <LoadingArea size={36} label={tr("saving")} className="py-6" />
         ) : state.status === "error" ? (
           <p role="alert" className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">{tr("resumeFailed")}</p>
         ) : (

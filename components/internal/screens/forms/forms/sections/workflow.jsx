@@ -4,16 +4,18 @@ import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
+import { Checkbox } from "@geiger/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import { Switch } from "@geiger/ui/switch";
 import { Field, SectionCard, SettingRow, SettingsList } from "@geiger/ui/screen-kit";
 import { Tabs, TabsList, TabsTrigger } from "@geiger/ui/tabs";
+import { APPROVAL_RULES, editableFields } from "@/lib/forms/approvals";
 import { hasOptions } from "@/lib/forms/field-types";
 import { CONDITION_OPERATORS, operatorNeedsValue } from "@/lib/forms/logic";
 import { RESPONSE_PRIORITIES, RESPONSE_STATUSES } from "@/lib/forms/schema";
 import { cn } from "@/lib/utils";
 import { AUTOMATION_ACTIONS } from "../constants";
-import { AddButton, ChipsInput, FIELD_CLS, ItemCard, MergeTagHelp, Stack, TextArea, TextInput, inputFields, uid } from "./kit";
+import { AddButton, ChipsInput, FIELD_CLS, ItemCard, MergeTagHelp, NumberInput, Stack, TextArea, TextInput, inputFields, uid } from "./kit";
 
 function MiniSelect({ value, onChange, options, placeholder, className }) {
   return (
@@ -38,11 +40,30 @@ const IconBtn = ({ label, onClick, disabled, children, danger }) => (
   </Button>
 );
 
-// Ordered approval chain; each step names its approvers by email.
-export function ApprovalsSection({ settings, setGroup }) {
+// Tick-list of questions for a step's visibility and edit rights.
+function FieldChecklist({ fields, value, onChange, label }) {
+  const selected = new Set(value || []);
+  return (
+    <div role="group" aria-label={label} className="grid max-h-40 gap-1.5 overflow-y-auto rounded-md border border-border bg-surface-card p-2.5 sm:grid-cols-2">
+      {fields.map((f) => (
+        <label key={f.id} className="flex min-w-0 cursor-pointer items-center gap-2 text-sm text-text-secondary">
+          <Checkbox checked={selected.has(f.id)} onCheckedChange={(on) => onChange(on ? [...selected, f.id] : [...selected].filter((id) => id !== f.id))} />
+          <span className="truncate">{f.label || f.title}</span>
+        </label>
+      ))}
+      {!fields.length ? <p className="text-xs text-text-tertiary">No questions qualify.</p> : null}
+    </div>
+  );
+}
+
+// Ordered approval chain; each step names its approvers by email, how many must agree, and when it runs.
+export function ApprovalsSection({ form, settings, set, setGroup }) {
   const approval = settings.approval || {};
   const steps = approval.steps || [];
   const setSteps = (next) => setGroup("approval", { steps: next });
+  const patchStep = (id, patch) => setSteps(steps.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  const fields = inputFields(form.fieldDefs);
+  const conditionFields = fields.filter((f) => !f.sensitive);
   const move = (i, dir) => {
     const next = [...steps];
     [next[i], next[i + dir]] = [next[i + dir], next[i]];
@@ -50,10 +71,15 @@ export function ApprovalsSection({ settings, setGroup }) {
   };
   return (
     <Stack>
-      <SectionCard title="Approval routing" description="Responses wait as “Pending” until every step approves, in order. Any rejection closes the request.">
+      <SectionCard title="Approval routing" description="Responses wait as “Pending” until every step that applies approves, in order. Any rejection closes the request, and editors can step in to decide for a step's approvers.">
         <SettingsList>
           <SettingRow title="Require approval" checked={Boolean(approval.enabled)} onCheckedChange={(v) => setGroup("approval", { enabled: v, steps: v && !steps.length ? [{ id: uid("step"), name: "Manager", approvers: [] }] : steps })} />
         </SettingsList>
+        {approval.enabled ? (
+          <Field label="Remind approvers after (days)" hint="Emails anyone who hasn't voted, then again each interval. Leave empty for no reminders." className="mt-4 max-w-xs">
+            <NumberInput value={approval.remindAfterDays} min={1} onChange={(v) => setGroup("approval", { remindAfterDays: v })} />
+          </Field>
+        ) : null}
       </SectionCard>
       {approval.enabled ? (
         <SectionCard title="Steps" action={<AddButton onClick={() => setSteps([...steps, { id: uid("step"), name: `Step ${steps.length + 1}`, approvers: [] }])}>Add step</AddButton>}>
@@ -76,10 +102,41 @@ export function ApprovalsSection({ settings, setGroup }) {
                 </div>
                 <div className="grid gap-3">
                   <Field label="Step name">
-                    <TextInput value={s.name} onChange={(v) => setSteps(steps.map((x) => (x.id === s.id ? { ...x, name: v } : x)))} />
+                    <TextInput value={s.name} onChange={(v) => patchStep(s.id, { name: v })} />
                   </Field>
-                  <Field label="Approvers" hint="Any one of these people can decide this step. Leave empty to let any editor decide.">
-                    <ChipsInput value={s.approvers || []} onChange={(v) => setSteps(steps.map((x) => (x.id === s.id ? { ...x, approvers: v } : x)))} placeholder="approver@company.com" />
+                  <Field label="Approvers" hint="Leave empty to let any editor decide. All of them are emailed at once.">
+                    <ChipsInput value={s.approvers || []} onChange={(v) => patchStep(s.id, { approvers: v })} placeholder="approver@company.com" />
+                  </Field>
+                  {(s.approvers || []).length > 1 ? (
+                    <Field label="Decision rule" hint="One rejection closes the request under “Everyone”. Under a majority, it closes as soon as a majority can't be reached.">
+                      <MiniSelect value={s.rule || "any"} onChange={(v) => patchStep(s.id, { rule: v })} options={APPROVAL_RULES} />
+                    </Field>
+                  ) : null}
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">Only when</span>
+                      {(s.conditions || []).length > 1 ? (
+                        <Tabs value={s.conditionLogic === "all" ? "all" : "any"} onValueChange={(v) => patchStep(s.id, { conditionLogic: v })}>
+                          <TabsList>
+                            <TabsTrigger value="all">All match</TabsTrigger>
+                            <TabsTrigger value="any">Any matches</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      ) : null}
+                    </div>
+                    {(s.conditions || []).map((c) => (
+                      <ConditionRow key={c.id} cond={c} fields={conditionFields} onChange={(patch) => patchStep(s.id, { conditions: s.conditions.map((x) => (x.id === c.id ? { ...x, ...patch } : x)) })} onRemove={() => patchStep(s.id, { conditions: s.conditions.filter((x) => x.id !== c.id) })} />
+                    ))}
+                    <AddButton onClick={() => patchStep(s.id, { conditions: [...(s.conditions || []), { id: uid("cond"), fieldId: conditionFields[0]?.id || "", operator: "equals", value: "" }] })} disabled={!conditionFields.length}>
+                      Condition
+                    </AddButton>
+                    {!(s.conditions || []).length ? <p className="text-xs text-text-tertiary">No conditions: this step runs for every response.</p> : null}
+                  </div>
+                  <Field label="Left out of this step's emails" hint="Doesn't restrict the workspace: anyone who can open the response still sees these. Mark a field sensitive to protect it.">
+                    <FieldChecklist label="Left out of this step's emails" fields={fields} value={s.hiddenFields} onChange={(v) => patchStep(s.id, { hiddenFields: v })} />
+                  </Field>
+                  <Field label="Approvers can correct" hint="Editable while deciding, and recorded in the history. Sensitive, file, signature and payment fields can't be edited.">
+                    <FieldChecklist label="Approvers can correct" fields={editableFields({ editableFields: fields.map((f) => f.id) }, form.fieldDefs)} value={s.editableFields} onChange={(v) => patchStep(s.id, { editableFields: v })} />
                   </Field>
                 </div>
               </ItemCard>

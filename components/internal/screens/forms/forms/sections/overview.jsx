@@ -8,11 +8,10 @@ import { SectionCard, StatsBar, StatusPill } from "@geiger/ui/screen-kit";
 import { listFormEvents } from "@/lib/supabase/responses";
 import { FORM_STATUS_MAP, formatCount } from "../constants";
 import { CopyField, Detail, Note, OUTLINE_BTN, Stack, publicFormUrl, useOrigin } from "./kit";
-import { QrCode } from "./qr_code";
 
 const DAY = 86_400_000;
 
-// Snapshot of one form: funnel stats (last 30 days), public link + QR, quick actions.
+// Snapshot of one form: funnel stats (last 30 days), public link, quick actions.
 export function OverviewSection({ form, openBuilder, preview, navigate, onOpenResponses }) {
   const origin = useOrigin();
   const url = publicFormUrl(origin, form.slug);
@@ -56,24 +55,21 @@ export function OverviewSection({ form, openBuilder, preview, navigate, onOpenRe
     <Stack>
       <StatsBar stats={stats} />
 
-      <SectionCard title="Public link" description="Share this link, or scan the QR code, to open the form.">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-          <div className="min-w-0 flex-1 space-y-3">
-            <CopyField value={url} label="Link copied" />
-            {form.status !== "Published" ? (
-              <Note tone="warning" icon={Eye}>
-                This form is {form.status === "Archived" ? "archived" : "still a draft"} — respondents see a closed notice until you publish it.
-              </Note>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              {actions.map((a) => (
-                <Button key={a.label} type="button" variant="outline" size="sm" onClick={a.onClick} className={OUTLINE_BTN}>
-                  <a.icon className="h-3.5 w-3.5" /> {a.label}
-                </Button>
-              ))}
-            </div>
+      <SectionCard title="Public link" description="Share this link to open the form.">
+        <div className="space-y-3">
+          <CopyField value={url} label="Link copied" />
+          {form.status !== "Published" ? (
+            <Note tone="warning" icon={Eye}>
+              This form is {form.status === "Archived" ? "archived" : "still a draft"} — respondents see a closed notice until you publish it.
+            </Note>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {actions.map((a) => (
+              <Button key={a.label} type="button" variant="outline" size="sm" onClick={a.onClick} className={OUTLINE_BTN}>
+                <a.icon className="h-3.5 w-3.5" /> {a.label}
+              </Button>
+            ))}
           </div>
-          <QrCode text={url} size={120} fileName={`${form.slug}-qr.png`} />
         </div>
       </SectionCard>
 

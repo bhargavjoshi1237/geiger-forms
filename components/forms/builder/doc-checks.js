@@ -1,6 +1,7 @@
 import { hasOptions, isInputField } from "@/lib/forms/field-types";
+import { checkCustomCss } from "@/lib/forms/custom-css";
 import { checkFormula } from "@/lib/forms/formula";
-import { OUTCOME_METRICS, safeHttpUrl } from "@/lib/forms/logic";
+import { JUMP_TO_END, OUTCOME_METRICS, safeHttpUrl } from "@/lib/forms/logic";
 import { imageSource, videoSource } from "@/lib/forms/media";
 
 // Pre-publish checks, version diffs and the doc signature hash used by co-editing.
@@ -43,6 +44,9 @@ export function collectWarnings({ fields, settings }) {
     warnings.push({ id: "empty", message: "The form has no questions yet." });
   }
 
+  const cssError = checkCustomCss(settings?.customCss).error;
+  if (cssError) warnings.push({ id: "custom-css", message: `Custom CSS is ignored until it's fixed: ${cssError}` });
+
   for (const f of included) {
     if (hasOptions(f.type) && (f.options || []).filter(Boolean).length === 0) {
       warnings.push({ id: `opts-${f.id}`, fieldId: f.id, message: `${name(f)} has no choices.` });
@@ -72,6 +76,10 @@ export function collectWarnings({ fields, settings }) {
     }
     if (f.type === "video" && !videoSource(f.config?.url)) {
       warnings.push({ id: `video-${f.id}`, fieldId: f.id, message: `${name(f)} needs a YouTube, Vimeo or .mp4 link, so it's hidden.` });
+    }
+    for (const rule of f.jumps || []) {
+      if (!rule.conditions?.length) warnings.push({ id: `jump-empty-${rule.id}`, fieldId: f.id, message: `${name(f)} has a jump rule with no conditions, so it never runs.` });
+      if (rule.to !== JUMP_TO_END && !ids.has(rule.to)) warnings.push({ id: `jump-target-${rule.id}`, fieldId: f.id, message: `${name(f)} has a jump rule pointing at a deleted question.` });
     }
     const broken = (f.conditions || []).filter((c) => c.fieldId && !ids.has(c.fieldId));
     if (broken.length) {

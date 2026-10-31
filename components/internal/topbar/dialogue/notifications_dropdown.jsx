@@ -6,6 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@geiger/ui/dropdown-menu";
+import { Skeleton } from "@geiger/ui/skeleton";
 import { Bell, Download, Loader2, MessageSquare } from "lucide-react";
 import { getUser } from "@/lib/supabase/user";
 import { SegmentedTabs } from "@geiger/ui/segmented-tabs";
@@ -39,11 +40,11 @@ function SkeletonRows() {
     <div className="px-4 py-2">
       {[0, 1, 2].map((i) => (
         <div key={i} className="flex items-start gap-3 border-b border-border py-3.5 last:border-b-0">
-          <div className="mt-0.5 h-9 w-9 shrink-0 animate-pulse rounded-lg bg-surface-subtle" />
+          <Skeleton className="mt-0.5 h-9 w-9 shrink-0 rounded-lg bg-surface-subtle" />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <div className="h-3 w-2/3 animate-pulse rounded bg-surface-subtle" />
-            <div className="h-3 w-full animate-pulse rounded bg-surface-subtle" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-surface-subtle" />
+            <Skeleton className="h-3 w-2/3 rounded bg-surface-subtle" />
+            <Skeleton className="h-3 w-full rounded bg-surface-subtle" />
+            <Skeleton className="h-3 w-1/2 rounded bg-surface-subtle" />
           </div>
         </div>
       ))}

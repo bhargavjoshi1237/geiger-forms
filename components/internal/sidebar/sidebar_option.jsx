@@ -6,6 +6,7 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from "@geiger/ui/sidebar";
+import { Badge } from "@geiger/ui/badge";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@geiger/ui/button";
@@ -17,9 +18,9 @@ import {
 
 function SoonBadge() {
   return (
-    <span className="ml-auto shrink-0 rounded bg-surface-active px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-text-tertiary">
+    <Badge className="ml-auto shrink-0 border-0 bg-surface-active px-1.5 text-[9px] uppercase tracking-wide text-text-tertiary">
       Soon
-    </span>
+    </Badge>
   );
 }
 

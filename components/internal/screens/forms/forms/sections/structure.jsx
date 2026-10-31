@@ -12,6 +12,7 @@ import {
   SettingsList,
   StatsBar,
 } from "@geiger/ui/screen-kit";
+import { LogicMap } from "@/components/forms/logic-map";
 import { getFieldIcon, isInputField, isLayoutField } from "@/lib/forms/field-types";
 import { checkFormula } from "@/lib/forms/formula";
 import { fieldTypeLabel, splitPages } from "@/lib/forms/logic";
@@ -168,7 +169,6 @@ export function FieldsSection({ form, openBuilder }) {
 
 export function LogicSection({ form, settings, set, setGroup, openBuilder }) {
   const s = useStructure(form);
-  const byId = new Map(s.defs.map((f) => [f.id, f]));
   const branches = settings.branches || [];
   return (
     <Stack>
@@ -180,22 +180,17 @@ export function LogicSection({ form, settings, set, setGroup, openBuilder }) {
           { label: "Graded questions", value: String(s.graded), footer: settings.quiz?.enabled ? "Quiz on" : "Quiz off" },
         ]}
       />
-      <BuilderLink onOpenBuilder={openBuilder}>Write visibility rules, formulas and outcome branches in the builder.</BuilderLink>
+      <BuilderLink onOpenBuilder={() => openBuilder()}>Write visibility rules, jump rules, formulas and outcome branches in the builder.</BuilderLink>
 
-      {s.conditional.length || s.calculated.length ? (
-        <SectionCard title="Rules">
+      {s.defs.length ? (
+        <SectionCard title="Logic map" description="The form in order, with its rules drawn beside it. Select a question to edit it in the builder.">
+          <LogicMap fields={form.fieldDefs} settings={settings} onOpenField={openBuilder} />
+        </SectionCard>
+      ) : null}
+
+      {s.calculated.length ? (
+        <SectionCard title="Formulas">
           <div className="divide-y divide-border">
-            {s.conditional.map((f) => (
-              <FieldRow
-                key={f.id}
-                field={f}
-                meta={
-                  <Badge variant="info">
-                    <GitFork /> {f.conditions.length} {f.conditionLogic === "all" ? "ALL" : "ANY"} · {f.conditions.map((c) => byId.get(c.fieldId)?.title || "?").join(", ")}
-                  </Badge>
-                }
-              />
-            ))}
             {s.calculated.map((f) => {
               const error = f.formula ? checkFormula(f.formula) : "No formula";
               return (

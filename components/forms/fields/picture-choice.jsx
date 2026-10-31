@@ -24,10 +24,10 @@ function PictureCard({ option, index, image, control, selected, locked, large, h
         locked && "pointer-events-none opacity-60",
       )}
     >
-      <span className="relative block aspect-[4/3] bg-surface-hover">
+      <span className="relative block aspect-[4/3] overflow-hidden bg-surface-hover">
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt={image?.alt || ""} loading="lazy" decoding="async" className="size-full object-cover" />
+          <img src={src} alt={image?.alt || ""} loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover transition-transform duration-500 ease-out group-hover:scale-105" />
         ) : (
           <ImageOff className="absolute inset-0 m-auto size-6 text-text-tertiary" aria-hidden="true" />
         )}

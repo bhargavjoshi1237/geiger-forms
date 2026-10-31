@@ -1,9 +1,7 @@
 import { appOrigin, fail, json, unavailable } from "@/lib/server/http";
 import { formsAdmin } from "@/lib/server/supabase-admin";
+import { markResponsePaid } from "@/lib/server/payments";
 import { verifyStripeSignature } from "@/lib/server/stripe";
-import { loadForm, logActivity, safeAnswers } from "@/lib/server/forms";
-import { sendApprovalRequest } from "@/lib/server/side-effects";
-import { dispatchEvent, responsePayload } from "@/lib/server/webhooks";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -57,26 +55,6 @@ export async function POST(request) {
     return json({ received: true });
   }
 
-  const form = await loadForm({ id: row.form_id });
-  const approvalOn = Boolean(form?.settings.approval?.enabled) && (form.settings.approval.steps || []).length > 0;
-  const status = row.status === "Awaiting payment" ? (approvalOn ? "Pending" : "Complete") : row.status;
-  const metadata = ref ? { ...(row.metadata || {}), stripeSubscription: ref } : row.metadata;
-  const { data: updated, error } = await db
-    .from("responses")
-    .update({ payment_status: "paid", status, metadata, ...(approvalOn && !row.approval?.state ? { approval: { stepIndex: 0, state: "pending", history: [] } } : {}) })
-    .eq("id", row.id)
-    .select("*")
-    .single();
-  if (error) {
-    console.error("[stripe.webhook]", error.message);
-    return fail("Couldn't record the payment.", 500);
-  }
-  if (form) {
-    await Promise.allSettled([
-      status === "Pending" ? sendApprovalRequest({ form, row: updated, origin: appOrigin(request) }) : null,
-      dispatchEvent(form, "response.updated", responsePayload(form, updated, safeAnswers(updated, form, "[protected]")), updated.id),
-      logActivity({ projectId: form.projectId, formId: form.id, responseId: row.id, actor: { name: "Stripe" }, action: "payment.paid", detail: { amount: row.payment_amount, currency: row.payment_currency } }),
-    ]);
-  }
-  return json({ received: true });
+  const saved = await markResponsePaid({ row, actor: "Stripe", origin: appOrigin(request), ref: ref ? { stripeSubscription: ref } : null });
+  return saved ? json({ received: true }) : fail("Couldn't record the payment.", 500);
 }

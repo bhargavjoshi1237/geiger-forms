@@ -2,6 +2,7 @@
 
 import React from "react";
 import { TriangleAlert } from "lucide-react";
+import { EmptyState } from "@geiger/ui/screen-kit";
 
 // The playground runs the real workspace screens on the public landing page, so
 // one screen tripping over unexpected data must not take the page down with it.
@@ -30,12 +31,13 @@ export class ScreenErrorBoundary extends React.Component {
     const title = this.props.title || "This screen";
     return (
       <div className="flex h-full min-h-[320px] items-center justify-center p-8">
-        <div className="flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-dashed border-border p-8 text-center">
-          <TriangleAlert className="h-6 w-6 text-muted-foreground" />
-          <p className="font-medium text-foreground">{title} couldn&apos;t load in the playground</p>
-          <p className="text-sm text-muted-foreground">
-            Pick another screen from the sidebar, or open the workspace to see this one with your own data.
-          </p>
+        <div className="max-w-sm rounded-2xl border border-dashed border-border">
+          <EmptyState
+            icon={TriangleAlert}
+            className="p-8"
+            title={`${title} couldn't load in the playground`}
+            description="Pick another screen from the sidebar, or open the workspace to see this one with your own data."
+          />
         </div>
       </div>
     );

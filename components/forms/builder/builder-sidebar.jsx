@@ -82,18 +82,17 @@ const PagesSection = memo(function PagesSection({ fields, selectedId, onSelect, 
           onClick={() => p.break && onSelect(p.break.id)}
           disabled={!p.break}
           className={cn(
-            "h-auto w-full justify-start gap-2 rounded-md border px-2.5 py-1.5 text-left font-normal transition-colors disabled:opacity-100",
-            p.break && selectedId === p.break.id ? "border-border-strong bg-surface-card hover:bg-surface-card" : "border-border bg-background hover:bg-background",
-            p.break && "hover:border-border-strong",
+            "h-8 w-full justify-start gap-2 rounded-md border bg-surface-active px-1.5 text-left text-sm font-normal text-foreground transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-100 dark:hover:bg-surface-hover",
+            p.break && selectedId === p.break.id ? "border-border-strong" : "border-transparent",
           )}
         >
           <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-surface-hover text-[10px] font-semibold text-text-secondary">{i + 1}</span>
-          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{p.title || `Page ${i + 1}`}</span>
+          <span className="min-w-0 flex-1 truncate">{p.title || `Page ${i + 1}`}</span>
           {p.break?.conditions?.length ? <GitBranch className="h-3 w-3 shrink-0 text-text-tertiary" /> : null}
           <span className="shrink-0 text-[10px] text-text-tertiary">{p.fields.length} field{p.fields.length === 1 ? "" : "s"}</span>
         </Button>
       ))}
-      <Button type="button" variant="outline" className="h-8 w-full text-xs" onClick={onAddPage}><Plus className="h-3.5 w-3.5" />Add page</Button>
+      <Button type="button" variant="ghost" className="h-8 w-full rounded-md bg-surface-active text-sm font-normal text-foreground hover:bg-surface-hover hover:text-foreground dark:hover:bg-surface-hover" onClick={onAddPage}><Plus className="h-3.5 w-3.5" />Add page</Button>
       {pages.length === 1 ? <SubtleNote>Add a page break to split the form into steps. Each break can skip its page with conditions.</SubtleNote> : null}
     </div>
   );

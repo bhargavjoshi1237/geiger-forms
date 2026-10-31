@@ -6,7 +6,6 @@ import {
   Bot,
   ClipboardCheck,
   Code,
-  Columns3,
   Eye,
   FileText,
   Files,
@@ -15,10 +14,9 @@ import {
   Globe,
   Languages,
   LayoutDashboard,
-  ListChecks,
-  MousePointer2,
   Paintbrush,
   Plug,
+  Contact,
   Save,
   Send,
   Share2,
@@ -36,6 +34,7 @@ import { BrandingSection } from "./sections/branding";
 import { DetailsSection } from "./sections/details";
 import { IntegrationsSection } from "./sections/integrations";
 import { LocalizationSection } from "./sections/localization";
+import { SuiteRecordsSection } from "./sections/suite_records";
 import { NotificationsSection } from "./sections/notifications";
 import { OverviewSection } from "./sections/overview";
 import { CouponsSection, GatewaysSection, OrderSection } from "./sections/payments";
@@ -59,9 +58,6 @@ export const NAV_GROUPS = [
   {
     group: "Build",
     items: [
-      { key: "canvas", label: "Drag & Drop Canvas", icon: MousePointer2, desc: "Everything on the form canvas, in order." },
-      { key: "layout", label: "Layout & Columns", icon: Columns3, desc: "How fields sit side by side." },
-      { key: "fields", label: "Fields", icon: ListChecks, desc: "The questions this form collects." },
       { key: "logic", label: "Logic & Scoring", icon: GitFork, desc: "Visibility rules, formulas, scoring and quizzes." },
       { key: "preview", label: "Preview & Test", icon: Eye, desc: "Try the form the way respondents will." },
     ],
@@ -114,6 +110,7 @@ export const NAV_GROUPS = [
       { key: "access", label: "Access & Sharing", icon: Users, desc: "Who can respond, spam protection and privacy." },
       { key: "security", label: "Security & Compliance", icon: ShieldCheck, desc: "Sensitive data, access log and HIPAA readiness." },
       { key: "integrations", label: "Integrations", icon: Plug, desc: "Webhooks, Slack, Geiger Flow and more." },
+      { key: "suite-records", label: "Suite Records", icon: Contact, desc: "Create and update Geiger Events contacts from responses." },
     ],
   },
 ];
@@ -132,6 +129,7 @@ export const SECTIONS = {
   screens: ScreensSection,
   branding: BrandingSection,
   localization: LocalizationSection,
+  "suite-records": SuiteRecordsSection,
   pages: PagesSection,
   saveresume: SaveResumeSection,
   submission: SubmissionSection,

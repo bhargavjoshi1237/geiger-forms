@@ -2,6 +2,7 @@ import { ok, unauthorized } from "@/lib/server/http";
 import { getSessionUser } from "@/lib/server/auth";
 import { isEncryptionConfigured, isLinkSigningConfigured } from "@/lib/server/crypto";
 import { isEmailConfigured } from "@/lib/server/email";
+import { isPayPalConfigured } from "@/lib/server/paypal";
 import { isStripeConfigured } from "@/lib/server/stripe";
 import { isAdminConfigured } from "@/lib/server/supabase-admin";
 
@@ -17,6 +18,8 @@ export async function GET() {
       email: isEmailConfigured(),
       payments: isStripeConfigured(),
       paymentWebhooks: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
+      paypal: isPayPalConfigured(),
+      paypalWebhooks: Boolean(process.env.PAYPAL_WEBHOOK_ID),
       captcha: Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY),
       encryption: isEncryptionConfigured(),
       signedLinks: isLinkSigningConfigured(),

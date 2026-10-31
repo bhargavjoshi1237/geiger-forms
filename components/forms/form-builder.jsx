@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, CheckCircle2, CloudOff, FilePlus2, FileQuestion, Loader2, Redo2, RefreshCw, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
-import { LogoLoading } from "@geiger/ui/logo-loading";
+import { Separator } from "@geiger/ui/separator";
+import { EmptyState, LoadingScreen } from "@geiger/ui/screen-kit";
+import { Kbd } from "@geiger/ui/kbd";
 import { Button } from "@geiger/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@geiger/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -85,7 +87,7 @@ function IconAction({ label, shortcut, onClick, disabled, children }) {
           {children}
         </Button>
       </TooltipTrigger>
-      <TooltipContent>{label} <span className="ml-1 opacity-60">{shortcut}</span></TooltipContent>
+      <TooltipContent>{label} <Kbd className="ml-1">{shortcut}</Kbd></TooltipContent>
     </Tooltip>
   );
 }
@@ -99,7 +101,12 @@ function FormBuilderEditor({ form, backHref }) {
     docRef.current = doc;
   }, [doc]);
 
-  const [selectedId, setSelectedId] = useState(null);
+  // ?field=<id> opens the builder on one question (from the logic map).
+  const linkedField = useSearchParams().get("field");
+  const [selectedId, setSelectedId] = useState(linkedField);
+  useEffect(() => {
+    if (linkedField) scrollToField(linkedField);
+  }, [linkedField]);
   const [previewing, setPreviewing] = useState(false);
   const [status, setStatus] = useState(form.status);
   const [remoteUpdate, setRemoteUpdate] = useState(null);
@@ -323,7 +330,7 @@ function FormBuilderEditor({ form, backHref }) {
                 ) : null}
                 <IconAction label="Undo" shortcut="Ctrl+Z" onClick={undo} disabled={!canUndo}><Undo2 className="h-4 w-4" /></IconAction>
                 <IconAction label="Redo" shortcut="Ctrl+Shift+Z" onClick={redo} disabled={!canRedo}><Redo2 className="h-4 w-4" /></IconAction>
-                <div aria-hidden="true" className="pointer-events-none mx-1 h-5 w-px bg-border" />
+                <Separator orientation="vertical" className="pointer-events-none mx-1 data-[orientation=vertical]:h-5" />
               </>
             ) : null}
             <BuilderTopbarActions
@@ -397,9 +404,7 @@ function FormBuilderEditor({ form, backHref }) {
   );
 }
 
-function CenteredState({ children }) {
-  return <div className="flex h-full min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-3 bg-background px-6 text-center">{children}</div>;
-}
+const STATE_CLS = "min-h-[calc(100dvh-3.5rem)] bg-background";
 
 function NotFoundState({ slug, projectId, backHref, onCreated }) {
   const [busy, setBusy] = useState(false);
@@ -417,23 +422,22 @@ function NotFoundState({ slug, projectId, backHref, onCreated }) {
     }
   };
   return (
-    <CenteredState>
-      <span className="grid h-12 w-12 place-items-center rounded-xl border border-border bg-surface-subtle text-text-secondary"><FileQuestion className="h-6 w-6" /></span>
-      <div className="space-y-1">
-        <p className="text-base font-semibold text-foreground">Form not found</p>
-        <p className="max-w-sm text-sm text-text-secondary">
-          There&apos;s no form at <code className="rounded bg-surface-card px-1 font-mono text-xs">/forms/{slug}</code>. It may have been deleted, or the link is wrong.
-        </p>
-      </div>
-      <div className="mt-2 flex flex-wrap justify-center gap-2">
-        <Button type="button" variant="ghost" asChild>
-          <Link href={backHref}><ArrowLeft className="h-4 w-4" />Back to forms</Link>
-        </Button>
-        <Button type="button" onClick={create} disabled={busy || !canCreate || !projectId}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />}Create this form
-        </Button>
-      </div>
-    </CenteredState>
+    <EmptyState
+      icon={FileQuestion}
+      className={STATE_CLS}
+      title="Form not found"
+      description={<>There&apos;s no form at <code className="rounded bg-surface-card px-1 font-mono text-xs normal-case">/forms/{slug}</code>. It may have been deleted, or the link is wrong.</>}
+      action={
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button type="button" variant="ghost" asChild>
+            <Link href={backHref}><ArrowLeft className="h-4 w-4" />Back to forms</Link>
+          </Button>
+          <Button type="button" onClick={create} disabled={busy || !canCreate || !projectId}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />}Create this form
+          </Button>
+        </div>
+      }
+    />
   );
 }
 
@@ -465,22 +469,25 @@ export function FormBuilder({ formId, projectId = null, backHref = withPrefix("/
 
   if (current.status === "error") {
     return (
-      <CenteredState>
-        <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-        <p className="font-medium text-foreground">Couldn&apos;t load this form</p>
-        <p className="max-w-sm text-xs text-text-secondary">Refresh the page or try again shortly.</p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setState({ slug: formId, status: "loading", form: null });
-            setAttempt((n) => n + 1);
-          }}
-        >
-          Retry
-        </Button>
-      </CenteredState>
+      <EmptyState
+        icon={AlertTriangle}
+        className={STATE_CLS}
+        title="Couldn't load this form"
+        description="Refresh the page or try again shortly."
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setState({ slug: formId, status: "loading", form: null });
+              setAttempt((n) => n + 1);
+            }}
+          >
+            Retry
+          </Button>
+        }
+      />
     );
   }
 
@@ -499,11 +506,7 @@ export function FormBuilder({ formId, projectId = null, backHref = withPrefix("/
   }
 
   if (current.status !== "ready") {
-    return (
-      <CenteredState>
-        <LogoLoading size={88} />
-      </CenteredState>
-    );
+    return <LoadingScreen size={88} label="Loading form" className={STATE_CLS} />;
   }
 
   return <FormBuilderEditor key={current.form.id} form={current.form} backHref={backHref} />;

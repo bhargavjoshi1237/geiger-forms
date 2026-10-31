@@ -6,11 +6,11 @@ function first(value) {
 }
 
 // Server-side public payload (same shape as GET /api/public/forms/:slug). `missing` only when the loader really ran; null falls back to a client fetch.
-const getPayload = cache(async (slug, signedToken, variantId) => {
+const getPayload = cache(async (slug, signedToken, variantId, recordToken) => {
   try {
     const [mod, admin] = await Promise.all([import("@/lib/server/public-form"), import("@/lib/server/supabase-admin")]);
     if (typeof mod.loadPublicForm !== "function" || !admin.isAdminConfigured?.()) return null;
-    const payload = await mod.loadPublicForm(slug, { signedToken: signedToken || undefined, variantId: variantId || undefined });
+    const payload = await mod.loadPublicForm(slug, { signedToken: signedToken || undefined, variantId: variantId || undefined, recordToken: recordToken || undefined });
     if (!payload) return { missing: true };
     return payload.ok !== false && payload.form ? JSON.parse(JSON.stringify(payload)) : null;
   } catch {
@@ -21,7 +21,7 @@ const getPayload = cache(async (slug, signedToken, variantId) => {
 export async function generateMetadata({ params, searchParams }) {
   const { formId } = await params;
   const sp = (await searchParams) || {};
-  const payload = await getPayload(formId, first(sp.t), first(sp.variant));
+  const payload = await getPayload(formId, first(sp.t), first(sp.variant), first(sp.record));
   const form = payload?.form;
   const title = payload?.variant?.title || form?.title || (payload?.missing ? "Form not available" : "Form");
   const description = (payload?.variant?.description ?? form?.description) || "Fill out this form on Geiger Forms.";
@@ -29,7 +29,7 @@ export async function generateMetadata({ params, searchParams }) {
   return {
     title: `${title} - Geiger Forms`,
     description,
-    robots: payload?.gate === "signed" || payload?.gate === "password" ? { index: false, follow: false } : undefined,
+    robots: payload?.gate === "signed" || payload?.gate === "password" || first(sp.record) ? { index: false, follow: false } : undefined,
     openGraph: { title, description, type: "website", siteName: "Geiger Forms", images: image ? [{ url: image }] : undefined },
     twitter: { card: image ? "summary_large_image" : "summary", title, description, images: image ? [image] : undefined },
   };
@@ -40,7 +40,7 @@ export default async function FormFillerPage({ params, searchParams }) {
   const { formId } = await params;
   const sp = (await searchParams) || {};
   const plainParams = JSON.parse(JSON.stringify(sp));
-  const payload = await getPayload(formId, first(sp.t), first(sp.variant));
+  const payload = await getPayload(formId, first(sp.t), first(sp.variant), first(sp.record));
   return (
     <FormFillerContent
       slug={formId}

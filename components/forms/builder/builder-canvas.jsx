@@ -3,6 +3,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { FunctionSquare, ImageIcon, MousePointerClick, Plus, SplitSquareVertical } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { EmptyState } from "@geiger/ui/screen-kit";
+import { ResizeHandle } from "@geiger/ui/resize-handle";
 import { Popover, PopoverContent, PopoverTrigger } from "@geiger/ui/popover";
 import { cn } from "@/lib/utils";
 import { getFieldType, isInputField } from "@/lib/forms/field-types";
@@ -26,58 +28,37 @@ function DropLine() {
   );
 }
 
-function ResizeHandle({ onMouseDown }) {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-sm"
-      aria-label="Resize canvas width"
-      title="Drag to resize"
-      onMouseDown={onMouseDown}
-      className="absolute bottom-1 right-1 h-7 w-7 cursor-nwse-resize text-muted-foreground opacity-50 transition-opacity hover:text-muted-foreground hover:opacity-100"
-    >
-      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-        <path d="M 6 10 L 10 6 L 10 10 Z" fill="currentColor" />
-        <path d="M 2 10 L 10 2 L 10 4 L 4 10 Z" fill="currentColor" />
-      </svg>
-    </Button>
-  );
-}
-
 // Empty canvas: a drop target with one-click starters for the most common field types.
 function EmptyCanvas({ active, onDragOver, onDrop, onPick }) {
   return (
     <div
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={cn(
-        "flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-12 text-center transition-colors",
-        active ? "border-sky-400 bg-sky-500/5" : "border-border bg-surface-subtle",
-      )}
+      className={cn("rounded-xl border border-dashed transition-colors", active ? "border-sky-400 bg-sky-500/5" : "border-border bg-surface-subtle")}
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface-card text-text-secondary">
-        <MousePointerClick className="h-5 w-5" />
-      </div>
-      <div className="space-y-1">
-        <p className="text-sm font-semibold text-foreground">Start building your form</p>
-        <p className="mx-auto max-w-sm text-sm text-text-secondary">Pick a field to begin, or drag any field type from the sidebar onto the canvas.</p>
-      </div>
-      <div className="flex max-w-md flex-wrap justify-center gap-2">
-        {QUICK_TYPES.map((type) => (
-          <Button
-            key={type}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onPick(type)}
-            className="gap-1.5 bg-surface-card text-xs font-normal text-muted-foreground hover:border-border-strong hover:bg-surface-hover hover:text-foreground"
-          >
-            <FieldTypeIcon type={type} className="h-3.5 w-3.5 text-text-secondary" />
-            {getFieldType(type)?.label}
-          </Button>
-        ))}
-      </div>
+      <EmptyState
+        icon={MousePointerClick}
+        className="py-12"
+        title="Start building your form"
+        description="Pick a field to begin, or drag any field type from the sidebar onto the canvas."
+        action={
+          <div className="flex max-w-md flex-wrap justify-center gap-2">
+            {QUICK_TYPES.map((type) => (
+              <Button
+                key={type}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onPick(type)}
+                className="gap-1.5 bg-surface-card text-xs font-normal text-muted-foreground hover:border-border-strong hover:bg-surface-hover hover:text-foreground"
+              >
+                <FieldTypeIcon type={type} className="h-3.5 w-3.5 text-text-secondary" />
+                {getFieldType(type)?.label}
+              </Button>
+            ))}
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -271,7 +252,11 @@ export function BuilderCanvas({
             </div>
           ) : null}
 
-          <ResizeHandle onMouseDown={startResize} />
+          {visible.length > 0 ? (
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="Resize canvas width" title="Drag to resize" onMouseDown={startResize} className="absolute bottom-1 right-1 h-7 w-7 cursor-nwse-resize hover:[&_svg]:opacity-100">
+              <ResizeHandle />
+            </Button>
+          ) : null}
         </div>
 
         <div className={cn("flex flex-wrap justify-center gap-2", visible.length ? "mt-2" : "mt-6")}>

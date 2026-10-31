@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Skeleton } from "@geiger/ui/skeleton";
 
 // The live playground card on a landing page: the app's own /playground route in
 // an iframe, so the workspace's dialogs, sheets, menus and toasts — portalled to
@@ -40,16 +41,16 @@ export function PlaygroundFrame({ src, title, className = "" }) {
       className={`relative h-[640px] overflow-hidden rounded-lg border border-border bg-background sm:h-[700px] lg:h-[860px] ${className}`}
     >
       {!loaded ? (
-        <div aria-hidden className="absolute inset-0 flex animate-pulse">
-          <div className="hidden w-60 shrink-0 border-r border-border bg-muted/40 md:block" />
+        <div aria-hidden className="absolute inset-0 flex">
+          <Skeleton className="hidden w-60 shrink-0 rounded-none border-r border-border bg-muted/40 md:block" />
           <div className="flex flex-1 flex-col gap-4 p-6">
-            <div className="h-8 w-1/3 rounded-md bg-muted" />
+            <Skeleton className="h-8 w-1/3 bg-muted" />
             <div className="grid grid-cols-3 gap-4">
-              <div className="h-24 rounded-lg bg-muted" />
-              <div className="h-24 rounded-lg bg-muted" />
-              <div className="h-24 rounded-lg bg-muted" />
+              <Skeleton className="h-24 rounded-lg bg-muted" />
+              <Skeleton className="h-24 rounded-lg bg-muted" />
+              <Skeleton className="h-24 rounded-lg bg-muted" />
             </div>
-            <div className="flex-1 rounded-lg bg-muted/60" />
+            <Skeleton className="flex-1 rounded-lg bg-muted/60" />
           </div>
         </div>
       ) : null}

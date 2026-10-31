@@ -1,22 +1,27 @@
 "use client";
 
-import { useMemo } from "react";
-import { BarChart3, FileSignature, GraduationCap } from "lucide-react";
-import { EmptyState, SectionCard, StatGrid } from "@geiger/ui/screen-kit";
+import { useEffect, useMemo, useState } from "react";
+import { BarChart3, FileSignature, GraduationCap, Link2, Link2Off, Loader2, RefreshCw, Share2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@geiger/ui/button";
+import { Progress } from "@geiger/ui/progress";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@geiger/ui/dialog";
+import { EmptyState, SectionCard, StatGrid, LoadingArea } from "@geiger/ui/screen-kit";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@geiger/ui/table";
+import { useCan } from "@/context/rbac-context";
 import { cn } from "@/lib/utils";
+import { callApi } from "@/lib/forms/api";
 import { fieldTypeLabel, formatMoney } from "@/lib/forms/logic";
+import { MIN_SHARED_RESPONSES, crosstab, crosstabFields, csatScore, fieldTrend } from "@/lib/forms/survey-analytics";
 import { aggregateField, answerFields, canonicalFields, fieldLabel, quizSummary } from "@/lib/forms/response-utils";
+import { CopyField } from "../forms/sections/kit";
 import { formatDateTime } from "./constants";
 
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
 
-function Bar({ value, max, className = "bg-sky-400/70" }) {
-  return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-surface-card">
-      <div className={cn("h-full rounded-full transition-[width]", className)} style={{ width: `${max ? Math.max(2, (value / max) * 100) : 0}%` }} />
-    </div>
-  );
+function Bar({ value, max, className = "[&>*]:bg-sky-400/70" }) {
+  return <Progress value={max ? Math.max(2, (value / max) * 100) : 0} className={cn("bg-surface-card", className)} />;
 }
 
 function Distribution({ counts, base }) {
@@ -63,15 +68,19 @@ function Metric({ label, value }) {
   );
 }
 
-function FieldReport({ agg, currency }) {
+export function FieldReport({ agg, currency }) {
   const money = (v) => (v == null ? "—" : agg.field.type === "currency" ? formatMoney(v, agg.field.config?.currency || currency) : v);
+  const csat = csatScore(agg);
+  const metricsGrid = cn("grid gap-2", csat == null ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4");
+  const csatMetric = csat == null ? null : <Metric label="CSAT" value={`${csat}%`} />;
   switch (agg.kind) {
     case "distribution":
       return <Distribution counts={agg.counts} base={agg.answered} />;
     case "scale":
       return (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className={metricsGrid}>
+            {csatMetric}
             <Metric label="Average" value={agg.avg} />
             <Metric label="Lowest" value={agg.min} />
             <Metric label="Highest" value={agg.max} />
@@ -82,7 +91,8 @@ function FieldReport({ agg, currency }) {
     case "opinion":
       return (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className={metricsGrid}>
+            {csatMetric}
             <Metric label="Average" value={agg.avg == null ? null : `${agg.avg} / ${agg.steps}`} />
             <Metric label="Lowest" value={agg.min} />
             <Metric label="Highest" value={agg.max} />
@@ -200,7 +210,7 @@ function QuizSummary({ quiz, passMark }) {
                 <span className="min-w-0 truncate text-muted-foreground">{fieldLabel(q.field)}</span>
                 <span className="shrink-0 tabular-nums text-text-secondary">{q.correct}/{q.total} correct · {q.rate}%</span>
               </div>
-              <Bar value={q.rate} max={100} className={q.rate >= 70 ? "bg-emerald-400/70" : q.rate >= 40 ? "bg-amber-400/70" : "bg-red-400/70"} />
+              <Bar value={q.rate} max={100} className={q.rate >= 70 ? "[&>*]:bg-emerald-400/70" : q.rate >= 40 ? "[&>*]:bg-amber-400/70" : "[&>*]:bg-red-400/70"} />
             </li>
           ))}
         </ul>
@@ -209,8 +219,176 @@ function QuizSummary({ quiz, passMark }) {
   );
 }
 
-// Per-question aggregates for one form (survey/poll/quiz report).
+// Score over time for one NPS or short-scale question; the scale's own range decides what a full bar means.
+function TrendChart({ points, kind }) {
+  const nps = kind === "nps";
+  return (
+    <div className="flex h-32 items-end gap-1 overflow-x-auto">
+      {points.map((p) => {
+        const height = p.value == null ? 0 : nps ? ((p.value + 100) / 200) * 88 : (p.value / 100) * 88;
+        return (
+          <div key={p.key} className="flex min-w-9 flex-1 flex-col items-center gap-1" title={`${p.key}: ${p.value ?? "no score"} from ${p.n} answer${p.n === 1 ? "" : "s"}`}>
+            <span className="text-[10px] tabular-nums text-text-secondary">{p.value == null ? "—" : nps && p.value > 0 ? `+${p.value}` : nps ? p.value : `${p.value}%`}</span>
+            <div className="w-full rounded-t bg-sky-400/70" style={{ height: `${height}px`, minHeight: p.value == null ? 0 : 3 }} />
+            <span className="whitespace-nowrap text-[10px] tabular-nums text-text-tertiary">{p.key.slice(5) || p.key}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TrendsCard({ fields, responses }) {
+  const scored = useMemo(() => fields.filter((f) => !f.sensitive).map((f) => ({ field: f, points: fieldTrend(f, responses, fields) })).filter((t) => t.points?.length > 1 && t.points.some((p) => p.value != null)), [fields, responses]);
+  if (!scored.length) return null;
+  return (
+    <SectionCard title="Trends" description="NPS and satisfaction over time, by week or by month on longer spans. Hover a bar for its answer count.">
+      <div className="grid gap-6 lg:grid-cols-2">
+        {scored.map(({ field, points }) => (
+          <div key={field.id}>
+            <p className="mb-2 truncate text-xs font-medium text-muted-foreground">{fieldLabel(field)}</p>
+            <TrendChart points={points} kind={field.type === "nps" ? "nps" : "csat"} />
+          </div>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
+
+function QuestionSelect({ label, value, onChange, options }) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger aria-label={label} className="h-9 min-w-0 flex-1 border-border bg-surface-card text-foreground sm:max-w-64">
+        <SelectValue placeholder={label} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((f) => (
+          <SelectItem key={f.id} value={f.id}>
+            {fieldLabel(f)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function significanceNote(test) {
+  if (!test.reliable) return "Too few responses in some cells to test whether this difference is real.";
+  return test.significant ? "This difference is statistically significant (95% confidence)." : "This difference could be chance (not significant at 95% confidence).";
+}
+
+// Compares answers to one question across the answers to another, as row percentages with a significance check.
+function CrosstabCard({ fields, responses }) {
+  const options = useMemo(() => crosstabFields(fields), [fields]);
+  const [rowId, setRowId] = useState("");
+  const [colId, setColId] = useState("");
+  const rowField = options.find((f) => f.id === rowId) || options[0];
+  const colField = options.find((f) => f.id === colId) || options.find((f) => f.id !== rowField?.id);
+  const table = useMemo(() => (rowField && colField && rowField.id !== colField.id ? crosstab(rowField, colField, responses) : null), [rowField, colField, responses]);
+  if (options.length < 2) return null;
+  return (
+    <SectionCard title="Compare answers" description="See how answers to one question differ by the answers to another.">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <QuestionSelect label="Compare by" value={rowField?.id} onChange={setRowId} options={options} />
+        <span className="text-xs text-text-tertiary">against</span>
+        <QuestionSelect label="Question" value={colField?.id} onChange={setColId} options={options} />
+      </div>
+      {table ? (
+        <>
+          <div className="overflow-x-auto">
+            <Table className="text-xs">
+              <TableHeader className="bg-transparent">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-auto px-2 py-1.5" />
+                  {table.cols.map((c) => <TableHead key={c} className="h-auto px-2 py-1.5 text-right text-xs font-medium normal-case tracking-normal text-text-tertiary">{c}</TableHead>)}
+                  <TableHead className="h-auto px-2 py-1.5 text-right text-xs font-medium normal-case tracking-normal text-text-tertiary">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {table.rows.map((row) => (
+                  <TableRow key={row} className="hover:bg-transparent">
+                    <TableCell className="px-2 py-1.5 text-muted-foreground">{row}</TableCell>
+                    {table.cols.map((c) => (
+                      <TableCell key={c} className="px-2 py-1.5 text-right tabular-nums text-foreground">
+                        {pct(table.grid[row][c], table.rowTotals[row])}% <span className="text-text-tertiary">({table.grid[row][c]})</span>
+                      </TableCell>
+                    ))}
+                    <TableCell className="px-2 py-1.5 text-right tabular-nums text-text-secondary">{table.rowTotals[row]}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="mt-3 text-xs text-text-secondary">{significanceNote(table.test)}</p>
+        </>
+      ) : (
+        <p className="text-xs text-text-tertiary">Pick two different questions.</p>
+      )}
+    </SectionCard>
+  );
+}
+
+// Creates, copies, replaces or turns off the public link to this report.
+function ShareReportDialog({ form, open, onOpenChange }) {
+  const [state, setState] = useState({ loading: true, url: null, busy: false });
+  const api = `/api/forms/${form.id}/report-share`;
+  useEffect(() => {
+    if (!open) return undefined;
+    let active = true;
+    callApi(api).then(({ ok, data }) => {
+      if (active) setState({ loading: false, url: ok ? data.url : null, busy: false });
+    });
+    return () => {
+      active = false;
+    };
+  }, [open, api]);
+  const change = async (method, message) => {
+    setState((s) => ({ ...s, busy: true }));
+    const { ok, data } = await callApi(api, { method });
+    setState((s) => ({ ...s, busy: false, url: ok ? data.url : s.url }));
+    if (ok) toast.success(message);
+    else toast.error(data?.error || "Couldn't update the link.");
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Share this report</DialogTitle>
+          <DialogDescription>Anyone with the link can see charts for closed questions, with no sign-in. Written answers, sensitive questions and respondents&apos; details are never included, and it stays empty until {MIN_SHARED_RESPONSES} responses.</DialogDescription>
+        </DialogHeader>
+        {state.loading ? (
+          <LoadingArea size={36} label="Loading the share link" className="py-6" />
+        ) : state.url ? (
+          <div className="grid gap-3">
+            <CopyField value={state.url} label="Link copied" />
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="ghost" size="sm" disabled={state.busy} onClick={() => change("POST", "New link created; the old one no longer works.")}>
+                <RefreshCw />
+                Replace link
+              </Button>
+              <Button type="button" variant="ghost" size="sm" disabled={state.busy} className="text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-400" onClick={() => change("DELETE", "Sharing turned off.")}>
+                <Link2Off />
+                Turn off
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <DialogFooter>
+            <Button type="button" disabled={state.busy} className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => change("POST", "Link created.")}>
+              {state.busy ? <Loader2 className="animate-spin" /> : <Link2 />}
+              Create link
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Per-question aggregates for one form (survey/poll/quiz report), trends, comparisons and sharing.
 export function SurveyReport({ form, responses }) {
+  const canShare = useCan("forms.response.export");
+  const [sharing, setSharing] = useState(false);
   const fields = useMemo(() => canonicalFields(form), [form]);
   const aggregates = useMemo(
     () => answerFields(fields, { computed: true }).filter((f) => f.type !== "hidden").map((f) => aggregateField(f, responses, fields)),
@@ -229,7 +407,18 @@ export function SurveyReport({ form, responses }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {canShare ? (
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" size="sm" onClick={() => setSharing(true)}>
+            <Share2 />
+            Share report
+          </Button>
+          <ShareReportDialog form={form} open={sharing} onOpenChange={setSharing} />
+        </div>
+      ) : null}
       {quiz && quiz.graded ? <QuizSummary quiz={quiz} passMark={form.settings.quiz.passMark} /> : null}
+      <TrendsCard fields={fields} responses={responses} />
+      <CrosstabCard fields={fields} responses={responses} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {aggregates.map((agg) => (
           <SectionCard

@@ -2,7 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import Logo from "@geiger/ui/logo";
+import { Globe } from "lucide-react";
 import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
+import { Topbar as SuiteTopbar } from "@geiger/ui/topbar";
+import { LOCALES } from "@/lib/forms/i18n";
 import { cn } from "@/lib/utils";
 import { backgroundStyle, cssVariables } from "@/lib/forms/theme";
 import { withPrefix } from "@/lib/workspace/base-path";
@@ -49,9 +53,67 @@ function useBodyTheme(theme, transparent, lang, dir) {
   }, [theme, transparent, lang, dir]);
 }
 
-// Themed root: CSS variables, mode class, font, page background and text direction.
+// Owner styles from buildTheme; React leaves <style> text unescaped except "</style", and checkCustomCss rejects "<" anyway.
+export function CustomStyles({ css }) {
+  return css ? <style>{css}</style> : null;
+}
+
+const SIDE_GRIDS = {
+  split: { left: "lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]", right: "lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]" },
+  "side-image": { left: "lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]", right: "lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" },
+};
+
+// Grid classes for a split or side-image page; the panel keeps its share of the width on either side.
+export function sideGridClass(side) {
+  return SIDE_GRIDS[side.layout][side.position];
+}
+
+// Decorative image (or accent glow when none is set) beside the form, with optional story text; a short band above it on small screens.
+export function SidePanel({ side, stacked = false, className }) {
+  const tags = side.tags || [];
+  const hasText = Boolean(side.eyebrow || side.headline || tags.length);
+  const onImage = Boolean(side.imageUrl);
+  return (
+    <div
+      data-gf-part="side-panel"
+      className={cn("relative overflow-hidden", hasText ? "h-72" : "h-40 sm:h-56", !stacked && "lg:sticky lg:top-14 lg:h-[calc(100dvh-3.5rem)]", !stacked && side.position === "right" && "lg:order-last", className)}
+      style={side.imageUrl ? undefined : { background: "linear-gradient(135deg, color-mix(in oklab, var(--gf-accent) 55%, var(--background)), var(--background))" }}
+    >
+      {side.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- user-supplied external image URL
+        <img src={side.imageUrl} alt={side.imageAlt} className="size-full object-cover" />
+      ) : null}
+      {onImage && (hasText || side.credit) ? <div className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, rgb(4 8 16 / 0.35) 0%, rgb(4 8 16 / 0) 35%, rgb(4 8 16 / 0.85) 100%)" }} /> : null}
+      {side.credit ? <span className={cn("absolute end-4 top-3.5 text-[10px]", onImage ? "text-white/85" : "text-text-secondary")}>{side.credit}</span> : null}
+      {hasText ? (
+        <div className={cn("absolute inset-x-6 bottom-6", !stacked && "lg:inset-x-10 lg:bottom-10", onImage ? "text-white" : "text-foreground")}>
+          {side.eyebrow ? <p className={cn("text-[11px] font-semibold uppercase tracking-[0.18em]", onImage ? "text-white/85" : "text-text-secondary")}>{side.eyebrow}</p> : null}
+          {side.headline ? <p className={cn("mt-3 font-(family-name:--gf-font-heading) text-3xl leading-[1.02] [text-transform:var(--gf-heading-case,none)] [text-wrap:balance]", !stacked && "lg:text-5xl")}>{side.headline}</p> : null}
+          {tags.length ? (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span key={tag} className={cn("rounded-full border px-3 py-1 text-xs backdrop-blur-sm", onImage ? "border-white/25 bg-white/10" : "border-border bg-surface-card")}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Themed root: CSS variables, mode class, font, page background, text direction, owner styles and the optional side panel.
 export function FillerShell({ theme, embed = false, transparent = false, dir = "ltr", lang, header, footer, children }) {
   useBodyTheme(theme, transparent, lang, dir);
+  const side = theme?.side;
+  const content = (
+    <>
+      <main className={cn("mx-auto w-full", embed ? (transparent ? "px-1 pt-2" : "px-4 pt-6 sm:px-6") : "px-4 pt-6 sm:px-6 sm:pt-10")}>{children}</main>
+      {footer && <footer className={cn("px-4 sm:px-6", embed ? (transparent ? "pb-2 pt-4" : "pb-6 pt-6") : "pb-16 pt-8")}>{footer}</footer>}
+    </>
+  );
   return (
     <div
       dir={dir}
@@ -61,9 +123,16 @@ export function FillerShell({ theme, embed = false, transparent = false, dir = "
       style={{ ...(theme?.style || {}), ...backgroundStyle(theme) }}
     >
       {theme?.fontUrl ? <link rel="stylesheet" href={theme.fontUrl} /> : null}
+      <CustomStyles css={theme?.customCss} />
       {!embed && header}
-      <main className={cn("mx-auto w-full", embed ? (transparent ? "px-1 pt-2" : "px-4 pt-6 sm:px-6") : "px-4 pt-6 sm:px-6 sm:pt-10")}>{children}</main>
-      {footer && <footer className={cn("px-4 sm:px-6", embed ? (transparent ? "pb-2 pt-4" : "pb-6 pt-6") : "pb-16 pt-8")}>{footer}</footer>}
+      {side ? (
+        <div className={sideGridClass(side)}>
+          <SidePanel side={side} />
+          <div className="min-w-0">{content}</div>
+        </div>
+      ) : (
+        content
+      )}
     </div>
   );
 }
@@ -77,31 +146,66 @@ function initials(name) {
     .join("");
 }
 
-// Full-width app bar in the suite Topbar style: brand mark | form title on the left, signed-in account on the right.
-export function FillerHeader({ title, theme, user, tr }) {
+// Language picker for forms with translations; hidden when there's only the form's own language.
+export function LanguageSwitcher({ locales, value, onChange, tr, className }) {
+  if (!locales || locales.length < 2) return null;
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger data-gf-chrome="" aria-label={tr("language")} className={cn("h-8 w-auto gap-1.5 bg-surface-card text-xs", className)}>
+        <Globe className="size-3.5 text-text-secondary" aria-hidden="true" />
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {locales.map((code) => (
+          <SelectItem key={code} value={code} lang={code}>
+            {LOCALES.find((l) => l.value === code)?.label || code}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+// Topbar has no props for these: sticky + form-tinted glass, no search, one title between sm and md, icon-only language on phones.
+const TOPBAR_OVERRIDES = "sticky top-0 z-20 backdrop-blur-md [@media(max-height:480px)]:static [--topbar-bg:color-mix(in_oklab,var(--background)_80%,transparent)] [&_button[aria-label='Search']]:hidden max-md:[&_.group]:hidden max-sm:[&_[data-slot='select-value']]:hidden";
+
+// Sidebar and notifications are workspace-only; a non-null slot stops Topbar rendering its fallbacks.
+const EMPTY_SLOT = <></>;
+
+// Topbar's logo link navigates in place, and the filler keeps no draft, so it opens a new tab to keep the respondent's answers.
+function openHomeInNewTab(event) {
+  const home = event.target.closest("a[aria-label='Home']");
+  if (!home) return;
+  event.preventDefault();
+  window.open(home.href, "_blank", "noopener");
+}
+
+// Shared suite Topbar: brand mark | form title on the left, language and signed-in account on the right.
+export function FillerHeader({ title, theme, user, languageSwitcher }) {
   const logo = theme?.showIcon && theme?.logoUrl ? theme.logoUrl : "";
   return (
-    <header className="sticky top-0 z-20 flex h-14 w-full [@media(max-height:480px)]:static items-center justify-between gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <span className="flex size-8 shrink-0 items-center justify-center" aria-hidden="true">
-          {logo ? (
-            // eslint-disable-next-line @next/next/no-img-element -- user-supplied external logo URL
-            <img src={logo} alt="" className="size-6 rounded-md object-cover" />
-          ) : (
-            <Logo size={20} />
-          )}
-        </span>
-        <span className="min-w-0 truncate border-l border-border pl-3 text-sm font-semibold text-foreground">{title}</span>
-      </div>
-      {user && (
-        <div className="flex shrink-0 items-center gap-2.5" title={user.email || user.name}>
-          <span className="hidden text-xs text-text-secondary sm:inline">{tr("signedInAs", { name: user.name || user.email })}</span>
-          <Avatar className="size-8 border border-border">
-            <AvatarFallback className="border-0 bg-surface-card text-[11px] font-semibold text-foreground">{initials(user.name || user.email)}</AvatarFallback>
-          </Avatar>
-        </div>
-      )}
-    </header>
+    <div className={cn(TOPBAR_OVERRIDES, logo && "[&_.geiger-logo]:rounded-md [&_.geiger-logo]:object-cover [&_.geiger-logo]:[filter:none]!")} onClick={openHomeInNewTab}>
+      <SuiteTopbar
+        label={<span className="block max-w-[30vw] truncate sm:max-w-[40vw]" title={title}>{title}</span>}
+        logoSrc={logo || withPrefix("/logo1.svg")}
+        homeHref={withPrefix("/")}
+        showHelp={false}
+        sidebarTrigger={EMPTY_SLOT}
+        notifications={EMPTY_SLOT}
+        profile={
+          <div className="flex shrink-0 items-center gap-2.5">
+            {languageSwitcher}
+            {user && (
+              <div title={user.email || user.name}>
+                <Avatar className="size-8 border border-border">
+                  <AvatarFallback className="border-0 bg-surface-card text-[11px] font-semibold text-foreground">{initials(user.name || user.email)}</AvatarFallback>
+                </Avatar>
+              </div>
+            )}
+          </div>
+        }
+      />
+    </div>
   );
 }
 
@@ -140,7 +244,7 @@ export function StatusScreen({ icon: Icon, tone = "default", title, description,
     if (focusOnMount) titleRef.current?.focus({ preventScroll: true });
   }, [focusOnMount]);
   return (
-    <section role={tone === "warning" || tone === "danger" ? "alert" : undefined} className={cn("mx-auto w-full max-w-lg rounded-2xl border border-border bg-surface-subtle p-8 text-center shadow-sm animate-in fade-in-0 zoom-in-95 duration-300", className)}>
+    <section data-gf-part="card" role={tone === "warning" || tone === "danger" ? "alert" : undefined} className={cn("mx-auto w-full max-w-lg rounded-2xl border border-border bg-surface-subtle p-8 text-center shadow-sm animate-in fade-in-0 zoom-in-95 duration-300", className)}>
       {Icon && (
         <div className={cn("mx-auto flex size-14 items-center justify-center rounded-2xl border", TONES[tone] || TONES.default)}>
           <Icon className="size-6" />

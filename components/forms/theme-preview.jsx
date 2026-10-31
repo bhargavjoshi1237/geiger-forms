@@ -14,6 +14,7 @@ export const MODE_OPTIONS = [
 export const BACKGROUND_OPTIONS = [
   { value: "plain", label: "Plain" },
   { value: "gradient", label: "Gradient" },
+  { value: "glow", label: "Glow" },
   { value: "image", label: "Image" },
 ];
 export const RADIUS_OPTIONS = [
@@ -29,6 +30,8 @@ export const LAYOUT_OPTIONS = [
 ];
 export const HEX_RE = /^#[0-9a-f]{6}$/i;
 
+const SHOWCASE_ELEMENTS = { titleSize: "lg", labelStyle: "display", numbering: "on", buttonStyle: "gradient", cardStyle: "glass", progressStyle: "steps" };
+
 // Built-in looks shown next to the workspace's saved themes; applying one replaces the form's theme tokens only.
 export const THEME_PRESETS = [
   { id: "geiger", name: "Geiger", theme: { mode: "dark", accent: "", radius: "md", font: "sans", headingFont: "", background: "plain" } },
@@ -41,6 +44,10 @@ export const THEME_PRESETS = [
   { id: "blossom", name: "Blossom", theme: { mode: "light", accent: "#ec4899", radius: "full", font: "quicksand", headingFont: "dm-serif-display", background: "gradient" } },
   { id: "poster", name: "Poster", theme: { mode: "dark", accent: "#ef4444", radius: "sm", font: "work-sans", headingFont: "bebas-neue", background: "plain" } },
   { id: "terminal", name: "Terminal", theme: { mode: "dark", accent: "#84cc16", radius: "none", font: "jetbrains-mono", headingFont: "", background: "plain" } },
+  { id: "fight-night", name: "Fight Night", theme: { mode: "dark", palette: "fight", accent: "#f2b705", accent2: "#ff4d2e", radius: "sm", font: "manrope", headingFont: "anton", background: "glow", elements: { ...SHOWCASE_ELEMENTS, titleCase: "upper" } } },
+  { id: "aurora", name: "Aurora", theme: { mode: "dark", palette: "aurora", accent: "#5be3a1", accent2: "#7dd3fc", radius: "lg", font: "manrope", headingFont: "instrument-serif", background: "glow", elements: { ...SHOWCASE_ELEMENTS, buttonShape: "pill" } } },
+  { id: "paper", name: "Paper", theme: { mode: "light", palette: "paper", accent: "#b4462b", accent2: "#d9772b", radius: "lg", font: "manrope", headingFont: "instrument-serif", background: "glow", elements: { ...SHOWCASE_ELEMENTS, buttonShape: "pill" } } },
+  { id: "ember", name: "Ember", theme: { mode: "dark", palette: "ember", accent: "#ff8a3d", accent2: "#ff4f8b", radius: "lg", font: "manrope", headingFont: "bricolage-grotesque", background: "glow", elements: { ...SHOWCASE_ELEMENTS, buttonShape: "pill" } } },
 ];
 
 // Miniature respondent page rendered with the real theme tokens (mode, accent, radius, fonts, background).

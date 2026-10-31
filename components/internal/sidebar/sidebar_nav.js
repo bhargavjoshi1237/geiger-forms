@@ -36,8 +36,6 @@ import {
   Sigma,
   Sparkles,
   SquarePen,
-  SquareStack,
-  Table,
   Terminal,
   UserPlus,
   Users,
@@ -62,8 +60,6 @@ export const formNav = [
     Icon: Inbox,
     children: [
       { id: "Responses", title: "Response Inbox", Icon: Mailbox },
-      { id: "responses.tables", title: "Data Tables & Views", Icon: Table },
-      { id: "responses.bulk", title: "Bulk Actions", Icon: SquareStack },
       { id: "responses.partial", title: "Partial / Abandoned", Icon: FileWarning },
       { id: "responses.export", title: "Export & Sync", Icon: RefreshCw },
       { id: "responses.retention", title: "Retention & GDPR", Icon: ShieldAlert },

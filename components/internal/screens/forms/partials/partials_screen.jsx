@@ -17,12 +17,13 @@ import {
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import FilterDropdown from "@/components/internal/shared/filter_dropdown";
 import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
+import { Progress } from "@geiger/ui/progress";
 import { ErrorState } from "../screen-shell";
 import { useForms } from "@/lib/hooks/use-forms";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listPartials } from "@/lib/supabase/responses";
 import { fieldLabelOf, formatDuration, isAbandoned, progressPct } from "@/components/internal/screens/forms/analytics/analytics_data";
-import { FormPicker, Meter } from "@/components/internal/screens/forms/analytics/analytics_ui";
+import { FormPicker } from "@/components/internal/screens/forms/analytics/analytics_ui";
 
 const STATE_MAP = {
   progress: { label: "In progress", variant: "info", dotClass: "bg-sky-400" },
@@ -118,7 +119,7 @@ export function PartialsScreen() {
       header: "Progress",
       render: (p) => (
         <div className="flex min-w-28 items-center gap-2">
-          <Meter value={p.progressValue} className="w-20" />
+          <Progress value={p.progressValue} className="h-1.5 w-20" />
           <span className="tabular-nums text-xs text-text-secondary">{p.progressValue}%</span>
         </div>
       ),

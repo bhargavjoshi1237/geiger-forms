@@ -5,7 +5,7 @@ import { slugify } from "@/lib/forms/schema";
 import { isInputField } from "@/lib/forms/field-types";
 
 // Filler control params, never prefilled into visible fields (public/embed.js mirrors this list).
-const RESERVED = new Set(["t", "resume", "edit", "paid", "r", "embed", "embed_origin", "solid", "variant", "ref", "preview"]);
+const RESERVED = new Set(["t", "resume", "edit", "paid", "r", "embed", "embed_origin", "solid", "variant", "ref", "preview", "lang", "record"]);
 const UTM_KEYS = ["source", "medium", "campaign", "term", "content"];
 
 function first(v) {
@@ -32,6 +32,8 @@ export function parseFillerParams(searchParams = {}) {
     embedOrigin: first(sp.embed_origin) || null,
     solid: first(sp.solid) === "1",
     variant: first(sp.variant) || null,
+    lang: first(sp.lang) || null,
+    record: first(sp.record) || null,
     ref: first(sp.ref) || null,
     utm,
     raw,
@@ -77,6 +79,7 @@ export function coercePrefill(field, value) {
       return { first: parts[0] || "", last: parts.slice(1).join(" ") };
     }
     case "address":
+    case "daterange":
     case "matrix":
     case "repeater":
       return typeof value === "object" && !Array.isArray(value) ? value : undefined;

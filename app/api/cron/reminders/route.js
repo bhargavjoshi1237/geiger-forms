@@ -4,6 +4,8 @@ import { interpolate, sensitiveIdentity } from "@/lib/forms/logic";
 import { mergeResponseMeta, respondentContact, safeAnswers, toServerForm } from "@/lib/server/forms";
 import { isEmailConfigured, renderEmail, sendEmail } from "@/lib/server/email";
 import { bookingConfig } from "@/lib/server/booking";
+import { reminderDue } from "@/lib/forms/approvals";
+import { sendApprovalRequest } from "@/lib/server/side-effects";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -93,13 +95,36 @@ async function sendFollowUps(db) {
   return sent;
 }
 
+// Nudges approvers who haven't voted once a pending response has sat for the form's reminder interval.
+async function sendApprovalReminders(db, origin) {
+  const { data: rows, error } = await db.from("forms").select("*").eq("status", "Published").is("deleted_at", null).not("settings->approval->remindAfterDays", "is", null);
+  if (error) console.error("[cron.reminders.approvals]", error.message);
+  let sent = 0;
+  for (const row of rows || []) {
+    const form = toServerForm(row);
+    const config = form.settings.approval;
+    if (!config?.enabled || !(Number(config.remindAfterDays) > 0)) continue;
+    const { data: responses } = await db.from("responses").select("*").eq("form_id", form.id).eq("status", "Pending").is("deleted_at", null).limit(500);
+    for (const r of responses || []) {
+      if (!reminderDue(config, r.approval, r.submitted_at)) continue;
+      const result = await sendApprovalRequest({ form, row: r, origin, reminder: true });
+      if (!result?.sent) continue;
+      sent += 1;
+      await db.from("responses").update({ approval: { ...r.approval, remindedAt: new Date().toISOString() } }).eq("id", r.id);
+    }
+  }
+  return sent;
+}
+
 export async function GET(request) {
   const authError = cronAuthError(request);
   if (authError) return authError;
   const db = formsAdmin();
   if (!db) return unavailable();
-  if (!isEmailConfigured()) return ok({ reminders: 0, followUps: 0, skipped: "RESEND_API_KEY missing" });
-  const reminders = await sendBookingReminders(db, appOrigin(request));
+  if (!isEmailConfigured()) return ok({ reminders: 0, followUps: 0, approvals: 0, skipped: "RESEND_API_KEY missing" });
+  const origin = appOrigin(request);
+  const reminders = await sendBookingReminders(db, origin);
   const followUps = await sendFollowUps(db);
-  return ok({ reminders, followUps });
+  const approvals = await sendApprovalReminders(db, origin);
+  return ok({ reminders, followUps, approvals });
 }

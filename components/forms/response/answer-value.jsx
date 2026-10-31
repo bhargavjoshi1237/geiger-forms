@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Download, Eye, Loader2, Lock, Paperclip, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@geiger/ui/table";
 import { displayValue, formatMoney } from "@/lib/forms/logic";
 import { consentTextHash } from "@/lib/forms/consent";
@@ -197,7 +198,7 @@ export function AnswerValue({ field, response, fields, revealed, onReveal, revea
       return (
         <div className="mt-1 flex flex-wrap gap-1">
           {(Array.isArray(value) ? value : [value]).map((v) => (
-            <span key={v} className="rounded-md border border-border bg-surface-card px-2 py-0.5 text-sm text-foreground">{v}</span>
+            <Badge key={v} className="text-sm font-normal whitespace-normal text-foreground">{v}</Badge>
           ))}
         </div>
       );

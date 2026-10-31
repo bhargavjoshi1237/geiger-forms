@@ -5,8 +5,9 @@ import { ArrowLeft, ArrowRight, BookmarkPlus, Loader2, Send, Timer } from "lucid
 import { Button } from "@geiger/ui/button";
 import { cn } from "@/lib/utils";
 import { isLayoutField } from "@/lib/forms/field-types";
+import { questionsBefore } from "@/lib/forms/logic";
 import { FormHero } from "./form-hero";
-import { PageProgress } from "./progress";
+import { PageProgress, StepsProgress } from "./progress";
 import { Banner } from "./banners";
 
 function widthClass(field) {
@@ -21,7 +22,7 @@ export function SubmitButton({ submitState, reviewLeft, tr, label, size = "lg", 
   const busy = submitState.status === "submitting" || submitState.status === "retrying";
   const waiting = reviewLeft > 0;
   return (
-    <Button type={type} size={size} data-gf-submit="" disabled={busy || waiting || submitState.status === "queued"} className={cn("min-w-32", className)} onClick={onClick}>
+    <Button type={type} size={size} data-gf-submit="" data-gf-part="primary-action" disabled={busy || waiting || submitState.status === "queued"} className={cn("min-w-32", className)} onClick={onClick}>
       {busy ? <Loader2 className="animate-spin" /> : waiting ? <Timer /> : <Send />}
       {busy ? tr("submitting") : waiting ? tr("reviewWait", { seconds: reviewLeft }) : label || tr("submit")}
     </Button>
@@ -54,6 +55,8 @@ export function ClassicView({
   const settings = form.settings || {};
   const multiPage = pages.length > 1;
   const isLast = pageIndex >= pages.length - 1;
+  const showProgress = multiPage && settings.progressBar !== false;
+  const stepsAbove = showProgress && settings.theme?.elements?.progressStyle === "steps";
   const visible = page.fields.filter((f) => f.type !== "hidden");
   const pageRef = useRef(null);
   const skipFocus = useRef(!focusOnMount);
@@ -80,9 +83,10 @@ export function ClassicView({
       <FormHero form={form} title={title} description={pageIndex === 0 ? description : ""} tr={tr} compact={pageIndex > 0} />
       {banners}
       {errorSummary}
+      {stepsAbove && <StepsProgress pages={pages} index={pageIndex} tr={tr} />}
 
-      <section className="rounded-2xl border border-border bg-surface-subtle p-5 shadow-sm sm:p-8">
-        {multiPage && settings.progressBar !== false && <PageProgress pages={pages} index={pageIndex} tr={tr} />}
+      <section data-gf-part="card" className="rounded-2xl border border-border bg-surface-subtle p-5 shadow-sm sm:p-8">
+        {showProgress && !stepsAbove && <PageProgress pages={pages} index={pageIndex} tr={tr} />}
         {multiPage && settings.progressBar === false && page.title && <h2 className="mb-5 text-lg font-semibold text-foreground">{page.title}</h2>}
         {visible.some((f) => f.required) && (
           <p className="mb-5 text-xs text-text-tertiary">
@@ -99,6 +103,7 @@ export function ClassicView({
           tabIndex={-1}
           role="group"
           aria-label={page.title || (multiPage ? tr("stepOf", { current: pageIndex + 1, total: pages.length }) : title)}
+          style={{ counterReset: `gf-question ${questionsBefore(pages, pageIndex)}` }}
           className={cn("grid grid-cols-6 gap-x-4 gap-y-7 outline-none animate-in fade-in-0 duration-300", direction > 0 ? "slide-in-from-right-3" : "slide-in-from-left-3")}
         >
           {visible.length === 0 ? (
@@ -139,7 +144,7 @@ export function ClassicView({
         {isLast ? (
           <SubmitButton submitState={submitState} reviewLeft={reviewLeft} tr={tr} />
         ) : (
-          <Button type="submit" size="lg" className="min-w-32">
+          <Button type="submit" size="lg" data-gf-part="primary-action" className="min-w-32">
             {tr("next")}
             <ArrowRight className="rtl:rotate-180" />
           </Button>

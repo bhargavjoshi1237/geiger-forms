@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Award, Check, CheckCircle2, Copy, Loader2, RotateCcw, XCircle } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { Progress } from "@geiger/ui/progress";
 import { Input } from "@geiger/ui/input";
 import { cn } from "@/lib/utils";
 import { callApi } from "@/lib/forms/api";
@@ -58,9 +59,7 @@ function QuizSummary({ quiz, fields, showAnswers, tr }) {
           </span>
         )}
       </div>
-      <div aria-hidden="true" className="mt-4 h-2 overflow-hidden rounded-full bg-surface-active">
-        <div className={cn("h-full rounded-full transition-[width] duration-700", quiz.passed === false ? "bg-red-500" : "bg-primary")} style={{ width: `${percent}%` }} />
-      </div>
+      <Progress aria-hidden="true" value={percent} className={cn("mt-4 bg-surface-active", quiz.passed === false && "[&>*]:bg-red-500")} />
       {showAnswers && results && (
         <div className="mt-5">
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-text-tertiary">{tr("correctAnswers")}</p>

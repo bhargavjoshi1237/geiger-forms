@@ -3,6 +3,7 @@
 import { interpolate } from "@/lib/forms/logic";
 import { resolveLocale, translator } from "@/lib/forms/i18n";
 import { errorLanguage } from "@/lib/forms/a11y";
+import { displayValue, localizeField, storedValue, translationStrings } from "@/lib/forms/translate";
 import { FieldShell, ariaProps } from "@/components/forms/fields/field-shell";
 import { DropdownInput, LongTextInput, TextLikeInput } from "@/components/forms/fields/basic-inputs";
 import { ConsentCheckbox, ConsentField, MultiChoice, RankingField, SingleChoice } from "@/components/forms/fields/choice-fields";
@@ -12,12 +13,13 @@ import { ImageBlock, StatementBlock, VideoBlock } from "@/components/forms/field
 import { AddressField, NameField } from "@/components/forms/fields/contact-fields";
 import { BookingField } from "@/components/forms/fields/booking-field";
 import { FileField } from "@/components/forms/fields/file-field";
+import { DateRangeField, PhoneCountryInput } from "@/components/forms/fields/phone-date-fields";
 import { SignatureField } from "@/components/forms/fields/signature-field";
 import { RepeaterField } from "@/components/forms/fields/repeater-field";
 import { CalculatedField, OrderTotal, ProductField } from "@/components/forms/fields/commerce-fields";
 import { cn } from "@/lib/utils";
 
-const GROUP_TYPES = new Set(["select", "multiselect", "picture", "multipicture", "ranking", "rating", "scale", "nps", "opinion", "matrix", "name", "address", "booking", "repeater", "signature"]);
+const GROUP_TYPES = new Set(["select", "multiselect", "picture", "multipicture", "ranking", "rating", "scale", "nps", "opinion", "matrix", "name", "address", "daterange", "booking", "repeater", "signature"]);
 // These render their own named radiogroup, so a wrapping fieldset would name the same group twice.
 const RADIO_TYPES = new Set(["select", "picture", "rating", "scale", "nps", "opinion"]);
 
@@ -45,8 +47,8 @@ function LayoutBlock({ field, text, large }) {
 
 // Renders one canonical field for respondents and builder previews; without `slug`, upload/booking fields are disabled previews.
 export function FormFieldRenderer({
-  field,
-  value,
+  field: sourceField,
+  value: sourceValue,
   onChange,
   error,
   allFields,
@@ -61,16 +63,20 @@ export function FormFieldRenderer({
   onSetAnswer,
   locale,
 }) {
-  if (!field || field.type === "hidden" || field.type === "page") return null;
+  if (!sourceField || sourceField.type === "hidden" || sourceField.type === "page") return null;
   const settings = form?.settings || {};
   const tr = translator(locale || settings.locale);
+  // Controls see translated text; everything upstream (logic, validation, storage) keeps the source.
+  const strings = translationStrings(settings, locale);
+  const field = localizeField(sourceField, strings);
+  const value = displayValue(sourceField, sourceValue, strings);
   const fields = allFields || form?.fieldDefs || [];
   const mergeForm = { fieldDefs: fields };
   const text = (s) => (s && answers ? interpolate(s, mergeForm, answers) : s || "");
   const label = text(field.label || field.title);
   const hint = text(field.hint);
   const currency = settings.payments?.currency || "usd";
-  const change = onChange || (() => {});
+  const change = (next) => onChange?.(storedValue(sourceField, next, strings));
 
   if (field.type === "heading" || field.type === "content") return <LayoutBlock field={field} text={text} large={large} />;
   if (field.type === "statement") return <StatementBlock label={label} body={hint} large={large} />;
@@ -148,6 +154,10 @@ export function FormFieldRenderer({
       return shell(<NameField {...props} />);
     case "address":
       return shell(<AddressField {...props} />);
+    case "daterange":
+      return shell(<DateRangeField {...props} />);
+    case "phone":
+      return shell(field.config?.countryPicker ? <PhoneCountryInput {...props} /> : <TextLikeInput {...props} onEnter={onEnter} />);
     case "booking":
       return shell(<BookingField {...props} />);
     case "file":

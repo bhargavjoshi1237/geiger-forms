@@ -9,25 +9,36 @@ import { Switch } from "@geiger/ui/switch";
 import { Field, SectionCard, SettingRow, SettingsList } from "@geiger/ui/screen-kit";
 import { Tabs, TabsList, TabsTrigger } from "@geiger/ui/tabs";
 import { computeOrder, formatMoney } from "@/lib/forms/logic";
+import { PAYPAL_CURRENCIES } from "@/lib/forms/payments";
 import { cn } from "@/lib/utils";
 import { CURRENCIES } from "../constants";
 import { ServiceNotice } from "../../settings/service_status";
 import { AddButton, BuilderLink, CopyField, FIELD_CLS, ItemCard, Note, NumberInput, Stack, TextInput, useOrigin } from "./kit";
 import { withPrefix } from "@/lib/workspace/base-path";
 
-// Stripe checkout: currency, one-off vs subscription.
+// Payment gateway, currency, and one-off vs subscription (Stripe only).
 export function GatewaysSection({ settings, setGroup }) {
   const origin = useOrigin();
   const payments = settings.payments || {};
+  const paypal = payments.gateway === "paypal";
   return (
     <Stack>
-      <SectionCard title="Collect payments" description="Respondents are sent to Stripe Checkout after submitting; the response waits as “Awaiting payment” until paid.">
+      <SectionCard title="Collect payments" description="Respondents are sent to pay after submitting; the response waits as “Awaiting payment” until paid.">
         <SettingsList>
           <SettingRow title="Enable payments" checked={Boolean(payments.enabled)} onCheckedChange={(v) => setGroup("payments", { enabled: v })} />
         </SettingsList>
         {payments.enabled ? (
           <div className="mt-4 grid gap-4">
-            <ServiceNotice service={["payments", "paymentWebhooks"]} />
+            <ServiceNotice service={paypal ? ["paypal", "paypalWebhooks"] : ["payments", "paymentWebhooks"]} />
+            <Field label="Gateway" hint={paypal ? "PayPal takes one-off payments only." : undefined}>
+              <Tabs value={paypal ? "paypal" : "stripe"} onValueChange={(v) => setGroup("payments", v === "paypal" ? { gateway: v, mode: "payment" } : { gateway: v })}>
+                <TabsList>
+                  <TabsTrigger value="stripe">Stripe</TabsTrigger>
+                  <TabsTrigger value="paypal">PayPal</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </Field>
+            {paypal && !PAYPAL_CURRENCIES.has(payments.currency || "usd") ? <Note tone="warning">PayPal doesn&apos;t accept {(payments.currency || "usd").toUpperCase()}, so payments would fail. Choose another currency.</Note> : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Currency">
                 <Select value={payments.currency || "usd"} onValueChange={(v) => setGroup("payments", { currency: v })}>
@@ -44,15 +55,15 @@ export function GatewaysSection({ settings, setGroup }) {
                 </Select>
               </Field>
               <Field label="Charge">
-                <Tabs value={payments.mode || "payment"} onValueChange={(v) => setGroup("payments", { mode: v })}>
+                <Tabs value={paypal ? "payment" : payments.mode || "payment"} onValueChange={(v) => setGroup("payments", { mode: v })}>
                   <TabsList>
                     <TabsTrigger value="payment">One-off</TabsTrigger>
-                    <TabsTrigger value="subscription">Subscription</TabsTrigger>
+                    <TabsTrigger value="subscription" disabled={paypal}>Subscription</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </Field>
             </div>
-            {payments.mode === "subscription" ? (
+            {!paypal && payments.mode === "subscription" ? (
               <Field label="Billing interval" className="max-w-xs">
                 <Tabs value={payments.interval || "month"} onValueChange={(v) => setGroup("payments", { interval: v })}>
                   <TabsList>
@@ -65,6 +76,19 @@ export function GatewaysSection({ settings, setGroup }) {
           </div>
         ) : null}
       </SectionCard>
+
+      {paypal ? (
+        <SectionCard title="PayPal connection" description="Payments run on the PayPal account configured for this deployment.">
+          <div className="grid gap-3 text-sm text-text-secondary">
+            <p>
+              Set <code className="rounded bg-surface-card px-1 text-foreground">PAYPAL_CLIENT_ID</code>, <code className="rounded bg-surface-card px-1 text-foreground">PAYPAL_CLIENT_SECRET</code> and{" "}
+              <code className="rounded bg-surface-card px-1 text-foreground">PAYPAL_WEBHOOK_ID</code> in the app&apos;s environment. It stays in PayPal&apos;s sandbox until <code className="rounded bg-surface-card px-1 text-foreground">PAYPAL_ENV</code> is <code className="rounded bg-surface-card px-1">live</code>. Add this webhook in the PayPal developer dashboard
+              (events: <code className="rounded bg-surface-card px-1">PAYMENT.CAPTURE.COMPLETED</code>, <code className="rounded bg-surface-card px-1">PAYMENT.CAPTURE.DENIED</code>):
+            </p>
+            <CopyField value={`${origin}${withPrefix("/api/paypal/webhook")}`} label="Webhook URL copied" />
+          </div>
+        </SectionCard>
+      ) : null}
 
       <SectionCard title="Stripe connection" description="Payments run on the Stripe account configured for this deployment.">
         <div className="grid gap-3 text-sm text-text-secondary">

@@ -169,8 +169,7 @@ screen.
   `filtered` with a single `useMemo` over (search, filters).
 - `DataTable` with a `columns` array; rich cells via `render` (name + meta line,
   `StatusPill`, right-aligned response count, a row-actions
-  `DropdownMenu`). Wrap the actions cell in a `stopPropagation` div so the menu
-  doesn't trigger `onRowClick`.
+  `ActionMenu`, which keeps its clicks from triggering `onRowClick`).
 - Three states: loading (until the first fetch resolves), data, and filtered-empty
   (`EmptyState` with create + clear-filters) / empty (no rows yet).
 - Row click opens the entity in the URL (`?form=<id>`) → render the detail editor.
@@ -198,10 +197,9 @@ const [draft, setDraft] = useState(EMPTY_DRAFT);
 const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }));
 ```
 
-**Row actions menu** — `DropdownMenu` with Edit / Duplicate / View, a
-`DropdownMenuSeparator`, then a destructive Delete
-(`variant="destructive"`, `text-red-600 dark:text-red-400 focus:bg-red-500/10`). Stop click
-propagation so it doesn't open the row.
+**Row actions menu** — `ActionMenu` from `@geiger/ui/action-menu` with Edit / Duplicate /
+View items, a `{ separator: true }`, then `{ destructive: true }` Delete. It stops click
+propagation so it doesn't open the row. Drop to a raw `DropdownMenu` only for submenus.
 
 **Animated KPI** — pass plain strings to `StatsBar`; `RollingNumber` animates the
 digits on mount. Don't reinvent counters.

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { FileText, FlaskConical, Loader2, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { Badge } from "@geiger/ui/badge";
+import { Progress } from "@geiger/ui/progress";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Switch } from "@geiger/ui/switch";
@@ -39,7 +40,7 @@ import {
   uniqueEvents,
   useAnalyticsData,
 } from "./analytics_data";
-import { Meter, RangePicker } from "./analytics_ui";
+import { RangePicker } from "./analytics_ui";
 
 const NO_VARIANT = "__none";
 
@@ -243,7 +244,7 @@ export function AbTestScreen() {
       header: "Conversion",
       render: (r) => (
         <div className="flex min-w-28 items-center gap-2">
-          <Meter value={r.conversion ?? 0} className="w-20" />
+          <Progress value={r.conversion ?? 0} className="h-1.5 w-20" />
           <span className="tabular-nums text-xs text-text-secondary">{formatPct(r.conversion)}</span>
         </div>
       ),

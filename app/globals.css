@@ -36,6 +36,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-text: var(--destructive-text);
   --color-surface-subtle: var(--surface-subtle);
   --color-surface-card: var(--surface-card);
   --color-surface-active: var(--surface-active);
@@ -89,6 +90,7 @@
   --accent-foreground: oklch(0.21 0.006 285.885);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: #ffffff;
+  --destructive-text: #b91c1c;
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
   --ring: oklch(0.705 0.015 286.067);
@@ -147,6 +149,7 @@
   --accent-foreground: #e7e7e7;
   --destructive: #7f1d1d;
   --destructive-foreground: #ffffff;
+  --destructive-text: #f87171;
   --border: #333333;
   --input: #242424;
   --ring: #474747;
@@ -202,7 +205,13 @@
   .gf-theme :is(h1, h2) {
     font-family: var(--gf-font-heading);
     font-synthesis-weight: none;
+    text-transform: var(--gf-heading-case, none);
   }
+}
+
+/* Form themes: section cards follow the chosen corners instead of the utility's fixed offset. */
+.gf-theme :is([data-gf-part="hero"], [data-gf-part="card"]) {
+  border-radius: var(--gf-card-radius);
 }
 
 /* Respondent filler accessibility (docs/accessibility-audit.md). Tokens mirror lib/forms/theme.js for auto-mode forms; forced modes set them inline. */

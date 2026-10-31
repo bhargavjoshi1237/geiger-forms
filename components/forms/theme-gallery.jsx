@@ -1,14 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@geiger/ui/button";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@geiger/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@geiger/ui/dropdown-menu";
 import { Input } from "@geiger/ui/input";
-import { LogoLoading } from "@geiger/ui/logo-loading";
-import { Field } from "@geiger/ui/screen-kit";
+import { Field, LoadingArea } from "@geiger/ui/screen-kit";
 import { DisabledHint } from "@/components/internal/shared/disabled_hint";
 import { useCan } from "@/context/rbac-context";
 import { fontStylesheetUrl } from "@/lib/forms/fonts";
@@ -17,7 +16,6 @@ import { useWorkspaceSettings } from "@/lib/hooks/use-workspace-settings";
 import { cn } from "@/lib/utils";
 import { THEME_PRESETS } from "./theme-preview";
 
-const ITEM = "cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground";
 
 // Clickable miniature of a design: its background, heading font and accent.
 function ThemeSwatch({ design, compact, onApply, menu }) {
@@ -120,26 +118,15 @@ export function ThemeGallery({ settings, projectId, onApply, compact = false }) 
   };
 
   const menu = (theme) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-xs" aria-label={`Actions for ${theme.name}`} className="text-muted-foreground hover:bg-surface-active hover:text-foreground">
-          <MoreHorizontal />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40 border-border bg-surface-subtle">
-        <DropdownMenuItem className={ITEM} onClick={() => setDialog({ mode: "rename", id: theme.id, name: theme.name })}>
-          <Pencil className="h-4 w-4" /> Rename
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className="bg-border" />
-        <DropdownMenuItem
-          variant="destructive"
-          className="cursor-pointer gap-2 text-red-600 dark:text-red-400 focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400"
-          onClick={() => persist(saved.filter((t) => t.id !== theme.id), `Deleted “${theme.name}”. Forms that use it keep their design.`)}
-        >
-          <Trash2 className="h-4 w-4" /> Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ActionMenu
+      label={`Actions for ${theme.name}`}
+      triggerClassName="size-6"
+      items={[
+        { icon: Pencil, label: "Rename", onSelect: () => setDialog({ mode: "rename", id: theme.id, name: theme.name }) },
+        { separator: true },
+        { icon: Trash2, label: "Delete", destructive: true, onSelect: () => persist(saved.filter((t) => t.id !== theme.id), `Deleted “${theme.name}”. Forms that use it keep their design.`) },
+      ]}
+    />
   );
 
   const grid = cn("grid gap-2", compact ? "grid-cols-3" : "grid-cols-3 sm:grid-cols-5");
@@ -167,9 +154,7 @@ export function ThemeGallery({ settings, projectId, onApply, compact = false }) 
           </DisabledHint>
         </div>
         {workspace.loading ? (
-          <div className="flex justify-center py-4">
-            <LogoLoading size={32} />
-          </div>
+          <LoadingArea size={32} label="Loading workspace themes" className="py-4" />
         ) : saved.length ? (
           <div className={grid}>
             {saved.map((theme) => (

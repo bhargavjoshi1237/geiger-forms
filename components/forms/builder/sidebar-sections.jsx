@@ -94,9 +94,11 @@ function ThresholdRow({ label, tone, value, onChange }) {
   return (
     <div className="flex items-center gap-2">
       <Badge variant={tone} className="w-16 justify-center rounded-full">{label}</Badge>
-      <span className="text-xs text-text-tertiary">≥</span>
-      <NumberInput min={0} value={value} onChange={onChange} className="h-7 w-20 text-xs" />
-      <span className="text-xs text-text-tertiary">points</span>
+      <div className="ml-auto flex items-center gap-2">
+        <span className="text-xs text-text-tertiary">≥</span>
+        <NumberInput min={0} value={value} onChange={onChange} className="h-7 w-20 text-xs" />
+        <span className="text-xs text-text-tertiary">points</span>
+      </div>
     </div>
   );
 }
@@ -135,7 +137,7 @@ export const TriageSection = memo(function TriageSection({ settings, fields, onC
           <ThresholdRow label="Medium" tone="warning" value={settings.mediumThreshold} onChange={(mediumThreshold) => onChange({ mediumThreshold: mediumThreshold ?? "" }, "triage:medium")} />
           <div className="flex items-center gap-2">
             <Badge variant="neutral" className="w-16 justify-center rounded-full">Low</Badge>
-            <span className="text-xs text-text-tertiary">below {settings.mediumThreshold || "—"} points</span>
+            <span className="ml-auto text-xs text-text-tertiary">below {settings.mediumThreshold || "—"} points</span>
           </div>
           <div className="space-y-2 border-t border-border pt-3">
             <p className="text-[11px] leading-4 text-text-secondary">Score = option points on choice fields + calculated fields marked “count in score”{quiz.enabled ? " + quiz points" : ""}. A matching branch can override the priority.</p>

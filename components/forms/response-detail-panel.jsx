@@ -7,25 +7,19 @@ import {
   Edit3,
   FileDown,
   Loader2,
-  MoreHorizontal,
   PenLine,
   Printer,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@geiger/ui/sheet";
+import { Badge } from "@geiger/ui/badge";
+import { LoadingArea } from "@geiger/ui/screen-kit";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui/tabs";
 import { Button } from "@geiger/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import { Avatar, AvatarFallback } from "@geiger/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@geiger/ui/dropdown-menu";
-import { LogoLoading } from "@geiger/ui/logo-loading";
 import { cn } from "@/lib/utils";
 import { useCan } from "@/context/rbac-context";
 import { getFormById } from "@/lib/supabase/forms";
@@ -38,7 +32,6 @@ import { answerFields, canonicalFields, fieldLabel, outcomeLabel } from "@/lib/f
 import { responseCsv, triggerDownload } from "@/lib/forms/export";
 import { withPrefix } from "@/lib/workspace/base-path";
 import {
-  MENU_ITEM,
   OUTLINE_BUTTON,
   RESPONSE_PRIORITIES,
   RESPONSE_PRIORITY_MAP,
@@ -129,9 +122,7 @@ function AnswersTab({ response, form, formLoading }) {
 
   if (formLoading) {
     return (
-      <div className="flex min-h-40 items-center justify-center">
-        <LogoLoading size={40} aria-label="Loading answers" />
-      </div>
+      <LoadingArea size={40} label="Loading answers" className="min-h-40 py-0" />
     );
   }
 
@@ -343,7 +334,7 @@ export function ResponseDetailPanel({
                 map={RESPONSE_PRIORITY_MAP}
                 onChange={(priority) => patch({ priority }, `Priority set to ${priority}`)}
               />
-              {row.score != null ? <span className="rounded-md bg-surface-card px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground" title="Score">Score {row.score}</span> : null}
+              {row.score != null ? <Badge title="Score" className="tabular-nums">Score {row.score}</Badge> : null}
             </div>
           </PropertyRow>
           <PropertyRow label="Assignee">
@@ -363,7 +354,7 @@ export function ResponseDetailPanel({
           </PropertyRow>
           {outcomeLabel(row.outcome) ? (
             <PropertyRow label="Outcome">
-              <span className="rounded-md border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-xs text-violet-700 dark:text-violet-300">{outcomeLabel(row.outcome)}</span>
+              <Badge variant="purple" className="text-violet-700 dark:text-violet-300">{outcomeLabel(row.outcome)}</Badge>
             </PropertyRow>
           ) : null}
         </div>
@@ -382,40 +373,25 @@ export function ResponseDetailPanel({
             <Edit3 className="h-4 w-4" /> Request edit
           </Button>
           {flowIssue ? (
-            <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-sky-500/20 bg-sky-500/10 px-2.5 text-sm text-sky-600 dark:text-sky-400">
-              <ArrowUpRight className="h-4 w-4" /> Flow #{flowIssue.number ?? String(flowIssue.id).slice(0, 6)}
-            </span>
+            <Badge variant="info" className="h-8 gap-1.5 px-2.5 text-sm text-sky-600 dark:text-sky-400 [&_svg]:size-4">
+              <ArrowUpRight /> Flow #{flowIssue.number ?? String(flowIssue.id).slice(0, 6)}
+            </Badge>
           ) : (
             <Button type="button" variant="outline" size="sm" className={OUTLINE_BUTTON} onClick={escalate} disabled={escalating}>
               {escalating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
               Escalate to Flow
             </Button>
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon-sm" className="ml-auto text-text-secondary" aria-label="More actions">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 border-border bg-surface-subtle">
-              <DropdownMenuItem className={MENU_ITEM} onClick={() => setDialog("countersign")}>
-                <PenLine className="h-4 w-4" /> {row.metadata?.countersign ? "Countersign again" : "Countersign"}
-              </DropdownMenuItem>
-              {canExport ? (
-                <DropdownMenuItem className={MENU_ITEM} onClick={copyCsv}>
-                  <ClipboardCopy className="h-4 w-4" /> Copy as CSV row
-                </DropdownMenuItem>
-              ) : null}
-              {canDelete && onDelete ? (
-                <>
-                  <DropdownMenuSeparator className="bg-border" />
-                  <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-xs text-red-600 dark:text-red-400 focus:bg-red-500/10" onClick={() => setDialog("delete")}>
-                    <Trash2 className="h-4 w-4" /> Delete response
-                  </DropdownMenuItem>
-                </>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ActionMenu
+            label="More actions"
+            className="ml-auto"
+            items={[
+              { icon: PenLine, label: row.metadata?.countersign ? "Countersign again" : "Countersign", onSelect: () => setDialog("countersign") },
+              canExport && { icon: ClipboardCopy, label: "Copy as CSV row", onSelect: copyCsv },
+              { separator: true },
+              canDelete && onDelete && { icon: Trash2, label: "Delete response", destructive: true, onSelect: () => setDialog("delete") },
+            ]}
+          />
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col gap-0">

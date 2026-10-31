@@ -1,18 +1,21 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Lock, ShieldCheck } from "lucide-react";
+import { Lock, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@geiger/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@geiger/ui/tabs";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import { Switch } from "@geiger/ui/switch";
 import { Textarea } from "@geiger/ui/textarea";
 import { cn } from "@/lib/utils";
 import { AUTOFILL_OPTIONS, FIELD_GROUPS, FIELD_TYPE_LIST, autofillToken, hasOptions, isInputField, isLayoutField, isMultiChoice } from "@/lib/forms/field-types";
-import { ConditionsEditor } from "./conditions-editor";
+import { JUMP_TO_END } from "@/lib/forms/logic";
+import { makeFieldId } from "@/lib/forms/schema";
+import { ConditionsEditor, conditionSources } from "./conditions-editor";
 import { changeFieldType } from "./field-defaults";
 import { FormulaEditor } from "./formula-editor";
-import { FieldRow, FieldTokenMenu, FieldTypeIcon, NumberInput, SubtleNote, TextInput, ToggleRow } from "./builder-controls";
+import { ControlLabel, FieldRow, FieldTokenMenu, FieldTypeIcon, NumberInput, SubtleNote, TextInput, ToggleRow } from "./builder-controls";
 import { renderTypeSettings } from "./type-settings";
 
 const PLACEHOLDER_TYPES = new Set(["text", "textarea", "email", "phone", "url", "number", "currency", "dropdown"]);
@@ -256,7 +259,7 @@ function AdvancedTab({ field, onChange }) {
         <div className="space-y-1.5">
           <span className="text-xs font-medium text-foreground">Width</span>
           <Tabs value={field.width || "full"} onValueChange={(width) => onChange({ width })}>
-            <TabsList className="w-full sm:w-fit">
+            <TabsList className="w-full">
               {WIDTHS.map((t) => (
                 <TabsTrigger key={t.value} value={t.value} className="text-xs">
                   {t.label}
@@ -300,32 +303,81 @@ function AdvancedTab({ field, onChange }) {
   );
 }
 
+// "Jump to" rules: after this question, the first rule that matches skips ahead to a later question, page or the end.
+function JumpRulesEditor({ field, allFields, onChange }) {
+  const rules = field.jumps || [];
+  const fields = (allFields || []).filter((f) => f.included !== false);
+  const position = fields.findIndex((f) => f.id === field.id);
+  const earlier = conditionSources(fields.slice(0, position + 1));
+  const targets = fields.slice(position + 1).filter((f) => f.type !== "hidden");
+  const setRules = (next) => onChange({ jumps: next.length ? next : undefined });
+  const update = (id, patch) => setRules(rules.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+
+  if (!targets.length && !rules.length) return <SubtleNote>This is the last question, so there&apos;s nothing to jump to.</SubtleNote>;
+  return (
+    <div className="space-y-2">
+      <ControlLabel hint="Skipped questions aren't shown, required or stored. The first rule that matches wins.">Jump rules</ControlLabel>
+      {rules.map((rule, i) => (
+        <div key={rule.id} className="space-y-2 rounded-lg border border-border p-2.5">
+          <ConditionsEditor conditions={rule.conditions || []} logic={rule.conditionLogic} sources={earlier} compact title={`Rule ${i + 1}: jump when`} emptyText="Add a condition, or this rule never runs." onChange={(patch) => update(rule.id, patch)} />
+          <div className="flex items-center gap-1.5">
+            <span className="shrink-0 text-xs text-text-secondary">Jump to</span>
+            <Select value={rule.to === JUMP_TO_END || targets.some((t) => t.id === rule.to) ? rule.to : undefined} onValueChange={(to) => update(rule.id, { to })}>
+              <SelectTrigger className="h-8 min-w-0 flex-1 bg-surface-card text-sm">
+                <SelectValue placeholder={rule.to ? "Deleted or earlier question" : "Choose…"} />
+              </SelectTrigger>
+              <SelectContent>
+                {targets.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.type === "page" ? `Page: ${t.title}` : t.title || t.label}
+                  </SelectItem>
+                ))}
+                <SelectItem value={JUMP_TO_END}>End of form</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove rule ${i + 1}`} className="shrink-0 hover:text-red-600 dark:hover:text-red-400" onClick={() => setRules(rules.filter((r) => r.id !== rule.id))}>
+              <Trash2 />
+            </Button>
+          </div>
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="xs" onClick={() => setRules([...rules, { id: makeFieldId("jump"), conditions: [], conditionLogic: "any", to: targets[0]?.id ?? JUMP_TO_END }])}>
+        <Plus />
+        Add jump rule
+      </Button>
+    </div>
+  );
+}
+
 // Tabbed settings for one field: question, validation, logic and advanced.
 export function FieldSettings({ field, onChange, sources, recallSources, allFields, formId, scoring, quiz, currency }) {
   const [tab, setTab] = useState("question");
   const input = isInputField(field.type);
+  const logicCount = (field.conditions?.length || 0) + (field.jumps?.length || 0);
   const tabs = [
     { value: "question", label: field.type === "calculated" ? "Formula" : "Question" },
     ...(input && field.type !== "hidden" ? [{ value: "validation", label: "Validation" }] : []),
-    { value: "logic", label: field.conditions?.length ? `Logic · ${field.conditions.length}` : "Logic" },
+    { value: "logic", label: logicCount ? `Logic · ${logicCount}` : "Logic" },
     { value: "advanced", label: "Advanced" },
   ];
   const active = tabs.some((t) => t.value === tab) ? tab : "question";
 
   return (
-    <div className="space-y-4">
-      <Tabs value={active} onValueChange={setTab}>
-        <TabsList className="w-full">
-          {tabs.map((t) => (
-            <TabsTrigger key={t.value} value={t.value} className="text-xs">
-              {t.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-      {active === "question" ? <QuestionTab field={field} onChange={onChange} recallSources={recallSources} allFields={allFields} formId={formId} scoring={scoring} quiz={quiz} currency={currency} /> : null}
-      {active === "validation" ? <ValidationTab field={field} onChange={onChange} quiz={quiz} /> : null}
-      {active === "logic" ? (
+    <Tabs value={active} onValueChange={setTab} className="gap-4">
+      <TabsList className="w-full justify-start overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
+        {tabs.map((t) => (
+          <TabsTrigger key={t.value} value={t.value}>
+            {t.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      <TabsContent value="question">
+        <QuestionTab field={field} onChange={onChange} recallSources={recallSources} allFields={allFields} formId={formId} scoring={scoring} quiz={quiz} currency={currency} />
+      </TabsContent>
+      <TabsContent value="validation">
+        <ValidationTab field={field} onChange={onChange} quiz={quiz} />
+      </TabsContent>
+      <TabsContent value="logic" className="space-y-3">
         <ConditionsEditor
           conditions={field.conditions || []}
           logic={field.conditionLogic}
@@ -334,8 +386,11 @@ export function FieldSettings({ field, onChange, sources, recallSources, allFiel
           title="Show this field only when"
           emptyText="No conditions — this field is always shown."
         />
-      ) : null}
-      {active === "advanced" ? <AdvancedTab field={field} onChange={onChange} /> : null}
-    </div>
+        <JumpRulesEditor field={field} allFields={allFields} onChange={onChange} />
+      </TabsContent>
+      <TabsContent value="advanced">
+        <AdvancedTab field={field} onChange={onChange} />
+      </TabsContent>
+    </Tabs>
   );
 }

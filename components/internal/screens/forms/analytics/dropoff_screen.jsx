@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { FileText, Filter, Inbox } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { Progress } from "@geiger/ui/progress";
 import {
   DataTable,
   EmptyState,
@@ -29,7 +30,7 @@ import {
   sinceIso,
   useAnalyticsData,
 } from "./analytics_data";
-import { FormPicker, FunnelStep, Meter, RangePicker } from "./analytics_ui";
+import { FormPicker, FunnelStep, RangePicker } from "./analytics_ui";
 
 export function DropoffScreen() {
   const [days, setDays] = useState("30");
@@ -156,7 +157,7 @@ export function DropoffScreen() {
         const value = progressPct(p.progress);
         return (
           <div className="flex min-w-28 items-center gap-2">
-            <Meter value={value} className="w-20" />
+            <Progress value={value} className="h-1.5 w-20" />
             <span className="tabular-nums text-xs text-text-secondary">{value}%</span>
           </div>
         );
@@ -196,7 +197,7 @@ export function DropoffScreen() {
                 <div key={row.id} className="grid grid-cols-[1.5rem_minmax(0,1fr)_7rem_4.5rem] items-center gap-3">
                   <span className="tabular-nums text-xs text-text-tertiary">{row.order}</span>
                   <span className="truncate text-sm text-foreground">{row.label}</span>
-                  <Meter value={row.share} barClassName={row.share >= 30 ? "bg-red-400" : row.share >= 15 ? "bg-amber-400" : "bg-foreground/70"} />
+                  <Progress value={row.share} className={row.share >= 30 ? "h-1.5 [&>*]:bg-red-400" : row.share >= 15 ? "h-1.5 [&>*]:bg-amber-400" : "h-1.5"} />
                   <span className="text-right tabular-nums text-xs text-text-secondary">
                     {row.count} · {row.share}%
                   </span>
@@ -214,7 +215,7 @@ export function DropoffScreen() {
               <div key={row.id} className="grid grid-cols-[1.5rem_minmax(0,1fr)_10rem_4.5rem] items-center gap-3">
                 <span className="tabular-nums text-xs text-text-tertiary">{i + 1}</span>
                 <span className="truncate text-sm text-foreground">{row.label}</span>
-                <Meter value={row.share} />
+                <Progress value={row.share} className="h-1.5" />
                 <span className="text-right tabular-nums text-xs text-text-secondary">{row.count} · {row.share}%</span>
               </div>
             ))}

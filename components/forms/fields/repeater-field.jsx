@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { Label } from "@geiger/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@geiger/ui/table";
 import { DropdownInput, LongTextInput, TextLikeInput } from "./basic-inputs";
 import { fieldIds } from "./field-shell";
 
-function SubInput({ sub, id, value, onChange, disabled, tr }) {
+function SubInput({ sub, id, value, onChange, disabled, tr, labelled = false }) {
   const field = { ...sub, id, title: sub.label, validation: sub.validation, readOnly: false };
-  const common = { field, id, value, onChange, disabled, aria: { "aria-required": sub.required || undefined } };
+  // A table cell has only its column header above it, so it names itself.
+  const common = { field, id, value, onChange, disabled, aria: { "aria-required": sub.required || undefined, ...(labelled ? { "aria-label": sub.label || "Field" } : {}) } };
   if (sub.type === "textarea") return <LongTextInput {...common} />;
   if (sub.type === "dropdown") return <DropdownInput {...common} placeholder={tr("selectPlaceholder")} />;
   // Rows usually describe other people, so the respondent's own autofill profile must not fill them.
@@ -58,7 +60,41 @@ export function RepeaterField({ field, value, onChange, disabled, tr }) {
       <p role="status" className="sr-only">
         {status}
       </p>
-      {rows.map((row, ri) => (
+      {cfg.layout === "table" ? (
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <Table>
+            <TableHeader className="bg-transparent">
+              <TableRow className="bg-surface-card hover:bg-surface-card">
+                {subs.map((sub) => (
+                  <TableHead key={sub.id} scope="col" className="h-auto min-w-36 px-2 py-2 text-xs font-normal normal-case tracking-normal text-text-secondary">
+                    {sub.label || "Field"}
+                    {sub.required && <span className="text-red-600 dark:text-red-400" aria-hidden="true">*</span>}
+                  </TableHead>
+                ))}
+                <TableHead className="w-9 p-0"><span className="sr-only">{tr("removeRow")}</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row, ri) => (
+                <TableRow key={ri} data-gf-entry={ri} aria-label={tr("entry", { n: ri + 1 })} className="hover:bg-transparent">
+                  {subs.map((sub) => (
+                    <TableCell key={sub.id} className="p-1.5 align-top">
+                      <SubInput labelled sub={sub} id={`${ids.control}-${ri}-${sub.id}`} value={row?.[sub.id]} onChange={(v) => setCell(ri, sub.id, v)} disabled={locked} tr={tr} />
+                    </TableCell>
+                  ))}
+                  <TableCell className="p-1 align-middle">
+                    {canRemove ? (
+                      <Button type="button" size="icon-xs" variant="ghost" disabled={locked} aria-label={`${tr("removeRow")} ${tr("entry", { n: ri + 1 })}`} onClick={() => removeRow(ri)}>
+                        <Trash2 />
+                      </Button>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : rows.map((row, ri) => (
         <div key={ri} role="group" aria-label={tr("entry", { n: ri + 1 })} data-gf-entry={ri} className="rounded-lg border border-border bg-surface-card p-3">
           <div className="mb-2.5 flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-text-secondary">{tr("entry", { n: ri + 1 })}</span>

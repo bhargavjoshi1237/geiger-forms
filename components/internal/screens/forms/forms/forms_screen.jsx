@@ -18,7 +18,6 @@ import {
   Inbox,
   Loader2,
   MessageSquare,
-  MoreHorizontal,
   PencilRuler,
   Plus,
   Settings2,
@@ -39,9 +38,9 @@ import {
 } from "@geiger/ui/screen-kit";
 import FilterDropdown from "@/components/internal/shared/filter_dropdown";
 import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import { Button } from "@geiger/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@geiger/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@geiger/ui/dropdown-menu";
 import { useCan } from "@/context/rbac-context";
 import { useForms } from "@/lib/hooks/use-forms";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
@@ -57,69 +56,30 @@ import { FormDetailScreen } from "./form_detail";
 import { NewFormDialog } from "./new_form_dialog";
 import { ImportFormDialog, downloadFormJson } from "./import_form_dialog";
 
-const ITEM = "cursor-pointer gap-2 text-muted-foreground focus:bg-surface-hover focus:text-foreground";
-
 function RowActions({ form, can, onAction }) {
   const published = form.status === "Published";
   const archived = form.status === "Archived";
   // Copies land in the open project, else the source's own; an unscoped form outside a project can't be copied.
   const copyable = can.create || Boolean(form.projectId);
+  const item = (icon, label, action) => ({ icon, label, onSelect: () => onAction(action, form) });
   return (
-    <div onClick={(e) => e.stopPropagation()}>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label={`Actions for ${form.name}`} className="h-8 w-8 text-muted-foreground hover:bg-surface-active hover:text-foreground">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52 border-border bg-surface-subtle shadow-xl">
-          <DropdownMenuItem className={ITEM} onClick={() => onAction("edit", form)}>
-            <Settings2 className="h-4 w-4" /> Edit settings
-          </DropdownMenuItem>
-          <DropdownMenuItem className={ITEM} onClick={() => onAction("builder", form)}>
-            <PencilRuler className="h-4 w-4" /> Open builder
-          </DropdownMenuItem>
-          <DropdownMenuItem className={ITEM} onClick={() => onAction("responses", form)}>
-            <MessageSquare className="h-4 w-4" /> Responses
-          </DropdownMenuItem>
-          <DropdownMenuItem className={ITEM} onClick={() => onAction("preview", form)}>
-            <ExternalLink className="h-4 w-4" /> Preview
-          </DropdownMenuItem>
-          <DropdownMenuItem className={ITEM} onClick={() => onAction("export", form)}>
-            <FileDown className="h-4 w-4" /> Export JSON
-          </DropdownMenuItem>
-          {copyable || can.publish ? <DropdownMenuSeparator className="bg-border" /> : null}
-          {copyable ? (
-            <>
-              <DropdownMenuItem className={ITEM} onClick={() => onAction("duplicate", form)}>
-                <Copy className="h-4 w-4" /> Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuItem className={ITEM} onClick={() => onAction("template", form)}>
-                <BookmarkPlus className="h-4 w-4" /> Save as template
-              </DropdownMenuItem>
-            </>
-          ) : null}
-          {can.publish ? (
-            <>
-              <DropdownMenuItem className={ITEM} onClick={() => onAction(published ? "unpublish" : "publish", form)}>
-                {published ? <GlobeLock className="h-4 w-4" /> : <Globe className="h-4 w-4" />} {published ? "Unpublish" : "Publish"}
-              </DropdownMenuItem>
-              <DropdownMenuItem className={ITEM} onClick={() => onAction(archived ? "restore" : "archive", form)}>
-                {archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />} {archived ? "Restore to draft" : "Archive"}
-              </DropdownMenuItem>
-            </>
-          ) : null}
-          {can.delete ? (
-            <>
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-red-600 dark:text-red-400 focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400" onClick={() => onAction("delete", form)}>
-                <Trash2 className="h-4 w-4" /> Delete
-              </DropdownMenuItem>
-            </>
-          ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+    <ActionMenu
+      label={`Actions for ${form.name}`}
+      items={[
+        item(Settings2, "Edit settings", "edit"),
+        item(PencilRuler, "Open builder", "builder"),
+        item(MessageSquare, "Responses", "responses"),
+        item(ExternalLink, "Preview", "preview"),
+        item(FileDown, "Export JSON", "export"),
+        { separator: true },
+        copyable && item(Copy, "Duplicate", "duplicate"),
+        copyable && item(BookmarkPlus, "Save as template", "template"),
+        can.publish && (published ? item(GlobeLock, "Unpublish", "unpublish") : item(Globe, "Publish", "publish")),
+        can.publish && (archived ? item(ArchiveRestore, "Restore to draft", "restore") : item(Archive, "Archive", "archive")),
+        { separator: true },
+        can.delete && { ...item(Trash2, "Delete", "delete"), destructive: true },
+      ]}
+    />
   );
 }
 

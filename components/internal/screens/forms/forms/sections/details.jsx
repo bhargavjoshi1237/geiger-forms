@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 
 import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
 import { Field, SectionCard } from "@geiger/ui/screen-kit";
 import { cn } from "@/lib/utils";
@@ -49,12 +50,12 @@ export function DetailsSection({ draft, setDetails, categories = [] }) {
           {tags.length ? (
             <div className="mb-2 flex flex-wrap gap-1.5">
               {tags.map((t) => (
-                <span key={t} className="flex items-center gap-1 rounded-md border border-border bg-surface-card px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                <Badge key={t} className="px-1.5 font-normal whitespace-normal">
                   #{t}
                   <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove tag ${t}`} onClick={() => setDetails({ tags: tags.filter((x) => x !== t) })} className="size-4 text-text-tertiary hover:bg-transparent hover:text-foreground">
                     <X className="size-2.5" />
                   </Button>
-                </span>
+                </Badge>
               ))}
             </div>
           ) : null}

@@ -14,7 +14,7 @@ import { SubmitButton } from "./classic-view";
 import { Banner } from "./banners";
 import { SpotsBadge } from "./form-hero";
 
-const TEXT_ENTRY = new Set(["text", "email", "phone", "url", "number", "currency", "date", "time", "datetime", "textarea", "name", "address"]);
+const TEXT_ENTRY = new Set(["text", "email", "phone", "url", "number", "currency", "date", "daterange", "time", "datetime", "textarea", "name", "address"]);
 const LETTER_TYPES = new Set(["select", "multiselect", "picture", "multipicture"]);
 const AUTO_ADVANCE_TYPES = new Set(["select", "picture"]);
 const SHORTCUTS_KEY = "geiger-forms:letter-shortcuts";
@@ -175,7 +175,7 @@ export function ConversationalView({
             {isLastStep ? (
               <SubmitButton type="button" submitState={submitState} reviewLeft={reviewLeft} tr={tr} onClick={onNext} />
             ) : (
-              <Button type="button" size="lg" onClick={onNext} className="min-w-24">
+              <Button type="button" size="lg" data-gf-part="primary-action" onClick={onNext} className="min-w-24">
                 {statement ? statement.config?.buttonLabel || tr("continue") : tr("ok")}
                 {statement ? <ArrowRight className="rtl:rotate-180" /> : <Check />}
               </Button>

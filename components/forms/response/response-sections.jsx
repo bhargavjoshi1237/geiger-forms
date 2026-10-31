@@ -17,15 +17,16 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { LogoLoading } from "@geiger/ui/logo-loading";
 import { Button } from "@geiger/ui/button";
 import { Textarea } from "@geiger/ui/textarea";
 import { cn } from "@/lib/utils";
-import { StatusPill } from "@geiger/ui/screen-kit";
+import { StatusPill, LoadingArea } from "@geiger/ui/screen-kit";
 import { useComments } from "@/lib/hooks/use-comments";
 import { resolvePerson, useMembers } from "@/lib/hooks/use-members";
 import { listAccess, listActivity } from "@/lib/supabase/audit";
 import { normalizeResponse } from "@/lib/supabase/responses";
+import { FormFieldRenderer } from "@/components/forms/form-field-renderer";
+import { editableFields, stepApplies, stepApprovers } from "@/lib/forms/approvals";
 import { callApi } from "@/lib/forms/api";
 import { computeOrder, formatMoney } from "@/lib/forms/logic";
 import { outcomeLabel, responseFileUrl } from "@/lib/forms/response-utils";
@@ -64,14 +65,6 @@ function Rows({ items }) {
   );
 }
 
-function Loading() {
-  return (
-    <div className="flex min-h-32 items-center justify-center">
-      <LogoLoading size={36} aria-label="Loading" />
-    </div>
-  );
-}
-
 export function parseUserAgent(ua) {
   if (!ua) return { device: "", browser: "", os: "" };
   const device = /Mobi|Android|iPhone/.test(ua) ? "Mobile" : /iPad|Tablet/.test(ua) ? "Tablet" : "Desktop";
@@ -97,13 +90,18 @@ const DECISION_ICON = { approve: CheckCircle2, approved: CheckCircle2, reject: X
 export function ApprovalsSection({ response, form, onReplace }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(null);
+  const [edits, setEdits] = useState({});
   const config = form?.settings?.approval || { enabled: false, steps: [] };
   const steps = config.steps || [];
   const approval = response.approval || {};
   const history = Array.isArray(approval.history) ? approval.history : [];
   const stepIndex = Number(approval.stepIndex ?? 0);
   const state = approval.state || (config.enabled ? "pending" : null);
-  const decided = state === "approved" || state === "rejected";
+  const decided = state === "approved" || state === "rejected" || state === "skipped";
+  const currentStep = steps[stepIndex];
+  const votes = Array.isArray(approval.votes) ? approval.votes : [];
+  const named = stepApprovers(currentStep);
+  const correctable = decided ? [] : editableFields(currentStep, form?.fieldDefs || []);
 
   if (!config.enabled && !history.length) {
     return (
@@ -117,7 +115,7 @@ export function ApprovalsSection({ response, form, onReplace }) {
     setBusy(decision);
     const { ok, data } = await callApi(`/api/responses/${response.id}/approve`, {
       method: "POST",
-      body: { decision, note: note.trim() },
+      body: { decision, note: note.trim(), edits },
     });
     setBusy(null);
     if (!ok) return toast.error(data?.error || "Couldn't record the decision.");
@@ -126,7 +124,8 @@ export function ApprovalsSection({ response, form, onReplace }) {
       onReplace?.({ ...next, form: response.form, formSlug: response.formSlug, projectId: response.projectId ?? next.projectId });
     }
     setNote("");
-    toast.success(decision === "approve" ? "Approved" : "Rejected");
+    setEdits({});
+    toast.success(data.response?.approval?.state === "pending" && data.response.approval.stepIndex === stepIndex ? "Vote recorded" : decision === "approve" ? "Approved" : "Rejected");
   };
 
   return (
@@ -135,16 +134,22 @@ export function ApprovalsSection({ response, form, onReplace }) {
         {steps.length ? (
           <ol className="space-y-2">
             {steps.map((step, i) => {
-              const done = history.find((h) => Number(h.stepIndex) === i && /approve/.test(h.decision));
-              const rejected = history.find((h) => Number(h.stepIndex) === i && /reject/.test(h.decision));
               const current = !decided && i === stepIndex;
+              const voted = history.some((h) => Number(h.stepIndex) === i);
+              const rejected = !current && history.some((h) => Number(h.stepIndex) === i && /reject/.test(h.decision));
+              // A vote can leave a step open, so a step only counts as done once the chain has moved past it.
+              const done = !current && !rejected && voted;
+              const skipped = !current && !voted && (i < stepIndex || state === "approved") && !stepApplies(step, response.answers);
               const Icon = rejected ? XCircle : done ? CheckCircle2 : current ? CircleDot : Circle;
               return (
                 <li key={step.id || i} className="flex items-start gap-2.5">
                   <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", rejected ? "text-red-600 dark:text-red-400" : done ? "text-emerald-600 dark:text-emerald-400" : current ? "text-amber-600 dark:text-amber-400" : "text-text-tertiary")} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">{step.name || `Step ${i + 1}`}</p>
-                    <p className="truncate text-xs text-text-tertiary">{(step.approvers || []).join(", ") || "Any workspace member"}</p>
+                    <p className="truncate text-xs text-text-tertiary">
+                      {skipped ? "Skipped: its conditions didn't match" : (step.approvers || []).join(", ") || "Any editor"}
+                      {current && named.length > 1 ? ` · ${votes.length} of ${named.length} voted` : ""}
+                    </p>
                   </div>
                 </li>
               );
@@ -156,7 +161,14 @@ export function ApprovalsSection({ response, form, onReplace }) {
       </SectionBlock>
 
       {config.enabled && !decided ? (
-        <SectionBlock title={`Decision · ${steps[stepIndex]?.name || `Step ${stepIndex + 1}`}`}>
+        <SectionBlock title={`Decision · ${currentStep?.name || `Step ${stepIndex + 1}`}`}>
+          {correctable.length ? (
+            <div className="mb-3 grid gap-4 border-b border-border pb-4">
+              {correctable.map((field) => (
+                <FormFieldRenderer key={field.id} field={field} form={form} allFields={form.fieldDefs} answers={response.answers} value={Object.hasOwn(edits, field.id) ? edits[field.id] : response.answers?.[field.id]} onChange={(value) => setEdits((cur) => ({ ...cur, [field.id]: value }))} />
+              ))}
+            </div>
+          ) : null}
           <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add a note (optional)" className="text-sm" />
           <div className="mt-3 flex gap-2">
             <Button type="button" size="sm" className="flex-1 bg-emerald-500/90 text-white hover:bg-emerald-500" onClick={() => decide("approve")} disabled={Boolean(busy)}>
@@ -182,8 +194,9 @@ export function ApprovalsSection({ response, form, onReplace }) {
                   <div className="min-w-0">
                     <p className="text-sm text-foreground">
                       <span className="font-medium">{h.by || h.byEmail || "Someone"}</span>{" "}
-                      <span className="text-text-secondary">{/reject/.test(h.decision) ? "rejected" : "approved"} {h.stepName || `step ${Number(h.stepIndex) + 1}`}</span>
+                      <span className="text-text-secondary">{/reject/.test(h.decision) ? "rejected" : "approved"} {h.stepName || `step ${Number(h.stepIndex) + 1}`}{h.override ? " (override)" : ""}</span>
                     </p>
+                    {h.edits?.length ? <p className="mt-0.5 text-xs text-text-secondary">Corrected {h.edits.length} answer{h.edits.length === 1 ? "" : "s"}</p> : null}
                     {h.note ? <p className="mt-0.5 text-sm text-muted-foreground">“{h.note}”</p> : null}
                     <p className="mt-0.5 text-xs text-text-tertiary">{formatDateTime(h.at)}</p>
                   </div>
@@ -203,6 +216,7 @@ const APPROVAL_STATE_MAP = {
   pending: { label: "Pending", variant: "warning", dotClass: "bg-amber-400" },
   approved: { label: "Approved", variant: "success", dotClass: "bg-emerald-400" },
   rejected: { label: "Rejected", variant: "danger", dotClass: "bg-red-400" },
+  skipped: { label: "Not needed", variant: "neutral", dotClass: "bg-text-tertiary" },
 };
 
 // --- Payment -------------------------------------------------------------------
@@ -362,7 +376,7 @@ export function AccessLogSection({ response }) {
     };
   }, [response.id]);
 
-  if (!rows) return <Loading />;
+  if (!rows) return <LoadingArea size={36} className="min-h-32 py-0" />;
   if (!rows.length) return <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-text-tertiary">No access recorded yet.</p>;
   return (
     <ul className="divide-y divide-border rounded-lg border border-border bg-surface-card">
@@ -461,7 +475,7 @@ export function ActivitySection({ response }) {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="scrollbar-subtle flex-1 overflow-y-auto px-5 py-4">
         {loading || activity === null ? (
-          <Loading />
+          <LoadingArea size={36} className="min-h-32 py-0" />
         ) : (
           <ol className="space-y-4">
             {timeline.map((item) =>

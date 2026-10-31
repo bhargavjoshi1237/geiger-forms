@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, Clock3, FolderInput, FolderOpen, FolderPlus, Inbox, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Clock3, FolderInput, FolderOpen, FolderPlus, Inbox, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@geiger/ui/button";
+import { ActionMenu } from "@geiger/ui/action-menu";
 import { Checkbox } from "@geiger/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@geiger/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@geiger/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@geiger/ui/dropdown-menu";
 import { ListPagination, usePagination } from "@/components/internal/shared/pagination";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -219,36 +220,16 @@ export function FoldersScreen() {
   const label = (name) => (name === NONE ? "No folder" : name);
 
   const folderMenu = (name) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Actions for ${label(name)}`} onClick={(e) => e.stopPropagation()} className="h-8 w-8 text-muted-foreground hover:bg-surface-active hover:text-foreground">
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44 border-border bg-surface-subtle" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem className={ITEM} onClick={() => showFolder(name)}>
-          <FolderOpen className="h-4 w-4" /> Open
-        </DropdownMenuItem>
-        {name !== NONE ? (
-          <>
-            <DropdownMenuItem className={ITEM} onClick={() => setAddTo(name)}>
-              <Plus className="h-4 w-4" /> Add forms
-            </DropdownMenuItem>
-            {canManage ? (
-              <>
-                <DropdownMenuItem className={ITEM} onClick={() => setDialog({ mode: "rename", name })}>
-                  <Pencil className="h-4 w-4" /> Rename
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-border" />
-                <DropdownMenuItem variant="destructive" className="cursor-pointer gap-2 text-red-600 dark:text-red-400 focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400" onClick={() => setDeleteTarget(name)}>
-                  <Trash2 className="h-4 w-4" /> Delete
-                </DropdownMenuItem>
-              </>
-            ) : null}
-          </>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ActionMenu
+      label={`Actions for ${label(name)}`}
+      items={[
+        { icon: FolderOpen, label: "Open", onSelect: () => showFolder(name) },
+        name !== NONE && { icon: Plus, label: "Add forms", onSelect: () => setAddTo(name) },
+        name !== NONE && canManage && { icon: Pencil, label: "Rename", onSelect: () => setDialog({ mode: "rename", name }) },
+        { separator: true },
+        name !== NONE && canManage && { icon: Trash2, label: "Delete", destructive: true, onSelect: () => setDeleteTarget(name) },
+      ]}
+    />
   );
 
   const busy = loading || workspace.loading;

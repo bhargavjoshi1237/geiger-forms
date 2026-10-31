@@ -22,7 +22,7 @@
   var SUBMITTED = "gf-embed-submitted:";
   var DIALOG_MODES = { popup: 1, slider: 1, "side-tab": 1, popover: 1, fullscreen: 1 };
   // The filler's control params (mirrors RESERVED in components/forms/filler/session.js): never inherited from the host page.
-  var RESERVED = ["t", "resume", "edit", "paid", "r", "embed", "embed_origin", "solid", "variant", "ref", "preview"];
+  var RESERVED = ["t", "resume", "edit", "paid", "r", "embed", "embed_origin", "solid", "variant", "ref", "preview", "lang", "record"];
   var SVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
   var ICON_CHAT = SVG + '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
   var ICON_CLOSE = SVG + '<path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';

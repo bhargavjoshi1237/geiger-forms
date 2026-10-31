@@ -5,15 +5,17 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Monitor, RotateCcw, Smartphon
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@geiger/ui/toggle-group";
-import { Progress } from "@geiger/ui/progress";
 import { cn } from "@/lib/utils";
+import { CustomStyles, SidePanel, sideGridClass } from "@/components/forms/filler/filler-shell";
 import { FormFieldRenderer } from "@/components/forms/form-field-renderer";
-import { stepProgress } from "@/components/forms/filler/progress";
-import { computeOrder, formatMoney, resolveEnding, scoreResponse, stripHiddenAnswers, validateAnswers, visiblePages } from "@/lib/forms/logic";
+import { LinearProgress, StepsProgress } from "@/components/forms/filler/progress";
+import { computeOrder, formatMoney, questionsBefore, resolveEnding, scoreResponse, stripHiddenAnswers, validateAnswers, visiblePages } from "@/lib/forms/logic";
 import { backgroundStyle, buildTheme } from "@/lib/forms/theme";
 import { coverBackground } from "./cover-presets";
 
 const SPAN = { full: "col-span-6", half: "col-span-6 sm:col-span-3", third: "col-span-6 sm:col-span-2" };
+
+const previewStep = (_key, { current, total }) => `${current} / ${total}`;
 
 function initialAnswers(fields) {
   const out = {};
@@ -38,6 +40,7 @@ export function BuilderPreview({ doc, form, onExit }) {
   const page = pages[index];
   const last = index === pages.length - 1;
   const showProgress = settings.progressBar !== false && pages.length > 1;
+  const stepsAbove = showProgress && settings.theme?.elements?.progressStyle === "steps";
 
   const setAnswer = (id, value) => {
     setAnswers((a) => ({ ...a, [id]: value }));
@@ -97,23 +100,27 @@ export function BuilderPreview({ doc, form, onExit }) {
       </div>
 
       {/* The respondent theme (mode, accent, radius, font, background) applies below the app-themed toolbar. */}
-      <div className={cn(theme.className, "flex-1 bg-background text-foreground")} style={{ ...theme.style, ...backgroundStyle(theme), backgroundAttachment: "scroll" }}>
+      <div data-gf-root="" className={cn(theme.className, "flex-1 bg-background text-foreground", theme.side && device === "desktop" && sideGridClass(theme.side))} style={{ ...theme.style, ...backgroundStyle(theme), backgroundAttachment: "scroll" }}>
         {theme.fontUrl ? <link rel="stylesheet" href={theme.fontUrl} /> : null}
+        <CustomStyles css={theme.customCss} />
+        {theme.side ? <SidePanel side={theme.side} stacked={device === "mobile"} className={device === "mobile" ? "mx-auto max-w-[400px]" : ""} /> : null}
         <div className={cn("mx-auto w-full px-4 py-8", device === "mobile" ? "max-w-[400px]" : "max-w-2xl")}>
-          <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle">
-            {settings.coverStyle === "cover" ? <div className="h-28" style={{ background: coverBackground(settings) }} /> : null}
+          <div data-gf-part="hero" className="overflow-hidden rounded-2xl border border-border bg-surface-subtle">
+            {settings.coverStyle === "cover" ? <div data-gf-part="cover" className="h-28" style={{ background: coverBackground(settings) }} /> : null}
             <div className="px-6 py-6">
               {settings.showIcon && settings.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- user-supplied external logo URL
                 <img src={settings.logoUrl} alt={settings.logoAlt || ""} className="mb-3 h-10 w-10 rounded-lg object-cover" />
               ) : null}
-              <h1 className="text-2xl font-bold text-foreground">{doc.title || "Untitled form"}</h1>
-              {doc.description ? <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{doc.description}</p> : null}
+              <h1 data-gf-part="title" className="text-2xl font-bold text-foreground">{doc.title || "Untitled form"}</h1>
+              {doc.description ? <p data-gf-part="description" className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{doc.description}</p> : null}
             </div>
           </div>
 
+          {stepsAbove && !result ? <div className="mt-6"><StepsProgress pages={pages} index={index} tr={previewStep} /></div> : null}
+
           {result ? (
-            <div className="mt-6 rounded-2xl border border-border bg-surface-subtle p-8 text-center">
+            <div data-gf-part="card" className="mt-6 rounded-2xl border border-border bg-surface-subtle p-8 text-center">
               <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600 dark:text-emerald-400" />
               <h2 className="mt-3 text-xl font-semibold text-foreground">{result.ending.title || "Response submitted"}</h2>
               {result.ending.text ? <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">{result.ending.text}</p> : null}
@@ -134,20 +141,20 @@ export function BuilderPreview({ doc, form, onExit }) {
               <Button type="button" variant="outline" size="sm" className="mt-5" onClick={reset}><RotateCcw className="h-3.5 w-3.5" />Fill again</Button>
             </div>
           ) : (
-            <div className="mt-6 rounded-2xl border border-border bg-surface-subtle p-6 sm:p-8">
-              {showProgress ? (
+            <div data-gf-part="card" className="mt-6 rounded-2xl border border-border bg-surface-subtle p-6 sm:p-8">
+              {showProgress && !stepsAbove ? (
                 <div className="mb-6 space-y-1.5">
                   <div className="flex justify-between text-xs text-text-secondary">
                     <span>{page.title || `Page ${index + 1}`}</span>
                     <span>{index + 1} / {pages.length}</span>
                   </div>
-                  <Progress value={stepProgress(index, pages.length)} className="h-1.5" />
+                  <LinearProgress index={index} total={pages.length} label={previewStep("", { current: index + 1, total: pages.length })} className="h-1.5" />
                 </div>
               ) : null}
               {page.fields.filter((f) => f.type !== "hidden").length === 0 ? (
                 <p className="py-8 text-center text-sm text-text-secondary">Nothing to answer on this page.</p>
               ) : (
-                <div className="grid grid-cols-6 gap-5">
+                <div className="grid grid-cols-6 gap-5" style={{ counterReset: `gf-question ${questionsBefore(pages, index)}` }}>
                   {page.fields.filter((f) => f.type !== "hidden").map((field) => (
                     <div key={field.id} className={SPAN[field.width] || SPAN.full}>
                       <FormFieldRenderer
@@ -168,7 +175,7 @@ export function BuilderPreview({ doc, form, onExit }) {
                 <Button type="button" variant="ghost" onClick={() => setPageIndex(index - 1)} disabled={index === 0}>
                   <ArrowLeft className="h-4 w-4" />Back
                 </Button>
-                <Button type="button" onClick={next}>
+                <Button type="button" data-gf-part="primary-action" onClick={next}>
                   {last ? "Submit" : "Next"}
                   {!last ? <ArrowRight className="h-4 w-4" /> : null}
                 </Button>

@@ -7,6 +7,7 @@ import { callApi } from "@/lib/forms/api";
 import { withPrefix } from "@/lib/workspace/base-path";
 import { detectRespondent, interpolate, safeHttpUrl, validateAnswers, visiblePages } from "@/lib/forms/logic";
 import { errorSummaryItems, scrollMotion } from "@/lib/forms/a11y";
+import { localizeField, translationStrings } from "@/lib/forms/translate";
 import { isInputField, isLayoutField } from "@/lib/forms/field-types";
 import { clearDraft, clearQueued, loadDraft, loadPartialToken, loadQueued, markOnce, queueSubmission, saveDraft, savePartialToken, sessionIdFor } from "@/lib/forms/draft";
 import { FormFieldRenderer } from "@/components/forms/form-field-renderer";
@@ -67,7 +68,7 @@ function restoreSubmitFocus() {
 }
 
 // Drives one respondent session: prefill, pages/steps, validation, partials, drafts, extras and submission.
-export function FormRunner({ slug, form, user, variant, params, password, tr, locale, embed, onSubmitted, onGate }) {
+export function FormRunner({ slug, form, user, variant, recordPrefill, params, password, tr, locale, embed, onSubmitted, onGate }) {
   const settings = form.settings;
   const fields = form.fieldDefs;
   const conversational = settings.layout === "conversational";
@@ -84,7 +85,7 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
   const hasExtras = showDelegate || showAttestation || showPolicy || Boolean(captchaKey);
   const reviewSeconds = Math.max(0, Number(settings.minReviewSeconds) || 0);
 
-  const initialAnswers = useCallback(() => buildInitialAnswers(fields, settings, params, user), [fields, settings, params, user]);
+  const initialAnswers = useCallback(() => ({ ...buildInitialAnswers(fields, settings, params, user), ...recordPrefill }), [fields, settings, params, user, recordPrefill]);
   const [answers, setAnswers] = useState(initialAnswers);
   const [errors, setErrors] = useState({});
   const [extraErrors, setExtraErrors] = useState({});
@@ -130,10 +131,11 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
   // --- Derived pages / steps ---------------------------------------------------
 
   const pages = useMemo(() => {
-    const all = visiblePages(fields, answers, "");
+    const strings = translationStrings(settings, locale);
+    const all = visiblePages(fields, answers, "").map((p) => (p.break && strings ? { ...p, title: localizeField(p.break, strings).title || p.title } : p));
     const shown = all.filter((p) => p.fields.some((f) => f.type !== "hidden"));
     return shown.length ? shown : [all[0]];
-  }, [fields, answers]);
+  }, [fields, answers, settings, locale]);
 
   const steps = useMemo(() => {
     if (!conversational) return [];
@@ -481,7 +483,11 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
 
   const summaryItems = useMemo(() => {
     if (!summaryFocus) return [];
-    const label = (f) => interpolate(f.label || f.title || "", form, answers);
+    const strings = translationStrings(form.settings, locale);
+    const label = (f) => {
+      const shown = localizeField(f, strings);
+      return interpolate(shown.label || shown.title || "", form, answers);
+    };
     return errorSummaryItems({ fields, errors, extras: extraErrorItems(extraErrors), label, locale });
   }, [summaryFocus, fields, errors, extraErrors, extraErrorItems, form, answers, locale]);
 
@@ -555,6 +561,8 @@ export function FormRunner({ slug, form, user, variant, params, password, tr, lo
       signedToken: params.signedToken || undefined,
       completionMs: startAtRef.current ? Date.now() - startAtRef.current : null,
       variant: variant?.id || null,
+      locale,
+      recordToken: params.record || undefined,
       utm: params.utm,
       referrer: (typeof document !== "undefined" && document.referrer) || params.ref || "",
       delegate: showDelegate && delegate.enabled ? { forName: delegate.forName.trim(), forEmail: delegate.forEmail.trim() } : null,

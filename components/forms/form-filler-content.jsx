@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { CheckCircle2, CircleSlash, CloudOff, FileQuestion, RotateCcw } from "lucide-react";
 import { Button } from "@geiger/ui/button";
-import { LogoLoading } from "@geiger/ui/logo-loading";
+import { LoadingArea } from "@geiger/ui/screen-kit";
 import { callApi } from "@/lib/forms/api";
 import { normalizeSettings, toCanonicalField } from "@/lib/forms/schema";
 import { buildTheme } from "@/lib/forms/theme";
 import { isRtl, resolveLocale, translator } from "@/lib/forms/i18n";
+import { availableLocales, localizeFormText, matchLocale } from "@/lib/forms/translate";
 import { withPrefix } from "@/lib/workspace/base-path";
-import { FillerFooter, FillerHeader, FillerShell, StatusScreen } from "@/components/forms/filler/filler-shell";
+import { FillerFooter, FillerHeader, FillerShell, LanguageSwitcher, StatusScreen } from "@/components/forms/filler/filler-shell";
 import { GateScreen } from "@/components/forms/filler/gates";
 import { FormRunner } from "@/components/forms/filler/form-runner";
 import { parseFillerParams, publicApi, restartPath } from "@/components/forms/filler/session";
@@ -22,10 +23,15 @@ function prepareForm(form) {
   return { ...form, title: form.title || "Untitled form", description: form.description || "", fieldDefs, settings: normalizeSettings(form.settings) };
 }
 
+const noSubscribe = () => () => {};
+const browserLanguages = () => navigator.languages?.join(",") || navigator.language || "";
+const noLanguages = () => "";
+
 function payloadUrl(slug, params) {
   const qs = new URLSearchParams();
   if (params.signedToken) qs.set("t", params.signedToken);
   if (params.variant) qs.set("variant", params.variant);
+  if (params.record) qs.set("record", params.record);
   const query = qs.toString();
   return publicApi(slug, query ? `?${query}` : "");
 }
@@ -60,11 +66,21 @@ export function FormFillerContent({ formId, slug: slugProp, initialPayload = nul
     };
   }, [fetchPayload, initialPayload, initialStatus, attempt]);
 
-  const form = useMemo(() => prepareForm(payload?.form), [payload]);
-  const settings = form?.settings;
-  const theme = useMemo(() => buildTheme(settings, { embed: params.embed && !params.solid }), [settings, params.embed, params.solid]);
-  const locale = resolveLocale(settings?.locale);
+  const sourceForm = useMemo(() => prepareForm(payload?.form), [payload]);
+  const settings = sourceForm?.settings;
+  // The respondent's pick, else ?lang=, else the browser's languages, else the form's own; the server render always starts at ?lang= or the form's own.
+  const [pickedLocale, setPickedLocale] = useState(null);
+  const browser = useSyncExternalStore(noSubscribe, browserLanguages, noLanguages);
+  const locale = useMemo(() => {
+    if (!settings) return resolveLocale(null);
+    const wanted = [pickedLocale, params.lang, ...browser.split(",")];
+    return wanted.map((code) => matchLocale(settings, code)).find(Boolean) || resolveLocale(settings.locale);
+  }, [settings, pickedLocale, params.lang, browser]);
+  const form = useMemo(() => localizeFormText(sourceForm, locale), [sourceForm, locale]);
+  // Built from the translated settings so the side panel's text follows the language.
+  const theme = useMemo(() => buildTheme(form?.settings, { embed: params.embed && !params.solid }), [form?.settings, params.embed, params.solid]);
   const tr = useMemo(() => translator(locale), [locale]);
+  const languageSwitcher = settings ? <LanguageSwitcher locales={availableLocales(settings)} value={locale} onChange={setPickedLocale} tr={tr} /> : null;
   const title = payload?.variant?.title || form?.title || "";
   const notifySubmitted = useEmbedBridge(params.embed, slug, title);
 
@@ -87,15 +103,12 @@ export function FormFillerContent({ formId, slug: slugProp, initialPayload = nul
     [slug, fetchPayload],
   );
 
-  const header = form ? <FillerHeader title={title} theme={theme} user={payload?.user} tr={tr} /> : null;
+  const header = form ? <FillerHeader title={title} theme={theme} user={payload?.user} languageSwitcher={languageSwitcher} /> : null;
 
   let body;
   if (status === "loading") {
     body = (
-      <div role="status" className="flex min-h-[60dvh] items-center justify-center" aria-busy="true">
-        <LogoLoading size={params.embed ? 48 : 80} />
-        <span className="sr-only">{tr("loading")}</span>
-      </div>
+      <LoadingArea size={params.embed ? 48 : 80} label={tr("loading")} className="min-h-[60dvh] py-0" />
     );
   } else if (status === "missing" || (status === "ready" && !form)) {
     body = (
@@ -146,6 +159,7 @@ export function FormFillerContent({ formId, slug: slugProp, initialPayload = nul
         form={form}
         user={payload?.user || null}
         variant={payload?.variant || null}
+        recordPrefill={payload?.recordPrefill}
         params={params}
         password={password}
         tr={tr}
@@ -162,6 +176,7 @@ export function FormFillerContent({ formId, slug: slugProp, initialPayload = nul
 
   return (
     <FillerShell theme={theme} embed={params.embed} transparent={params.embed && !params.solid} dir={isRtl(locale) ? "rtl" : "ltr"} lang={locale} header={header} footer={<FillerFooter tr={tr} branding={Boolean(form && theme.branding && status === "ready")} />}>
+      {params.embed && languageSwitcher ? <div className="mx-auto mb-3 flex w-full max-w-2xl justify-end empty:hidden">{languageSwitcher}</div> : null}
       {body}
     </FillerShell>
   );

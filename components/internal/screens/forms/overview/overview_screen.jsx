@@ -39,7 +39,8 @@ import {
 } from "recharts";
 
 import { Button } from "@geiger/ui/button";
-import { Card, CardContent } from "@geiger/ui/card";
+import { Badge } from "@geiger/ui/badge";
+import { Progress } from "@geiger/ui/progress";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@geiger/ui/chart";
 import {
   DropdownMenu,
@@ -49,7 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@geiger/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@geiger/ui/table";
-import { EmptyState, RollingNumber, StatsBar, StatusPill } from "@geiger/ui/screen-kit";
+import { EmptyState, RollingNumber, StatsBar, StatusPill, SectionCard } from "@geiger/ui/screen-kit";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import FilterDropdown from "@/components/internal/shared/filter_dropdown";
 import { useForms } from "@/lib/hooks/use-forms";
@@ -58,29 +59,28 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { listFormEvents } from "@/lib/supabase/responses";
 import { cn } from "@/lib/utils";
 import { FORM_STATUS_MAP, formatCount } from "../forms/constants";
-import { STATUS_CHART_COLORS } from "../responses/constants";
 
 const DAY = 86_400_000;
 const WEEKS = 12;
 
-// Suite chart palette (--chart-1…5) with views/starts matching the Analytics screen; statuses reuse the Responses palette.
+// Suite overview palette (matches Flow and Events): one ink for single series, a tonal ramp for categories.
+const WIDGET = { className: "h-full", contentClassName: "flex h-full flex-col p-4" };
 const CHART_COLORS = {
-  views: "var(--chart-1)",
-  submits: "var(--chart-2)",
-  starts: "var(--chart-3)",
-  resolved: "var(--chart-4)",
+  primary: "var(--foreground)",
   appBackground: "var(--background)",
   grid: "var(--border)",
 };
+const CHART_SERIES_COLORS = [100, 80, 64, 50, 38, 28, 20, 14].map(
+  (tone) => `color-mix(in oklab, var(--foreground) ${tone}%, var(--surface-subtle))`,
+);
 const AXIS_TICK = { fill: "var(--muted-foreground)", fontSize: 11 };
 
-const FALLBACK_STATUS_COLOR = "var(--color-neutral-500)";
 const RESOLVED_STATUSES = new Set(["Complete", "Approved", "Rejected", "Spam"]);
 
 const TREND_METRIC_OPTIONS = [
-  { value: "submissions", label: "Submissions", color: CHART_COLORS.submits },
-  { value: "starts", label: "Starts", color: CHART_COLORS.starts },
-  { value: "views", label: "Views", color: CHART_COLORS.views },
+  { value: "submissions", label: "Submissions" },
+  { value: "starts", label: "Starts" },
+  { value: "views", label: "Views" },
 ];
 
 const TOP_FORMS_SORT_OPTIONS = [
@@ -154,14 +154,6 @@ function formatDuration(ms) {
 
 function filterByScope(rows, scope, key = "formId") {
   return scope.length ? rows.filter((r) => scope.includes(r[key])) : rows;
-}
-
-function WidgetShell({ children, className, contentClassName }) {
-  return (
-    <Card className={cn("h-full gap-0 overflow-hidden rounded-xl border-border bg-surface-subtle py-0 text-foreground", className)}>
-      <CardContent className={cn("h-full p-4", contentClassName)}>{children}</CardContent>
-    </Card>
-  );
 }
 
 function WidgetHeader({ title, subtitle, action }) {
@@ -258,7 +250,7 @@ function ResponsesTrendWidget({ pending, forms, responses, events, now }) {
   // Mid-fetch the series is all zeros, so the line sits on the baseline and animates up when data lands.
   if (!pending && !hasLiveData) {
     return (
-      <WidgetShell contentClassName="flex flex-col">
+      <SectionCard {...WIDGET}>
         {header}
         <div className="mt-4 flex min-h-0 flex-1 items-center justify-center">
           <EmptyState
@@ -267,15 +259,15 @@ function ResponsesTrendWidget({ pending, forms, responses, events, now }) {
             description="Views, starts and submissions will show up here once people open your forms."
           />
         </div>
-      </WidgetShell>
+      </SectionCard>
     );
   }
 
   return (
-    <WidgetShell contentClassName="flex flex-col">
+    <SectionCard {...WIDGET}>
       {header}
       <div className="mt-4 flex min-h-0 flex-1 items-center justify-center">
-        <ChartContainer config={{ value: { label: selected.label, color: selected.color } }} className="mx-auto h-full w-full">
+        <ChartContainer config={{ value: { label: selected.label, color: CHART_COLORS.primary } }} className="mx-auto h-full w-full">
           <LineChart data={data} margin={{ top: 24, right: 16, left: 12, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke={CHART_COLORS.grid} strokeDasharray="3 3" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} tick={AXIS_TICK} />
@@ -292,9 +284,9 @@ function ResponsesTrendWidget({ pending, forms, responses, events, now }) {
             <Line
               dataKey="value"
               type="monotone"
-              stroke={selected.color}
+              stroke={CHART_COLORS.primary}
               strokeWidth={2}
-              dot={{ fill: selected.color, r: 3 }}
+              dot={{ fill: CHART_COLORS.primary, r: 3 }}
               activeDot={{ r: 5 }}
               isAnimationActive
             >
@@ -303,7 +295,7 @@ function ResponsesTrendWidget({ pending, forms, responses, events, now }) {
           </LineChart>
         </ChartContainer>
       </div>
-    </WidgetShell>
+    </SectionCard>
   );
 }
 
@@ -313,7 +305,7 @@ function StatusMixWidget({ pending, responses }) {
     for (const r of responses) counts.set(r.status, (counts.get(r.status) || 0) + 1);
     return [...counts.entries()]
       .sort((a, b) => b[1] - a[1])
-      .map(([status, value]) => ({ key: status, label: status, value, fill: STATUS_CHART_COLORS[status] || FALLBACK_STATUS_COLOR }));
+      .map(([status, value], i) => ({ key: status, label: status, value, fill: CHART_SERIES_COLORS[i % CHART_SERIES_COLORS.length] }));
   }, [responses]);
 
   const [selectedStatus, setSelectedStatus] = useState(null);
@@ -327,7 +319,7 @@ function StatusMixWidget({ pending, responses }) {
   // A donut has no zero shape, so mid-fetch it holds an empty ring on the chart's geometry.
   if (pending && !mix.length) {
     return (
-      <WidgetShell contentClassName="flex flex-col">
+      <SectionCard {...WIDGET}>
         {header}
         <div className="relative mt-4 flex min-h-0 w-full flex-1 items-center justify-center">
           <div className="h-[156px] w-[156px] rounded-full border-[34px] border-border" />
@@ -337,23 +329,23 @@ function StatusMixWidget({ pending, responses }) {
           </div>
         </div>
         <p className="mt-2 text-center text-xs text-text-secondary">0 of 0 responses</p>
-      </WidgetShell>
+      </SectionCard>
     );
   }
 
   if (!mix.length) {
     return (
-      <WidgetShell contentClassName="flex flex-col">
+      <SectionCard {...WIDGET}>
         {header}
         <div className="mt-4 flex min-h-0 flex-1 items-center justify-center">
           <EmptyState icon={Inbox} title="No responses yet" description="Share a published form to start collecting responses." />
         </div>
-      </WidgetShell>
+      </SectionCard>
     );
   }
 
   return (
-    <WidgetShell contentClassName="flex flex-col">
+    <SectionCard {...WIDGET}>
       <WidgetHeader
         title="Response Status Mix"
         subtitle="Triage state across every response."
@@ -394,7 +386,7 @@ function StatusMixWidget({ pending, responses }) {
       <p className="mt-2 text-center text-xs text-text-secondary">
         {formatCount(selectedItem?.value)} of {formatCount(total)} responses are {selectedItem?.label.toLowerCase()}
       </p>
-    </WidgetShell>
+    </SectionCard>
   );
 }
 
@@ -408,7 +400,7 @@ function CompletionFunnelWidget({ views, starts, submits }) {
   const chartData = stages.map((stage) => ({ ...stage, share: percent(stage.value, top) }));
 
   return (
-    <WidgetShell contentClassName="flex flex-col">
+    <SectionCard {...WIDGET}>
       <WidgetHeader
         title="Completion Funnel"
         subtitle="Share of views reaching each step, from opening to submitting."
@@ -420,7 +412,7 @@ function CompletionFunnelWidget({ views, starts, submits }) {
         }
       />
       <div className="mt-1 flex min-h-0 flex-1 items-center justify-center">
-        <ChartContainer config={{ share: { label: "Share of views", color: CHART_COLORS.views } }} className="mx-auto aspect-square h-full max-h-[210px]">
+        <ChartContainer config={{ share: { label: "Share of views", color: CHART_COLORS.primary } }} className="mx-auto aspect-square h-full max-h-[210px]">
           <RadarChart data={chartData} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
             <ChartTooltip
               cursor={false}
@@ -443,31 +435,31 @@ function CompletionFunnelWidget({ views, starts, submits }) {
             <PolarAngleAxis dataKey="short" tick={AXIS_TICK} />
             <Radar
               dataKey="share"
-              stroke={CHART_COLORS.views}
+              stroke={CHART_COLORS.primary}
               strokeWidth={2}
-              fill={CHART_COLORS.views}
+              fill={CHART_COLORS.primary}
               fillOpacity={0.5}
-              dot={{ r: 4, fill: CHART_COLORS.views, fillOpacity: 1, stroke: CHART_COLORS.appBackground, strokeWidth: 1.5 }}
+              dot={{ r: 4, fill: CHART_COLORS.primary, fillOpacity: 1, stroke: CHART_COLORS.appBackground, strokeWidth: 1.5 }}
               isAnimationActive
             />
           </RadarChart>
         </ChartContainer>
       </div>
-    </WidgetShell>
+    </SectionCard>
   );
 }
 
-function GaugeWidget({ title, subtitle, caption, color, forms, computeLive }) {
+function GaugeWidget({ title, subtitle, caption, forms, computeLive }) {
   const [scope, setScope] = useState([]);
   const { pct, footnote } = useMemo(() => computeLive(scope), [computeLive, scope]);
   const clamped = Math.max(0, Math.min(100, pct));
-  const data = [{ name: caption, value: clamped, fill: color }];
+  const data = [{ name: caption, value: clamped, fill: CHART_COLORS.primary }];
 
   return (
-    <WidgetShell contentClassName="flex flex-col">
+    <SectionCard {...WIDGET}>
       <WidgetHeader title={title} subtitle={subtitle} action={<FormScopeSelect forms={forms} selected={scope} onChange={setScope} />} />
       <div className="mt-1 flex min-h-0 flex-1 items-center justify-center">
-        <ChartContainer config={{ value: { label: caption, color } }} className="mx-auto aspect-square h-full max-h-[190px]">
+        <ChartContainer config={{ value: { label: caption, color: CHART_COLORS.primary } }} className="mx-auto aspect-square h-full max-h-[190px]">
           <RadialBarChart data={data} startAngle={90} endAngle={90 - (clamped / 100) * 360} innerRadius={58} outerRadius={84}>
             <PolarGrid
               gridType="circle"
@@ -498,7 +490,7 @@ function GaugeWidget({ title, subtitle, caption, color, forms, computeLive }) {
         </ChartContainer>
       </div>
       {footnote ? <p className="mt-1 text-center text-xs text-text-secondary">{footnote}</p> : null}
-    </WidgetShell>
+    </SectionCard>
   );
 }
 
@@ -587,9 +579,7 @@ function TopFormsTable({ pending, forms, responses, events, now }) {
                         <span className="text-xs text-text-tertiary">No starts yet</span>
                       ) : (
                         <div className="w-[140px] space-y-1.5">
-                          <div className="h-1.5 overflow-hidden rounded-full bg-surface-hover">
-                            <div className="h-full rounded-full" style={{ width: `${form.completion}%`, background: CHART_COLORS.submits }} />
-                          </div>
+                          <Progress value={form.completion} className="h-1.5 bg-surface-hover" />
                           <p className="text-xs text-text-secondary">{form.completion}%</p>
                         </div>
                       )}
@@ -628,14 +618,14 @@ function GeneralStatsCard({ items }) {
   const sorted = [...items].sort((a, b) => URGENCY_ORDER.indexOf(a.urgency) - URGENCY_ORDER.indexOf(b.urgency));
 
   return (
-    <WidgetShell contentClassName="flex flex-col">
+    <SectionCard {...WIDGET}>
       <WidgetHeader
         title="Overall Stats"
         subtitle="A quick snapshot of the work waiting across your forms."
         action={
-          <span className="shrink-0 rounded-md border border-border bg-surface-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+          <Badge className="shrink-0 text-[10px]">
             {items.length} Legends
-          </span>
+          </Badge>
         }
       />
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -655,9 +645,9 @@ function GeneralStatsCard({ items }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-semibold text-foreground">{item.label}</span>
-                  <span className="shrink-0 rounded-md border border-border bg-surface-card px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
+                  <Badge className="shrink-0 px-1.5 text-[10px] text-text-secondary">
                     {URGENCY_LABELS[item.urgency]}
-                  </span>
+                  </Badge>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-text-secondary">{item.hint}</p>
               </div>
@@ -667,7 +657,7 @@ function GeneralStatsCard({ items }) {
           );
         })}
       </div>
-    </WidgetShell>
+    </SectionCard>
   );
 }
 
@@ -866,7 +856,6 @@ export function OverviewScreen() {
             subtitle="Submitted vs. started."
             caption="Submitted"
             forms={forms}
-            color={CHART_COLORS.submits}
             computeLive={completionCompute}
           />
         </div>
@@ -876,7 +865,6 @@ export function OverviewScreen() {
             subtitle="Handled vs. all responses."
             caption="Handled"
             forms={forms}
-            color={CHART_COLORS.resolved}
             computeLive={resolvedCompute}
           />
         </div>

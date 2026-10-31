@@ -9,6 +9,7 @@ import { Switch } from "@geiger/ui/switch";
 import { Textarea } from "@geiger/ui/textarea";
 import { cn } from "@/lib/utils";
 import { REPEATER_SUBTYPES, getFieldType, opinionSteps } from "@/lib/forms/field-types";
+import { DIAL_CODES } from "@/lib/forms/phone";
 import { safeHttpUrl } from "@/lib/forms/logic";
 import { videoSource } from "@/lib/forms/media";
 import { makeFieldId } from "@/lib/forms/schema";
@@ -143,6 +144,9 @@ function RepeaterSettings({ config, setConfig }) {
           <Plus className="h-3.5 w-3.5" />Add sub-field
         </Button>
       </div>
+      <FieldRow label="Layout" hint="A table suits short answers; cards suit longer ones. Tables scroll sideways on phones.">
+        <Segmented value={config.layout === "table" ? "table" : "cards"} options={[{ value: "cards", label: "Cards" }, { value: "table", label: "Table" }]} onChange={(layout) => setConfig({ layout })} />
+      </FieldRow>
       <div className="grid grid-cols-3 gap-3">
         <FieldRow label="Min entries"><NumberInput min={0} value={config.minRows ?? 0} onChange={(v) => setConfig({ minRows: v })} /></FieldRow>
         <FieldRow label="Max entries"><NumberInput min={1} value={config.maxRows ?? 10} onChange={(v) => setConfig({ maxRows: v })} /></FieldRow>
@@ -158,6 +162,20 @@ export function renderTypeSettings({ field, onChange, formId, scoring, quiz, cur
   const setConfig = (patch) => onChange({ config: { ...config, ...patch } });
 
   switch (field.type) {
+    case "phone":
+      return (
+        <div className="space-y-3">
+          <ToggleRow label="Country picker" hint="Respondents choose a country code; the answer is saved with it." checked={config.countryPicker} onCheckedChange={(countryPicker) => setConfig({ countryPicker })} />
+          {config.countryPicker ? (
+            <FieldRow label="Default country">
+              <Select value={config.defaultCountry || "US"} onValueChange={(defaultCountry) => setConfig({ defaultCountry })}>
+                <SelectTrigger className="h-8 bg-surface-card text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>{DIAL_CODES.map((c) => <SelectItem key={c.code} value={c.code}>{c.name} {c.dial}</SelectItem>)}</SelectContent>
+              </Select>
+            </FieldRow>
+          ) : null}
+        </div>
+      );
     case "select":
     case "dropdown":
     case "multiselect":
@@ -192,7 +210,7 @@ export function renderTypeSettings({ field, onChange, formId, scoring, quiz, cur
       );
     case "statement":
       return (
-        <FieldRow label="Button label" hint="Conversational forms show the statement on its own screen with this button." className="max-w-xs">
+        <FieldRow label="Button label" hint="Conversational forms show the statement on its own screen with this button.">
           <TextInput value={config.buttonLabel} onChange={(v) => setConfig({ buttonLabel: v })} placeholder="Continue" />
         </FieldRow>
       );
@@ -238,7 +256,7 @@ export function renderTypeSettings({ field, onChange, formId, scoring, quiz, cur
       );
     case "rating":
       return (
-        <FieldRow label="Number of stars" className="max-w-40">
+        <FieldRow label="Number of stars">
           <Select value={String(config.max ?? 5)} onValueChange={(v) => setConfig({ max: Number(v) })}>
             <SelectTrigger className="h-8 w-full bg-surface-card text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>{[3, 4, 5, 6, 7, 8, 9, 10].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
@@ -297,7 +315,7 @@ export function renderTypeSettings({ field, onChange, formId, scoring, quiz, cur
       );
     case "currency":
       return (
-        <FieldRow label="Currency" hint="Leave blank to use the form's payment currency." className="max-w-48">
+        <FieldRow label="Currency" hint="Leave blank to use the form's payment currency.">
           <TextInput value={config.currency} onChange={(v) => setConfig({ currency: v.toLowerCase().slice(0, 3) || undefined })} placeholder={currency || "usd"} />
         </FieldRow>
       );

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { FileText, Route } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { Progress } from "@geiger/ui/progress";
 import {
   DataTable,
   EmptyState,
@@ -25,7 +26,7 @@ import {
   uniqueEvents,
   useAnalyticsData,
 } from "./analytics_data";
-import { FormPicker, Meter, RangePicker } from "./analytics_ui";
+import { FormPicker, RangePicker } from "./analytics_ui";
 
 const DIMENSIONS = [
   { value: "source", label: "Source", plural: "sources", empty: "(direct)" },
@@ -106,7 +107,7 @@ export function AttributionScreen() {
       header: "Submissions",
       render: (r) => (
         <div className="flex min-w-32 items-center gap-2">
-          <Meter value={(r.submits / maxSubmits) * 100} className="w-20" />
+          <Progress value={(r.submits / maxSubmits) * 100} className="h-1.5 w-20" />
           <span className="tabular-nums text-xs text-foreground">{r.submits.toLocaleString()}</span>
         </div>
       ),

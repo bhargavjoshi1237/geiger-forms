@@ -10,7 +10,7 @@ export async function GET(request, { params }) {
   const { slug } = await params;
   if (!isAdminConfigured()) return unavailable("Forms are unavailable right now.");
   const url = new URL(request.url);
-  const payload = await loadPublicForm(slug, { signedToken: url.searchParams.get("t") || undefined, variantId: url.searchParams.get("variant") || undefined });
+  const payload = await loadPublicForm(slug, { signedToken: url.searchParams.get("t") || undefined, variantId: url.searchParams.get("variant") || undefined, recordToken: url.searchParams.get("record") || undefined });
   if (!payload) return notFound("Form not found.");
   return json(payload, 200, { "Cache-Control": "no-store" });
 }

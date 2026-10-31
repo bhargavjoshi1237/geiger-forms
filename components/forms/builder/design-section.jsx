@@ -3,7 +3,9 @@
 import { memo } from "react";
 import { Check } from "lucide-react";
 import { Input } from "@geiger/ui/input";
+import { Textarea } from "@geiger/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@geiger/ui/toggle-group";
+import { CSS_HOOKS, MAX_CUSTOM_CSS, checkCustomCss } from "@/lib/forms/custom-css";
 import { FontPicker } from "@/components/forms/font-picker";
 import { ImageInput } from "@/components/forms/image-input";
 import { ThemeGallery } from "@/components/forms/theme-gallery";
@@ -12,6 +14,69 @@ import { ControlLabel, FieldRow, Segmented, SubtleNote, TextInput, ToggleRow } f
 import { CoverPicker } from "./cover-picker";
 
 const RADIUS_SHORT = { none: "Square", sm: "S", md: "M", lg: "L", full: "Round" };
+
+const PAGE_LAYOUTS = [
+  { value: "centered", label: "Centred" },
+  { value: "split", label: "Split" },
+  { value: "side-image", label: "Side image" },
+];
+const SIDE_POSITIONS = [
+  { value: "left", label: "Start" },
+  { value: "right", label: "End" },
+];
+
+// Per-element choices; the values match ELEMENT_RULES in lib/forms/custom-css.js, and the first of each is the unstyled default.
+const ELEMENT_CONTROLS = [
+  { key: "titleSize", label: "Title size", options: [["md", "Default"], ["sm", "Small"], ["lg", "Large"]] },
+  { key: "titleAlign", label: "Title alignment", options: [["start", "Start"], ["center", "Centre"]] },
+  { key: "titleCase", label: "Heading case", options: [["normal", "As typed"], ["upper", "Uppercase"]] },
+  { key: "labelSize", label: "Question size", options: [["md", "Default"], ["sm", "Small"], ["lg", "Large"]] },
+  { key: "labelWeight", label: "Question weight", options: [["medium", "Medium"], ["normal", "Regular"], ["bold", "Bold"]] },
+  { key: "labelStyle", label: "Choice questions", options: [["plain", "Text"], ["display", "Heading"]] },
+  { key: "numbering", label: "Question numbers", options: [["off", "Off"], ["on", "On"]] },
+  { key: "inputStyle", label: "Inputs", options: [["box", "Box"], ["underline", "Underline"], ["filled", "Filled"]] },
+  { key: "buttonStyle", label: "Button", options: [["solid", "Solid"], ["outline", "Outline"], ["gradient", "Gradient"]] },
+  { key: "buttonShape", label: "Button shape", options: [["default", "Match corners"], ["pill", "Pill"]] },
+  { key: "buttonWidth", label: "Button width", options: [["auto", "Fit"], ["full", "Full"]] },
+  { key: "cardStyle", label: "Sections", options: [["card", "Card"], ["glass", "Glass"], ["flat", "Flat"]] },
+  { key: "progressStyle", label: "Multi-page progress", options: [["bar", "Bar"], ["steps", "Steps"]] },
+];
+
+function ElementStyles({ theme, setTheme }) {
+  const elements = theme.elements || {};
+  return ELEMENT_CONTROLS.map(({ key, label, options }) => (
+    <FieldRow key={key} label={label}>
+      <Segmented value={elements[key] || options[0][0]} options={options.map(([value, text]) => ({ value, label: text }))} onChange={(value) => setTheme({ elements: { ...elements, [key]: value } })} />
+    </FieldRow>
+  ));
+}
+
+function CustomCssEditor({ value, onChange }) {
+  const { error } = checkCustomCss(value);
+  return (
+    <div className="space-y-1.5">
+      <ControlLabel hint="Applies only inside this form, on the live page and in the preview. It can't load images, fonts or other files.">Custom CSS</ControlLabel>
+      <Textarea
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        rows={6}
+        spellCheck={false}
+        maxLength={MAX_CUSTOM_CSS + 1}
+        aria-label="Custom CSS"
+        aria-invalid={error ? true : undefined}
+        placeholder={'[data-gf-part="title"] {\n  letter-spacing: -0.02em;\n}'}
+        className="min-h-28 resize-y bg-surface-card font-mono text-xs placeholder:text-text-tertiary"
+      />
+      {error ? <p role="alert" className="text-[11px] text-red-600 dark:text-red-400">{error}</p> : null}
+      <details className="text-[11px] leading-4 text-text-tertiary">
+        <summary className="cursor-pointer">Selectors you can target</summary>
+        <ul className="mt-1 space-y-0.5 font-mono">
+          {CSS_HOOKS.map((hook) => <li key={hook} className="break-all">{hook}</li>)}
+        </ul>
+      </details>
+    </div>
+  );
+}
 
 function Group({ title, children }) {
   return (
@@ -43,6 +108,15 @@ function AccentPicker({ value, onChange }) {
   );
 }
 
+function GradientEndPicker({ value, onChange }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Input type="color" aria-label="Second accent colour" value={HEX_RE.test(value || "") ? value.toLowerCase() : "#ff4d2e"} onChange={(e) => onChange(e.target.value)} className="w-10 shrink-0 cursor-pointer bg-surface-card p-1" />
+      <Input value={value || ""} onChange={(e) => onChange(e.target.value.trim())} placeholder="None" aria-label="Second accent hex" className="h-8 bg-surface-card font-mono text-xs placeholder:text-text-tertiary" />
+    </div>
+  );
+}
+
 // Builder "Design" panel: themes, mode, accent, background, corners, fonts, layout, cover and branding with a live preview.
 export const DesignSection = memo(function DesignSection({ settings, title, formId, projectId, onChange }) {
   const theme = settings.theme || {};
@@ -58,12 +132,18 @@ export const DesignSection = memo(function DesignSection({ settings, title, form
 
       <Group title="Colour">
         <FieldRow label="Colour mode">
-          <Segmented value={theme.mode || "dark"} options={MODE_OPTIONS} onChange={(mode) => setTheme({ mode })} />
+          <Segmented value={theme.mode || "dark"} options={MODE_OPTIONS} onChange={(mode) => setTheme({ mode, palette: "" })} />
         </FieldRow>
         <div className="space-y-1.5">
           <ControlLabel hint="Buttons, selections and the progress bar.">Accent colour</ControlLabel>
           <AccentPicker value={theme.accent || ""} onChange={(accent) => setTheme({ accent }, "design:accent")} />
         </div>
+        {HEX_RE.test(theme.accent || "") ? (
+          <div className="space-y-1.5">
+            <ControlLabel hint="Blends with the accent on gradient buttons, the progress bar and the glow.">Second accent</ControlLabel>
+            <GradientEndPicker value={theme.accent2 || ""} onChange={(accent2) => setTheme({ accent2 }, "design:accent2")} />
+          </div>
+        ) : null}
       </Group>
 
       <Group title="Page background">
@@ -75,6 +155,8 @@ export const DesignSection = memo(function DesignSection({ settings, title, form
           </div>
         ) : theme.background === "gradient" ? (
           <SubtleNote>A soft glow tinted by the accent colour.</SubtleNote>
+        ) : theme.background === "glow" ? (
+          <SubtleNote>Two soft glows in the page corner, tinted by the accent colours.</SubtleNote>
         ) : null}
       </Group>
 
@@ -95,6 +177,43 @@ export const DesignSection = memo(function DesignSection({ settings, title, form
         <Segmented value={settings.layout === "conversational" ? "conversational" : "classic"} options={LAYOUT_OPTIONS} onChange={(layout) => onChange({ layout })} />
         <SubtleNote>{settings.layout === "conversational" ? "One question per screen, with keyboard shortcuts." : "All questions on a page, with page breaks as steps."}</SubtleNote>
         <ToggleRow label="Progress bar" hint="Shows how far along respondents are; turn off to hide it." checked={settings.progressBar !== false} onCheckedChange={(progressBar) => onChange({ progressBar })} />
+        <FieldRow label="Page layout" hint="Split and side image apply on large screens; phones show the image as a band above the form. Embeds stay single-column.">
+          <Segmented value={settings.pageLayout || "centered"} options={PAGE_LAYOUTS} onChange={(pageLayout) => onChange({ pageLayout })} />
+        </FieldRow>
+        {settings.pageLayout === "split" || settings.pageLayout === "side-image" ? (
+          <>
+            <FieldRow label="Image side">
+              <Segmented value={settings.sidePosition || "left"} options={SIDE_POSITIONS} onChange={(sidePosition) => onChange({ sidePosition })} />
+            </FieldRow>
+            <div className="space-y-1.5">
+              <ControlLabel hint="Without an image, the panel shows a glow tinted by the accent colour.">Side image</ControlLabel>
+              <ImageInput compact formId={formId} value={settings.sideImageUrl} onChange={(sideImageUrl) => onChange({ sideImageUrl }, "design:side-image")} placeholder="https://…/side.jpg" label="side image" />
+            </div>
+            <FieldRow label="Eyebrow" hint="Small line above the headline.">
+              <TextInput value={settings.sideEyebrow} onChange={(sideEyebrow) => onChange({ sideEyebrow }, "design:side-eyebrow")} placeholder="e.g. Las Vegas · March 6" className="text-xs" />
+            </FieldRow>
+            <FieldRow label="Headline">
+              <TextInput value={settings.sideHeadline} onChange={(sideHeadline) => onChange({ sideHeadline }, "design:side-headline")} placeholder="e.g. Front row. No filter." className="text-xs" />
+            </FieldRow>
+            <FieldRow label="Tags" hint="Separate tags with commas.">
+              <TextInput value={settings.sideTags} onChange={(sideTags) => onChange({ sideTags }, "design:side-tags")} placeholder="e.g. 12-fight card, Doors 5:00 PM" className="text-xs" />
+            </FieldRow>
+            <FieldRow label="Image credit">
+              <TextInput value={settings.sideCredit} onChange={(sideCredit) => onChange({ sideCredit }, "design:side-credit")} placeholder="e.g. Photo: Jane Doe" className="text-xs" />
+            </FieldRow>
+            <FieldRow label="Side image alt text" hint="Leave blank if the image is only decorative.">
+              <TextInput value={settings.sideImageAlt} onChange={(sideImageAlt) => onChange({ sideImageAlt }, "design:side-alt")} className="text-xs" />
+            </FieldRow>
+          </>
+        ) : null}
+      </Group>
+
+      <Group title="Elements">
+        <ElementStyles theme={theme} setTheme={setTheme} />
+      </Group>
+
+      <Group title="Advanced">
+        <CustomCssEditor value={settings.customCss} onChange={(customCss) => onChange({ customCss }, "design:css")} />
       </Group>
 
       <Group title="Header">
