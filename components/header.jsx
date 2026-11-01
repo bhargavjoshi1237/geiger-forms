@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { SuiteHeader } from "@geiger/ui/suite-header";
+import { useProductBadges } from "@/lib/product-badges";
 import { getUser } from "@/lib/supabase/user";
 import { ProfileDropdown } from "@/components/layout/profile-dropdown";
 
 export function Header() {
   const [user, setUser] = useState(null);
   const [resolved, setResolved] = useState(false);
+  const badges = useProductBadges();
 
   useEffect(() => {
     let active = true;
@@ -26,5 +28,5 @@ export function Header() {
     <div className="h-8 w-8 rounded-full border border-border bg-surface-subtle" />
   );
 
-  return <SuiteHeader userId={user?.id} profile={profile} signInHref="/org" dashboardHref="/org" />;
+  return <SuiteHeader userId={user?.id} profile={profile} badges={badges} signInHref="/org" dashboardHref="/org" />;
 }
