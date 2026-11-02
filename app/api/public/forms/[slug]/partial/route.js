@@ -1,7 +1,7 @@
 import { MAX_BODY_BYTES, fail, ipHash, isEmail, jsonSize, notFound, ok, rateLimit, rateLimited, readJson, unavailable } from "@/lib/server/http";
 import { formsAdmin } from "@/lib/server/supabase-admin";
 import { loadPublishedForm } from "@/lib/server/forms";
-import { sensitiveIdentity } from "@/lib/forms/logic";
+import { partialAnswers, sensitiveIdentity } from "@/lib/forms/logic";
 import { decryptAnswers, encryptSensitive, randomToken } from "@/lib/server/crypto";
 import { indexPartialEmail } from "@/lib/server/respondent";
 
@@ -47,13 +47,15 @@ export async function POST(request, { params }) {
   if (consentRequired && body.consent !== true) return fail("Opt in before your progress can be saved.", 403, { code: "consent" });
   if (!(await rateLimit(`partial:${form.id}:${ipHash(request)}`, 600))) return rateLimited();
 
-  // Inline signature images aren't kept in drafts; the respondent signs again on resume.
   const known = new Set(form.fieldDefs.map((f) => f.id));
-  const kept = {};
-  for (const [k, v] of Object.entries(answers)) {
-    if (!known.has(k) && k !== "__coupon") continue;
-    if (typeof v === "string" && v.startsWith("data:")) continue;
-    kept[k] = v;
+  const submitted = Object.fromEntries(Object.entries(answers).filter(([k]) => known.has(k) || k === "__coupon"));
+  let kept;
+  try {
+    kept = partialAnswers(form.fieldDefs, submitted);
+  } catch (e) {
+    // Conditions read answers before they're validated, so a pathologically nested one can throw here; nothing is stored unfiltered.
+    console.error("[api.partial.filter]", e?.message);
+    return fail("Couldn't save your progress.", 422);
   }
   // The email the filler sends can be a sensitive field's answer; then only its keyed index is kept, for data-subject requests.
   const email = isEmail(body.email) && !form.settings.anonymous ? body.email.trim() : null;

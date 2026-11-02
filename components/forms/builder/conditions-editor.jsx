@@ -54,7 +54,7 @@ function ValueInput({ source, value, onChange }) {
     );
   }
   const numeric = NUMERIC_TYPES.has(source?.type);
-  const inputType = numeric ? "number" : source?.type === "date" ? "date" : source?.type === "time" ? "time" : "text";
+  const inputType = numeric ? "number" : source?.type === "date" ? "date" : source?.type === "time" ? "time" : source?.type === "datetime" ? "datetime-local" : "text";
   return (
     <Input
       type={inputType}

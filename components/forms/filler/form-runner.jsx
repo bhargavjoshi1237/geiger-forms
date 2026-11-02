@@ -5,14 +5,14 @@ import { Link2Off, RotateCcw } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { callApi } from "@/lib/forms/api";
 import { withPrefix } from "@/lib/workspace/base-path";
-import { detectRespondent, interpolate, safeHttpUrl, validateAnswers, visiblePages } from "@/lib/forms/logic";
+import { detectRespondent, interpolate, partialAnswers, safeHttpUrl, stripHiddenAnswers, validateAnswers, visiblePages } from "@/lib/forms/logic";
 import { errorSummaryItems, scrollMotion } from "@/lib/forms/a11y";
 import { localizeField, translationStrings } from "@/lib/forms/translate";
 import { isInputField, isLayoutField } from "@/lib/forms/field-types";
 import { clearDraft, clearQueued, loadDraft, loadPartialToken, loadQueued, markOnce, queueSubmission, saveDraft, savePartialToken, sessionIdFor } from "@/lib/forms/draft";
 import { FormFieldRenderer } from "@/components/forms/form-field-renderer";
 import { fieldIds } from "@/components/forms/fields/field-shell";
-import { buildInitialAnswers, partialAnswers, postEvent, publicApi, restartPath } from "./session";
+import { buildInitialAnswers, postEvent, publicApi, restartPath } from "./session";
 import { AttestationBlock, DelegateBlock, Honeypot, PolicyBlock, TurnstileWidget } from "./submit-extras";
 import { Banner, ConsentNotice, ErrorSummary, LiveRegion, useAnnouncer } from "./banners";
 import { StatusScreen } from "./filler-shell";
@@ -284,12 +284,12 @@ export function FormRunner({ slug, form, user, variant, recordPrefill, params, p
     if (partialInFlight.current) await partialInFlight.current;
     // Saves queued behind a withdrawal never post, so nothing is re-created after the delete.
     if (withdrawnRef.current) return null;
-    const current = answersRef.current;
+    const current = partialAnswers(fields, answersRef.current);
     const run = callApi(publicApi(slug, "/partial"), {
       method: "POST",
       body: {
         token: partialTokenRef.current || undefined,
-        answers: partialAnswers(current),
+        answers: current,
         lastFieldId: lastFieldRef.current,
         pageIndex: indexRef.current,
         progress: Math.round(progressRef.current * 100),
@@ -350,9 +350,9 @@ export function FormRunner({ slug, form, user, variant, recordPrefill, params, p
   // Local draft for offline-capable forms (consent-gated forms keep none until the respondent opts in).
   useEffect(() => {
     if (!offlineEnabled || !startedRef.current || stage !== "form" || (consentRequired && !partialConsent)) return undefined;
-    const timer = setTimeout(() => saveDraft(slug, { answers, pageIndex: currentIndex }), 600);
+    const timer = setTimeout(() => saveDraft(slug, { answers: stripHiddenAnswers(fields, answers), pageIndex: currentIndex }), 600);
     return () => clearTimeout(timer);
-  }, [answers, currentIndex, stage, slug, offlineEnabled, consentRequired, partialConsent]);
+  }, [fields, answers, currentIndex, stage, slug, offlineEnabled, consentRequired, partialConsent]);
 
   // --- Submission ---------------------------------------------------------------
 

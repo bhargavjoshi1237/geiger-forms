@@ -134,16 +134,6 @@ export function postEvent(slug, type, body = {}) {
   return callApi(`/api/public/forms/${encodeURIComponent(slug)}/event`, { method: "POST", body: { type, ...body } });
 }
 
-// Answers for partial saves: inline data URLs (unsent signatures) are dropped; the server encrypts sensitive fields.
-export function partialAnswers(answers) {
-  const out = {};
-  for (const [key, value] of Object.entries(answers || {})) {
-    if (typeof value === "string" && value.startsWith("data:")) continue;
-    out[key] = value;
-  }
-  return out;
-}
-
 export function publicApi(slug, path = "") {
   return `/api/public/forms/${encodeURIComponent(slug)}${path}`;
 }
