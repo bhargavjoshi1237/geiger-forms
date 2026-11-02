@@ -7,10 +7,8 @@ import {
   Merriweather,
 } from "next/font/google";
 import "./globals.css";
-import { Suspense } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SystemFavicon } from "@/components/system-favicon";
-import { RbacProvider } from "@/context/rbac-context";
 import { Toaster } from "@geiger/ui/sonner";
 
 const geistSans = Geist({
@@ -65,9 +63,7 @@ export default function RootLayout({ children }) {
       >
         <SystemFavicon />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <Suspense>
-            <RbacProvider>{children}</RbacProvider>
-          </Suspense>
+          {children}
           <Toaster richColors />
         </ThemeProvider>
       </body>

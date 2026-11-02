@@ -23,9 +23,10 @@ import { withPrefix } from "@/lib/workspace/base-path";
 import LandingFormShowcase from "@/components/LandingFormShowcase";
 
 export const metadata = {
-  title: "Forms - Geiger Studio",
+  title: "Geiger Forms: form builder with conditional logic",
   description:
-    "Create forms, collect responses, and manage submissions with Geiger Forms.",
+    "Build forms and surveys with conditional logic, scoring, file uploads and signatures, then manage every response in one inbox.",
+  alternates: { canonical: "https://geiger.studio/forms" },
 };
 
 const showcaseBackgroundImages = [
